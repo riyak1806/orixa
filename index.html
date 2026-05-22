@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORIXA | Puzzle Reveal Quiz Adventure</title>
+    <!-- Google Fonts for playful, friendly cartoon UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Playful animated bubble particles background -->
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- Start Page Screen (Visible on load) -->
+    <div id="start-screen" class="screen-overlay">
+        <div class="start-card cartoon-panel">
+            <h1 class="cartoon-logo bounce-anim">ORIXA</h1>
+            <p class="cartoon-subtitle">Reveal the Hidden Golden Trophy! 🏆</p>
+
+            <!-- Subject Selector Section -->
+            <div class="selection-section">
+                <h3 class="section-title">CHOOSE A SUBJECT</h3>
+                <div class="subject-grid">
+                    <button class="subject-card active" data-subject="gk" aria-label="Select General Knowledge">
+                        <span class="subject-icon">🧠</span>
+                        <span class="subject-label">GK</span>
+                    </button>
+                    <button class="subject-card" data-subject="science" aria-label="Select Science">
+                        <span class="subject-icon">🔬</span>
+                        <span class="subject-label">Science</span>
+                    </button>
+                    <button class="subject-card" data-subject="maths" aria-label="Select Mathematics">
+                        <span class="subject-icon">🧮</span>
+                        <span class="subject-label">Maths</span>
+                    </button>
+                    <button class="subject-card" data-subject="history" aria-label="Select History">
+                        <span class="subject-icon">📜</span>
+                        <span class="subject-label">History</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div class="settings-section">
+                <h3 class="section-title">CHOOSE GAME MODE</h3>
+                <div class="mode-options">
+                    <label class="cartoon-checkbox-container">
+                        <input type="checkbox" id="time-limit-checkbox" checked>
+                        <span class="custom-checkbox"></span>
+                        <span class="checkbox-text">⏰ 60s Time Limit (Arcade Mode)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="start-game-btn" class="cartoon-action-btn primary-yellow-btn pulse-glow">START PLAYING!</button>
+        </div>
+    </div>
+
+    <!-- Main Game Wrapper (Hidden until start is clicked) -->
+    <main class="game-wrapper hidden">
+        <header class="game-header cartoon-panel">
+            <div class="header-main">
+                <button id="back-to-menu-btn" class="control-btn" aria-label="Go Back to Main Menu" title="Main Menu">
+                    <svg class="monotone-icon" viewBox="0 0 24 24">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor" />
+                    </svg>
+                </button>
+                <h1 class="logo-text">ORIXA</h1>
+                <button id="sound-toggle" class="control-btn" aria-label="Toggle Sound" title="Toggle Sound">
+                    <svg class="monotone-icon" id="speaker-on-svg" viewBox="0 0 24 24">
+                        <path
+                            d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+                            fill="currentColor" />
+                    </svg>
+                    <svg class="monotone-icon hidden" id="speaker-off-svg" viewBox="0 0 24 24">
+                        <path
+                            d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
+                            fill="currentColor" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-row">
+                <div class="stat-badge cartoon-panel yellow-surface">
+                    <span class="stat-icon">⭐</span>
+                    <div class="stat-info">
+                        <span class="stat-label">SCORE</span>
+                        <span id="score-val" class="stat-value">0</span>
+                    </div>
+                </div>
+
+                <div class="stat-badge cartoon-panel blue-surface">
+                    <span id="timer-icon" class="stat-icon">⏱️</span>
+                    <div class="stat-info">
+                        <span class="stat-label">TIME</span>
+                        <span id="timer-val" class="stat-value">00:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Tracker -->
+            <div class="progress-container">
+                <div class="progress-text-row">
+                    <span class="progress-label">REVEAL PROGRESS</span>
+                    <span class="progress-fraction"><span id="progress-solved">0</span> / 9 (<span
+                            id="progress-pct">0%</span>)</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Game Board Container -->
+        <section class="board-container cartoon-panel">
+            <!-- Underlay revealed golden cartoon trophy -->
+            <div class="revealed-bg-wrapper">
+                <img id="revealed-image" src="assets/image.png" alt="Orixa Golden Trophy" draggable="false">
+            </div>
+
+            <!-- Grid overlays (9 tiles for 3x3 layout) -->
+            <div id="puzzle-grid" class="puzzle-grid">
+                <!-- Javascript will inject 9 tiles dynamically here -->
+            </div>
+        </section>
+
+        <footer class="game-footer">
+            <p>Tap a bubble to unlock a puzzle. Get it right to reveal a piece of the shiny golden trophy!</p>
+        </footer>
+    </main>
+
+    <!-- Quiz Question Modal overlay -->
+    <div id="quiz-modal" class="modal-overlay hidden" role="dialog" aria-hidden="true" aria-labelledby="modal-question">
+        <div class="modal-content cartoon-panel">
+            <button id="modal-close" class="modal-close-btn" aria-label="Close Quiz modal">&times;</button>
+            <div class="modal-body">
+                <div class="modal-header-row" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <div class="modal-header-badge" style="margin-bottom: 0;">QUESTION <span id="modal-q-num">1</span></div>
+                    <div class="modal-header-badge chances-badge" id="modal-chances-badge" style="margin-bottom: 0; background: var(--color-orange);">CHANCES LEFT: <span id="modal-chances-val">3</span></div>
+                </div>
+                <h2 id="modal-question" class="question-text">What is the capital of cyber-world?</h2>
+                <div id="modal-options" class="options-grid">
+                    <!-- Options injected dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Overlay Screen -->
+    <div id="victory-screen" class="victory-overlay hidden" role="dialog" aria-hidden="true">
+        <canvas id="confetti-canvas"></canvas>
+        <div class="victory-card cartoon-panel">
+            <div class="victory-trophy-icon">🏆</div>
+            <h2 class="victory-title">YOU WIN!</h2>
+            <p class="victory-subtitle">Congratulations! You completed Orixa!</p>
+
+            <div class="victory-stats-box">
+                <div class="victory-stat-item cartoon-panel yellow-surface">
+                    <span class="v-label">FINAL SCORE</span>
+                    <span id="final-score" class="v-value">0</span>
+                </div>
+                <div class="victory-stat-item cartoon-panel blue-surface">
+                    <span class="v-label">TOTAL TIME</span>
+                    <span id="final-time" class="v-value">00:00</span>
+                </div>
+            </div>
+
+            <button id="restart-btn" class="cartoon-action-btn primary-yellow-btn pulse-glow">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay Screen -->
+    <div id="game-over-screen" class="victory-overlay hidden" role="dialog" aria-hidden="true">
+        <div class="victory-card cartoon-panel game-over-card">
+            <div class="game-over-icon">⏰</div>
+            <h2 class="game-over-title">TIME'S UP!</h2>
+            <p class="victory-subtitle">Don't worry, you can try again!</p>
+
+            <div class="victory-stats-box">
+                <div class="victory-stat-item cartoon-panel yellow-surface">
+                    <span class="v-label">FINAL SCORE</span>
+                    <span id="gameover-score" class="v-value">0</span>
+                </div>
+                <div class="victory-stat-item cartoon-panel red-surface">
+                    <span class="v-label">SOLVED</span>
+                    <span id="gameover-solved" class="v-value">0 / 9</span>
+                </div>
+            </div>
+
+            <button id="game-over-restart-btn" class="cartoon-action-btn primary-orange-btn pulse-glow">TRY
+                AGAIN</button>
+        </div>
+    </div>
+
+    <!-- Removed customization helper button and modal for a cleaner game UI -->
+
+    <script src="script.js"></script>
+</body>
+
+</html>

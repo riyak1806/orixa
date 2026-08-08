@@ -19,80 +19,88 @@
     <canvas id="particles-canvas"></canvas>
 
     <div class="dashboard-shell" id="dashboard">
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+        <div class="decorative-bg-logo-wrapper">
+            <div class="decorative-bg-logo bounce-anim" aria-hidden="true">ORIXA</div>
+        </div>
         <aside class="dashboard-sidebar cartoon-panel" aria-label="Teacher navigation">
-            <a class="sidebar-brand" href="#dashboard" data-target="dashboard" aria-label="Orixa dashboard">
-                <span class="sidebar-logo">ORIXA</span>
-                <span class="sidebar-role">Teacher</span>
-            </a>
+            <div class="sidebar-header">
+                <span class="sidebar-role">MENU</span>
+                <button id="sidebar-toggle" class="sidebar-toggle-btn" type="button" aria-label="Toggle sidebar">
+                    <span data-icon="chevronLeft" aria-hidden="true"></span>
+                </button>
+            </div>
             <nav class="sidebar-nav" id="sidebar-nav"></nav>
         </aside>
 
         <div class="dashboard-content-shell">
             <header class="dashboard-topbar cartoon-panel">
-                <div class="topbar-brand">
-                    <h1 class="topbar-logo">ORIXA</h1>
-                    <span class="topbar-label">Teacher Dashboard</span>
+                <div class="topbar-brand-container">
+                    <button id="mobile-menu-toggle" class="icon-button mobile-only-btn" type="button" aria-label="Toggle menu">
+                        <span data-icon="menu" aria-hidden="true"></span>
+                    </button>
                 </div>
 
-                <form class="dashboard-search" role="search">
+                <form class="dashboard-search" role="search" onsubmit="event.preventDefault();">
                     <span class="search-icon" data-icon="search" aria-hidden="true"></span>
                     <input type="search" id="dashboard-search" placeholder="Search quizzes, students, results"
-                        aria-label="Search dashboard">
+                        aria-label="Search dashboard" autocomplete="off">
+                    <div id="search-dropdown" class="search-dropdown-panel cartoon-panel hidden"></div>
                 </form>
 
                 <div class="topbar-actions">
-                    <button class="icon-button" type="button" aria-label="Notifications">
+                    <button class="icon-button" type="button" data-target="notifications" aria-label="Notifications">
                         <span data-icon="bell" aria-hidden="true"></span>
                         <span class="notification-dot" aria-hidden="true"></span>
                     </button>
-                    <button class="profile-chip" type="button" aria-label="Teacher profile">
+                    <button class="profile-chip" type="button" data-target="profile" aria-label="Teacher profile">
                         <span class="profile-avatar">TR</span>
                         <span class="profile-name">Teacher</span>
                     </button>
                 </div>
             </header>
 
-            <main class="dashboard-main" aria-label="Teacher dashboard overview">
-                <section class="dashboard-title-row" aria-labelledby="dashboard-heading">
-                    <div>
-                        <p class="dashboard-kicker">Overview</p>
-                        <h2 id="dashboard-heading">Today in Orixa</h2>
-                    </div>
-                    <span class="dashboard-status">Live classroom view</span>
-                </section>
-
-                <section class="stats-grid" id="stats-grid" aria-label="Dashboard statistics"></section>
-
-                <section class="quick-actions" id="quick-actions" aria-label="Quick actions"></section>
-
-                <section class="dashboard-panels">
-                    <article class="dashboard-panel cartoon-panel" aria-labelledby="activity-heading">
-                        <div class="panel-header">
-                            <div>
-                                <p class="panel-kicker">Activity</p>
-                                <h3 id="activity-heading">Recent Activity</h3>
-                            </div>
-                            <button class="panel-tool" type="button" aria-label="Refresh activity">
-                                <span data-icon="refresh" aria-hidden="true"></span>
-                            </button>
+            <main class="dashboard-main" id="main-content-view" aria-label="Teacher dashboard overview">
+                <!-- Swappable Dynamic Page Wrapper -->
+                <div id="dashboard-overview-page" class="view-page">
+                    <section class="dashboard-title-row" aria-labelledby="dashboard-heading">
+                        <div>
+                            <h2 id="dashboard-heading">Today in Orixa</h2>
                         </div>
-                        <div class="activity-list" id="activity-list"></div>
-                    </article>
+                    </section>
 
-                    <article class="dashboard-panel cartoon-panel" aria-labelledby="quizzes-heading">
-                        <div class="panel-header">
-                            <div>
-                                <p class="panel-kicker">Quizzes</p>
-                                <h3 id="quizzes-heading">Recent Quizzes</h3>
+                    <section class="stats-grid" id="stats-grid" aria-label="Dashboard statistics"></section>
+
+                    <section class="dashboard-panels">
+                        <article class="dashboard-panel cartoon-panel" aria-labelledby="activity-heading">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="panel-kicker">Activity</p>
+                                    <h3 id="activity-heading">Recent Activity</h3>
+                                </div>
+                                <button class="panel-tool" type="button" aria-label="Refresh activity">
+                                    <span data-icon="refresh" aria-hidden="true"></span>
+                                </button>
                             </div>
-                            <button class="panel-tool" type="button" data-target="quiz-management"
-                                aria-label="Open quiz management">
-                                <span data-icon="arrowRight" aria-hidden="true"></span>
-                            </button>
-                        </div>
-                        <div class="quiz-list" id="quiz-list"></div>
-                    </article>
-                </section>
+                            <div class="activity-list" id="activity-list"></div>
+                        </article>
+
+                        <article class="dashboard-panel cartoon-panel" aria-labelledby="quizzes-heading">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="panel-kicker">Quizzes</p>
+                                    <h3 id="quizzes-heading">Recent Quizzes</h3>
+                                </div>
+                                <button class="panel-tool" type="button" data-target="quiz-management"
+                                    aria-label="Open quiz management">
+                                    <span data-icon="arrowRight" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <div class="quiz-list" id="quiz-list"></div>
+                        </article>
+                    </section>
+                </div>
+                <div id="dynamic-placeholder-page" class="view-page hidden"></div>
             </main>
         </div>
     </div>

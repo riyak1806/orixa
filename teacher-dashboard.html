@@ -19,21 +19,19 @@
     <canvas id="particles-canvas"></canvas>
 
     <div class="dashboard-shell" id="dashboard">
+        <div class="decorative-bg-logo-container" aria-hidden="true">
+            <div class="decorative-bg-logo bounce-anim">ORIXA</div>
+        </div>
         <aside class="dashboard-sidebar cartoon-panel" aria-label="Teacher navigation">
             <a class="sidebar-brand" href="#dashboard" data-target="dashboard" aria-label="Orixa dashboard">
                 <span class="sidebar-logo">ORIXA</span>
-                <span class="sidebar-role">Teacher</span>
+                <span class="sidebar-role">MENU</span>
             </a>
             <nav class="sidebar-nav" id="sidebar-nav"></nav>
         </aside>
 
         <div class="dashboard-content-shell">
             <header class="dashboard-topbar cartoon-panel">
-                <div class="topbar-brand">
-                    <h1 class="topbar-logo">ORIXA</h1>
-                    <span class="topbar-label">Teacher Dashboard</span>
-                </div>
-
                 <form class="dashboard-search" role="search">
                     <span class="search-icon" data-icon="search" aria-hidden="true"></span>
                     <input type="search" id="dashboard-search" placeholder="Search quizzes, students, results"
@@ -41,7 +39,7 @@
                 </form>
 
                 <div class="topbar-actions">
-                    <button class="icon-button" type="button" aria-label="Notifications">
+                    <button class="icon-button" type="button" data-target="notifications" aria-label="Notifications">
                         <span data-icon="bell" aria-hidden="true"></span>
                         <span class="notification-dot" aria-hidden="true"></span>
                     </button>
@@ -55,7 +53,6 @@
             <main class="dashboard-main" aria-label="Teacher dashboard overview">
                 <section class="dashboard-title-row" aria-labelledby="dashboard-heading">
                     <div>
-                        <p class="dashboard-kicker">Overview</p>
                         <h2 id="dashboard-heading">Today in Orixa</h2>
                     </div>
                     <span class="dashboard-status">Live classroom view</span>

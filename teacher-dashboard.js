@@ -3,6 +3,19 @@
    Dummy data and navigation-ready frontend components only.
    ========================================================================== */
 
+let unreadNotificationsCount = 3;
+
+function updateNotificationDot() {
+    const dot = document.querySelector('.notification-dot');
+    if (dot) {
+        if (unreadNotificationsCount > 0) {
+            dot.style.display = 'block';
+        } else {
+            dot.style.display = 'none';
+        }
+    }
+}
+
 const ICONS = {
     dashboard: '<path d="M3 13h8V3H3v10Z"></path><path d="M13 21h8V11h-8v10Z"></path><path d="M13 3v6h8V3h-8Z"></path><path d="M3 21h8v-6H3v6Z"></path>',
     list: '<path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path>',
@@ -205,6 +218,11 @@ function initDashboardNavigation() {
 
         setActiveNavigation(target);
         window.history.replaceState(null, '', `#${target}`);
+
+        if (target === 'notifications') {
+            unreadNotificationsCount = 0;
+            updateNotificationDot();
+        }
     });
 }
 
@@ -216,4 +234,5 @@ document.addEventListener('DOMContentLoaded', () => {
     renderQuizzes();
     renderIcons();
     initDashboardNavigation();
+    updateNotificationDot();
 });

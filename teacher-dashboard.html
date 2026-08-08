@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard | ORIXA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="teacher-dashboard.css">
+</head>
+
+<body class="dashboard-body">
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="dashboard-shell" id="dashboard">
+        <aside class="dashboard-sidebar cartoon-panel" aria-label="Teacher navigation">
+            <a class="sidebar-brand" href="#dashboard" data-target="dashboard" aria-label="Orixa dashboard">
+                <span class="sidebar-logo">ORIXA</span>
+                <span class="sidebar-role">Teacher</span>
+            </a>
+            <nav class="sidebar-nav" id="sidebar-nav"></nav>
+        </aside>
+
+        <div class="dashboard-content-shell">
+            <header class="dashboard-topbar cartoon-panel">
+                <div class="topbar-brand">
+                    <h1 class="topbar-logo">ORIXA</h1>
+                    <span class="topbar-label">Teacher Dashboard</span>
+                </div>
+
+                <form class="dashboard-search" role="search">
+                    <span class="search-icon" data-icon="search" aria-hidden="true"></span>
+                    <input type="search" id="dashboard-search" placeholder="Search quizzes, students, results"
+                        aria-label="Search dashboard">
+                </form>
+
+                <div class="topbar-actions">
+                    <button class="icon-button" type="button" aria-label="Notifications">
+                        <span data-icon="bell" aria-hidden="true"></span>
+                        <span class="notification-dot" aria-hidden="true"></span>
+                    </button>
+                    <button class="profile-chip" type="button" aria-label="Teacher profile">
+                        <span class="profile-avatar">TR</span>
+                        <span class="profile-name">Teacher</span>
+                    </button>
+                </div>
+            </header>
+
+            <main class="dashboard-main" aria-label="Teacher dashboard overview">
+                <section class="dashboard-title-row" aria-labelledby="dashboard-heading">
+                    <div>
+                        <p class="dashboard-kicker">Overview</p>
+                        <h2 id="dashboard-heading">Today in Orixa</h2>
+                    </div>
+                    <span class="dashboard-status">Live classroom view</span>
+                </section>
+
+                <section class="stats-grid" id="stats-grid" aria-label="Dashboard statistics"></section>
+
+                <section class="quick-actions" id="quick-actions" aria-label="Quick actions"></section>
+
+                <section class="dashboard-panels">
+                    <article class="dashboard-panel cartoon-panel" aria-labelledby="activity-heading">
+                        <div class="panel-header">
+                            <div>
+                                <p class="panel-kicker">Activity</p>
+                                <h3 id="activity-heading">Recent Activity</h3>
+                            </div>
+                            <button class="panel-tool" type="button" aria-label="Refresh activity">
+                                <span data-icon="refresh" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                        <div class="activity-list" id="activity-list"></div>
+                    </article>
+
+                    <article class="dashboard-panel cartoon-panel" aria-labelledby="quizzes-heading">
+                        <div class="panel-header">
+                            <div>
+                                <p class="panel-kicker">Quizzes</p>
+                                <h3 id="quizzes-heading">Recent Quizzes</h3>
+                            </div>
+                            <button class="panel-tool" type="button" data-target="quiz-management"
+                                aria-label="Open quiz management">
+                                <span data-icon="arrowRight" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                        <div class="quiz-list" id="quiz-list"></div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="teacher.js"></script>
+    <script src="teacher-dashboard.js"></script>
+</body>
+
+</html>

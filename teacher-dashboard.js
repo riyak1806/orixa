@@ -28,6 +28,7 @@ const ICONS = {
 
 // Centralized Data Architecture
 const MOCK_DATA = {
+    unreadNotificationsCount: 3,
     teacher: {
         name: "Professor Riley",
         email: "riley@orixa.edu",
@@ -309,6 +310,17 @@ function renderTeacherProfile() {
     `;
 }
 
+function updateNotificationDot() {
+    const dot = document.querySelector('.notification-dot');
+    if (dot) {
+        if (MOCK_DATA.unreadNotificationsCount > 0) {
+            dot.classList.remove('hidden');
+        } else {
+            dot.classList.add('hidden');
+        }
+    }
+}
+
 // Router/Switcher mapping targets to readable titles and content.
 // Dynamically renders the page context without introducing extra heavy HTML files.
 function navigateToView(target) {
@@ -323,6 +335,11 @@ function navigateToView(target) {
     // Always hide search dropdown on navigate
     if (searchDropdown) {
         searchDropdown.classList.add('hidden');
+    }
+
+    if (target === 'notifications') {
+        MOCK_DATA.unreadNotificationsCount = 0;
+        updateNotificationDot();
     }
 
     if (target === 'dashboard') {
@@ -523,6 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderActivities();
     renderQuizzes();
     renderIcons();
+    updateNotificationDot();
     initDashboardNavigation();
     initSidebarCollapsible();
     initSearch();

@@ -34,11 +34,11 @@
 
 .dashboard-sidebar {
     position: sticky;
-    top: 32px;
-    margin-top: 16px;
+    top: 141px;
+    margin-top: 125px;
     align-self: start;
     min-width: 0;
-    min-height: calc(100vh - 64px);
+    min-height: calc(100vh - 173px);
     padding: var(--t-space-2);
     display: flex;
     flex-direction: column;
@@ -96,6 +96,13 @@
     font-weight: 700;
     letter-spacing: 0.5px;
     color: #78909c;
+}
+
+.stat-label,
+.panel-kicker,
+.activity-meta,
+.quiz-meta {
+    font-size: 0.82rem;
 }
 
 .sidebar-role {
@@ -339,7 +346,11 @@
 }
 
 .dashboard-title-row h2 {
-    font-size: 1.8rem;
+    font-size: 2.1rem;
+}
+
+.panel-header h3 {
+    font-size: 1.35rem;
 }
 
 .dashboard-status {
@@ -362,6 +373,8 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--t-space-2);
+    margin-top: -8px;
+    margin-bottom: 12px;
 }
 
 .stat-card {
@@ -420,13 +433,13 @@
 
 .stat-value {
     font-family: var(--font-header);
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 700;
     color: var(--border-dark);
 }
 
 .stat-caption {
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     color: rgba(26, 26, 36, 0.72);
 }
 
@@ -507,7 +520,7 @@
 .quiz-title {
     margin: 0;
     font-family: var(--font-header);
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: var(--border-dark);
 }
@@ -531,7 +544,7 @@
     align-items: center;
     padding: 3px 8px;
     font-family: var(--font-header);
-    font-size: 0.7rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--border-dark);
     background: var(--color-green);
@@ -608,6 +621,7 @@
     .dashboard-sidebar {
         position: fixed;
         top: 0;
+        margin-top: 0;
         left: -300px;
         width: 280px !important;
         height: 100vh;

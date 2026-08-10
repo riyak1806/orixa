@@ -52,9 +52,14 @@ const MOCK_DATA = {
         { title: 'Question Bank Activity', desc: '35 new algebra questions added', time: '2 days ago', icon: 'bank' }
     ],
     quizzes: [
-        { title: 'Solar System Basics', subject: 'Science', questions: 18, status: 'Live', icon: 'trophy' },
-        { title: 'Fractions Sprint', subject: 'Maths', questions: 12, status: 'Draft', icon: 'clipboard' },
-        { title: 'Ancient Civilizations', subject: 'History', questions: 20, status: 'Closed', icon: 'history' }
+        { id: 1, title: 'Solar System Basics', subject: 'Science', questions: 18, status: 'Live', icon: 'trophy', attempts: 26, lastUpdated: '2026-08-10' },
+        { id: 2, title: 'Fractions Sprint', subject: 'Maths', questions: 12, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-09' },
+        { id: 3, title: 'Ancient Civilizations', subject: 'History', questions: 20, status: 'Closed', icon: 'history', attempts: 18, lastUpdated: '2026-08-05' },
+        { id: 4, title: 'Cell Structure and Function', subject: 'Science', questions: 15, status: 'Live', icon: 'trophy', attempts: 42, lastUpdated: '2026-08-08' },
+        { id: 5, title: 'Algebra Equations', subject: 'Maths', questions: 10, status: 'Live', icon: 'clipboard', attempts: 35, lastUpdated: '2026-08-07' },
+        { id: 6, title: 'Periodic Table Review', subject: 'Science', questions: 30, status: 'Closed', icon: 'history', attempts: 55, lastUpdated: '2026-07-28' },
+        { id: 7, title: 'Intro to Geometry', subject: 'Maths', questions: 15, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-02' },
+        { id: 8, title: 'Roman Empire', subject: 'History', questions: 15, status: 'Live', icon: 'trophy', attempts: 12, lastUpdated: '2026-08-04' }
     ],
     searchableItems: [
         // Quizzes
@@ -360,6 +365,15 @@ function navigateToView(target) {
         return;
     }
 
+    if (target === 'quiz-management') {
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        renderQuizManagementPage();
+        setActiveNavigation('quiz-management');
+        window.history.replaceState(null, '', `#quiz-management`);
+        return;
+    }
+
     // Dynamic dynamic placeholders for unimplemented pages
     const navItem = navItems.find(item => item.target === target);
     const pageTitle = navItem ? navItem.label : target.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -522,6 +536,451 @@ function initSearch() {
         }
     });
 }
+
+/* ==========================================================================
+   QUIZ MANAGEMENT CONTROLLER
+   ========================================================================== */
+
+let quizManagementState = {
+    searchQuery: '',
+    statusFilter: 'All',
+    subjectFilter: 'All',
+    sortBy: 'name-asc'
+};
+
+function renderQuizManagementPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    // Calculate dynamic stats from MOCK_DATA.quizzes
+    const totalQuizzes = MOCK_DATA.quizzes.length;
+    const liveQuizzes = MOCK_DATA.quizzes.filter(q => q.status === 'Live').length;
+    const draftQuizzes = MOCK_DATA.quizzes.filter(q => q.status === 'Draft').length;
+    const completedQuizzes = MOCK_DATA.quizzes.filter(q => q.status === 'Closed').length;
+
+    // Extract unique subjects from quizzes to build subject filter dynamically
+    const subjectsSet = new Set(MOCK_DATA.quizzes.map(q => q.subject));
+    const uniqueSubjects = Array.from(subjectsSet).sort();
+
+    dynamicPage.innerHTML = `
+        <div class="quiz-mgmt-container" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+            <div>
+                <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Quiz Management</h2>
+                <p class="cartoon-subtitle" style="margin-top: 4px;">Create, manage, and monitor your quizzes</p>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
+                <article class="stat-card cartoon-panel is-yellow">
+                    <div class="stat-topline">
+                        <span class="stat-label">Total Quizzes</span>
+                        <span class="stat-icon" data-icon="clipboard"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${totalQuizzes}</div>
+                        <p class="stat-caption">All registered quizzes</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-green">
+                    <div class="stat-topline">
+                        <span class="stat-label">Live Quizzes</span>
+                        <span class="stat-icon" data-icon="trophy"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${liveQuizzes}</div>
+                        <p class="stat-caption">Active & live now</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-blue">
+                    <div class="stat-topline">
+                        <span class="stat-label">Draft Quizzes</span>
+                        <span class="stat-icon" data-icon="clipboard"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${draftQuizzes}</div>
+                        <p class="stat-caption">Work in progress</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-orange">
+                    <div class="stat-topline">
+                        <span class="stat-label">Completed Quizzes</span>
+                        <span class="stat-icon" data-icon="history"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${completedQuizzes}</div>
+                        <p class="stat-caption">Finished & closed</p>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="quiz-mgmt-toolbar">
+                <div class="quiz-mgmt-filters">
+                    <div class="quiz-mgmt-search-container">
+                        <span class="quiz-mgmt-search-icon" data-icon="search"></span>
+                        <input type="search" id="quiz-search-input" placeholder="Search quizzes by name..." value="${escapeHTML(quizManagementState.searchQuery)}" autocomplete="off">
+                    </div>
+                    <select id="quiz-status-filter" class="quiz-mgmt-select">
+                        <option value="All" ${quizManagementState.statusFilter === 'All' ? 'selected' : ''}>All Statuses</option>
+                        <option value="Live" ${quizManagementState.statusFilter === 'Live' ? 'selected' : ''}>Live</option>
+                        <option value="Draft" ${quizManagementState.statusFilter === 'Draft' ? 'selected' : ''}>Draft</option>
+                        <option value="Closed" ${quizManagementState.statusFilter === 'Closed' ? 'selected' : ''}>Closed</option>
+                    </select>
+                    <select id="quiz-subject-filter" class="quiz-mgmt-select">
+                        <option value="All" ${quizManagementState.subjectFilter === 'All' ? 'selected' : ''}>All Subjects</option>
+                        ${uniqueSubjects.map(sub => `<option value="${escapeHTML(sub)}" ${quizManagementState.subjectFilter === sub ? 'selected' : ''}>${escapeHTML(sub)}</option>`).join('')}
+                    </select>
+                    <select id="quiz-sort-select" class="quiz-mgmt-select">
+                        <option value="name-asc" ${quizManagementState.sortBy === 'name-asc' ? 'selected' : ''}>Name: A to Z</option>
+                        <option value="name-desc" ${quizManagementState.sortBy === 'name-desc' ? 'selected' : ''}>Name: Z to A</option>
+                        <option value="questions-desc" ${quizManagementState.sortBy === 'questions-desc' ? 'selected' : ''}>Questions: High-Low</option>
+                        <option value="questions-asc" ${quizManagementState.sortBy === 'questions-asc' ? 'selected' : ''}>Questions: Low-High</option>
+                        <option value="updated-desc" ${quizManagementState.sortBy === 'updated-desc' ? 'selected' : ''}>Recently Updated</option>
+                    </select>
+                </div>
+                <button type="button" class="cartoon-action-btn primary-yellow-btn quiz-create-btn" id="quiz-create-button">
+                    <span data-icon="plus"></span> <span>Create Quiz</span>
+                </button>
+            </div>
+
+            <!-- Quiz List Container -->
+            <div id="quiz-grid-container"></div>
+        </div>
+    `;
+
+    // Render stats section icons
+    renderIcons(dynamicPage);
+
+    // Render list/grid based on filters
+    renderQuizList();
+
+    // Attach listeners
+    const searchInput = document.getElementById('quiz-search-input');
+    const statusFilter = document.getElementById('quiz-status-filter');
+    const subjectFilter = document.getElementById('quiz-subject-filter');
+    const sortSelect = document.getElementById('quiz-sort-select');
+    const createBtn = document.getElementById('quiz-create-button');
+
+    searchInput.addEventListener('input', (e) => {
+        quizManagementState.searchQuery = e.target.value;
+        renderQuizList();
+    });
+
+    statusFilter.addEventListener('change', (e) => {
+        quizManagementState.statusFilter = e.target.value;
+        renderQuizList();
+    });
+
+    subjectFilter.addEventListener('change', (e) => {
+        quizManagementState.subjectFilter = e.target.value;
+        renderQuizList();
+    });
+
+    sortSelect.addEventListener('change', (e) => {
+        quizManagementState.sortBy = e.target.value;
+        renderQuizList();
+    });
+
+    createBtn.addEventListener('click', () => {
+        navigateToView('create-quiz');
+    });
+}
+
+function renderQuizList() {
+    const gridContainer = document.getElementById('quiz-grid-container');
+    if (!gridContainer) return;
+
+    let filteredQuizzes = [...MOCK_DATA.quizzes];
+
+    // Search filter
+    const query = quizManagementState.searchQuery.trim().toLowerCase();
+    if (query) {
+        filteredQuizzes = filteredQuizzes.filter(q => q.title.toLowerCase().includes(query));
+    }
+
+    // Status filter
+    const status = quizManagementState.statusFilter;
+    if (status !== 'All') {
+        filteredQuizzes = filteredQuizzes.filter(q => q.status === status);
+    }
+
+    // Subject filter
+    const subj = quizManagementState.subjectFilter;
+    if (subj !== 'All') {
+        filteredQuizzes = filteredQuizzes.filter(q => q.subject === subj);
+    }
+
+    // Sort options
+    const sortBy = quizManagementState.sortBy;
+    if (sortBy === 'name-asc') {
+        filteredQuizzes.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === 'name-desc') {
+        filteredQuizzes.sort((a, b) => b.title.localeCompare(a.title));
+    } else if (sortBy === 'questions-desc') {
+        filteredQuizzes.sort((a, b) => b.questions - a.questions);
+    } else if (sortBy === 'questions-asc') {
+        filteredQuizzes.sort((a, b) => a.questions - b.questions);
+    } else if (sortBy === 'updated-desc') {
+        filteredQuizzes.sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated));
+    }
+
+    // Render empty state or grid
+    if (filteredQuizzes.length === 0) {
+        gridContainer.innerHTML = `
+            <div class="quiz-mgmt-no-results">
+                <div class="quiz-mgmt-no-results-title">No Quizzes Found</div>
+                <div class="quiz-mgmt-no-results-desc">Try modifying your search or filter settings.</div>
+            </div>
+        `;
+        return;
+    }
+
+    gridContainer.innerHTML = `
+        <div class="quiz-grid">
+            ${filteredQuizzes.map(quiz => {
+                const pillClass = quiz.status === 'Live' ? 'pill-live' : (quiz.status === 'Draft' ? 'pill-draft' : 'pill-closed');
+                return `
+                    <article class="quiz-mgmt-card">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h3 class="quiz-mgmt-card-title">${escapeHTML(quiz.title)}</h3>
+                                <div class="quiz-mgmt-card-subject">${escapeHTML(quiz.subject)}</div>
+                            </div>
+                            <span class="quiz-status-pill ${pillClass}">${quiz.status}</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span class="quiz-meta">Questions</span>
+                                <span style="font-weight: 700;">${quiz.questions}</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span class="quiz-meta">Students / Attempts</span>
+                                <span style="font-weight: 700;">${quiz.attempts}</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span class="quiz-meta">Last Updated</span>
+                                <span style="font-weight: 700; color: #546e7a;">${quiz.lastUpdated}</span>
+                            </div>
+                        </div>
+                        <div class="quiz-mgmt-card-actions">
+                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuizDetails(${quiz.id})" title="View Details">
+                                <span data-icon="search"></span> View
+                            </button>
+                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuizDetails(${quiz.id})" title="Edit Quiz">
+                                <span data-icon="clipboard"></span> Edit
+                            </button>
+                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuizConfirm(${quiz.id})" title="Delete Quiz">
+                                <span data-icon="x"></span> Delete
+                            </button>
+                        </div>
+                    </article>
+                `;
+            }).join('')}
+        </div>
+    `;
+    renderIcons(gridContainer);
+}
+
+function openOrixaModal(contentHtml) {
+    closeOrixaModal();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'orixa-modal-overlay';
+    overlay.className = 'orixa-modal-overlay';
+    overlay.innerHTML = contentHtml;
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeOrixaModal();
+        }
+    });
+
+    document.body.appendChild(overlay);
+    renderIcons(overlay);
+}
+
+function closeOrixaModal() {
+    const overlay = document.getElementById('orixa-modal-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+
+window.openOrixaModal = openOrixaModal;
+window.closeOrixaModal = closeOrixaModal;
+
+window.viewQuizDetails = function(id) {
+    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    const statusPillClass = quiz.status === 'Live' ? 'pill-live' : (quiz.status === 'Draft' ? 'pill-draft' : 'pill-closed');
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header">
+                <h3 class="orixa-modal-title">Quiz Details</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <div style="text-align: center; margin-bottom: var(--t-space-1);">
+                    <h2 style="font-family: var(--font-header); font-size: 1.6rem; color: var(--border-dark); margin: 0 0 4px 0;">${escapeHTML(quiz.title)}</h2>
+                    <span class="quiz-status-pill ${statusPillClass}">${quiz.status}</span>
+                </div>
+                <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); display: flex; flex-direction: column; gap: var(--t-space-1); box-shadow: var(--shadow-chunky-pressed);">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 6px;">
+                        <span class="quiz-meta">Subject</span>
+                        <span style="font-weight: 700;">${escapeHTML(quiz.subject)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 6px;">
+                        <span class="quiz-meta">Questions Count</span>
+                        <span style="font-weight: 700;">${quiz.questions}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 6px;">
+                        <span class="quiz-meta">Total Attempts</span>
+                        <span style="font-weight: 700;">${quiz.attempts} students</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 0;">
+                        <span class="quiz-meta">Last Updated</span>
+                        <span style="font-weight: 700; color: #546e7a;">${quiz.lastUpdated}</span>
+                    </div>
+                </div>
+                <p style="font-size: 0.95rem; line-height: 1.4; color: #546e7a; margin-top: 8px;">
+                    This quiz is fully integrated into the Orixa Student Module. You can monitor student progress, review individual answers, and download grading templates.
+                </p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Close Details
+                </button>
+            </footer>
+        </div>
+    `;
+    openOrixaModal(html);
+};
+
+window.editQuizDetails = function(id) {
+    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header">
+                <h3 class="orixa-modal-title">Edit Quiz</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <form id="orixa-edit-quiz-form" onsubmit="saveQuizDetails(event, ${quiz.id})">
+                <div class="orixa-modal-body">
+                    <div class="form-field">
+                        <label class="field-label" for="edit-quiz-title">QUIZ TITLE</label>
+                        <div class="input-shell">
+                            <input type="text" id="edit-quiz-title" class="cartoon-input" value="${escapeHTML(quiz.title)}" required>
+                        </div>
+                    </div>
+                    <div class="form-field" style="display: flex; flex-direction: column; gap: var(--t-space-1);">
+                        <label class="field-label" for="edit-quiz-subject">SUBJECT</label>
+                        <select id="edit-quiz-subject" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                            <option value="Science" ${quiz.subject === 'Science' ? 'selected' : ''}>Science</option>
+                            <option value="Maths" ${quiz.subject === 'Maths' ? 'selected' : ''}>Maths</option>
+                            <option value="History" ${quiz.subject === 'History' ? 'selected' : ''}>History</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label" for="edit-quiz-questions">QUESTIONS COUNT</label>
+                        <div class="input-shell">
+                            <input type="number" id="edit-quiz-questions" class="cartoon-input" value="${quiz.questions}" min="1" max="100" required>
+                        </div>
+                    </div>
+                    <div class="form-field" style="display: flex; flex-direction: column; gap: var(--t-space-1);">
+                        <label class="field-label" for="edit-quiz-status">STATUS</label>
+                        <select id="edit-quiz-status" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                            <option value="Live" ${quiz.status === 'Live' ? 'selected' : ''}>Live</option>
+                            <option value="Draft" ${quiz.status === 'Draft' ? 'selected' : ''}>Draft</option>
+                            <option value="Closed" ${quiz.status === 'Closed' ? 'selected' : ''}>Closed</option>
+                        </select>
+                    </div>
+                </div>
+                <footer class="orixa-modal-footer">
+                    <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                        Cancel
+                    </button>
+                    <button type="submit" class="cartoon-action-btn primary-yellow-btn" style="padding: 10px 24px; font-size: 0.95rem;">
+                        Save Changes
+                    </button>
+                </footer>
+            </form>
+        </div>
+    `;
+    openOrixaModal(html);
+};
+
+window.saveQuizDetails = function(event, id) {
+    event.preventDefault();
+    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    const newTitle = document.getElementById('edit-quiz-title').value.trim();
+    const newSubject = document.getElementById('edit-quiz-subject').value;
+    const newQuestions = parseInt(document.getElementById('edit-quiz-questions').value, 10);
+    const newStatus = document.getElementById('edit-quiz-status').value;
+
+    if (newTitle) {
+        quiz.title = newTitle;
+        quiz.subject = newSubject;
+        quiz.questions = newQuestions;
+        quiz.status = newStatus;
+        quiz.lastUpdated = new Date().toISOString().split('T')[0];
+
+        closeOrixaModal();
+        renderQuizManagementPage();
+    }
+};
+
+window.deleteQuizConfirm = function(id) {
+    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: #ffebee;">
+                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Delete</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <p style="font-size: 1.1rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
+                    Are you sure you want to delete <span style="color: var(--color-red-dark); font-family: var(--font-header);">${escapeHTML(quiz.title)}</span>?
+                </p>
+                <p style="font-size: 0.9rem; color: #546e7a;">
+                    This action will permanently delete the quiz and remove all student history. This action cannot be undone.
+                </p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Cancel
+                </button>
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuiz(${quiz.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Yes, Delete
+                </button>
+            </footer>
+        </div>
+    `;
+    openOrixaModal(html);
+};
+
+window.performDeleteQuiz = function(id) {
+    const index = MOCK_DATA.quizzes.findIndex(q => q.id === id);
+    if (index !== -1) {
+        MOCK_DATA.quizzes.splice(index, 1);
+        closeOrixaModal();
+        renderQuizManagementPage();
+    }
+};
 
 function escapeHTML(str) {
     return str.replace(/[&<>'"]/g,

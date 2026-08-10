@@ -1193,3 +1193,54 @@
     font-size: 1rem;
     margin: 0;
 }
+
+/* ==========================================================================
+   CREATE QUIZ SPECIFIC STYLES
+   ========================================================================== */
+
+.create-quiz-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: var(--t-space-2);
+    align-items: start;
+}
+
+.cartoon-input.input-invalid {
+    border-color: var(--color-red-dark) !important;
+    background-color: #ffebee !important;
+    box-shadow: 0 4px 0 var(--color-red-dark) !important;
+}
+
+.question-item-card.input-invalid {
+    border-color: var(--color-red-dark) !important;
+    box-shadow: 0 4px 0 var(--color-red-dark) !important;
+}
+
+.question-delete-btn:hover {
+    background: var(--color-red-dark) !important;
+    transform: translateY(-1px);
+}
+
+.question-delete-btn:active {
+    transform: translateY(1px);
+}
+
+#questions-list-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+#questions-list-container::-webkit-scrollbar-track {
+    background: var(--color-cream);
+    border-radius: 4px;
+}
+
+#questions-list-container::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+    border-radius: 4px;
+}
+
+@media (max-width: 900px) {
+    .create-quiz-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -327,6 +327,617 @@ function renderNotificationDot() {
     }
 }
 
+let createQuizState = null;
+
+function resetCreateQuizState() {
+    createQuizState = {
+        title: '',
+        subject: 'Mathematics',
+        grade: 'Grade 5',
+        description: '',
+        settings: {
+            timeLimit: 15,
+            attempts: 1,
+            passingScore: 70,
+            shuffleQuestions: false,
+            shuffleAnswers: false
+        },
+        questions: [
+            {
+                id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                text: '',
+                type: 'Multiple Choice',
+                options: ['', '', '', ''],
+                correctAnswer: null,
+                marks: 5
+            }
+        ]
+    };
+}
+
+function renderCreateQuizPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    dynamicPage.innerHTML = `
+        <div class="create-quiz-container" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+            <div class="create-quiz-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Create Quiz</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Create an engaging quiz for your students</p>
+                </div>
+                <button type="button" class="cartoon-action-btn create-quiz-back-btn" id="create-quiz-back-btn" style="padding: 10px 20px; font-size: 0.95rem;">
+                    ← Back to Quiz Management
+                </button>
+            </div>
+
+            <div class="create-quiz-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--t-space-2);">
+                <!-- Left column for Quiz Basic Info & Settings -->
+                <div class="create-quiz-col-left" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+                    <div class="cartoon-panel create-quiz-card" id="quiz-info-card" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
+                        <h3 style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin: 0;">Quiz Information</h3>
+
+                        <div class="form-field">
+                            <label class="field-label" for="create-quiz-title">QUIZ TITLE *</label>
+                            <div class="input-shell">
+                                <input type="text" id="create-quiz-title" class="cartoon-input" placeholder="Enter quiz title" value="${escapeHTML(createQuizState.title)}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="create-quiz-subject">SUBJECT *</label>
+                            <select id="create-quiz-subject" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                                <option value="Mathematics" ${createQuizState.subject === 'Mathematics' ? 'selected' : ''}>Mathematics</option>
+                                <option value="Science" ${createQuizState.subject === 'Science' ? 'selected' : ''}>Science</option>
+                                <option value="History" ${createQuizState.subject === 'History' ? 'selected' : ''}>History</option>
+                                <option value="English" ${createQuizState.subject === 'English' ? 'selected' : ''}>English</option>
+                                <option value="Computer Science" ${createQuizState.subject === 'Computer Science' ? 'selected' : ''}>Computer Science</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="create-quiz-grade">CLASS / GRADE *</label>
+                            <select id="create-quiz-grade" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                                <option value="Grade 5" ${createQuizState.grade === 'Grade 5' ? 'selected' : ''}>Grade 5</option>
+                                <option value="Grade 6" ${createQuizState.grade === 'Grade 6' ? 'selected' : ''}>Grade 6</option>
+                                <option value="Grade 7" ${createQuizState.grade === 'Grade 7' ? 'selected' : ''}>Grade 7</option>
+                                <option value="Grade 8" ${createQuizState.grade === 'Grade 8' ? 'selected' : ''}>Grade 8</option>
+                                <option value="Grade 9" ${createQuizState.grade === 'Grade 9' ? 'selected' : ''}>Grade 9</option>
+                                <option value="Grade 10" ${createQuizState.grade === 'Grade 10' ? 'selected' : ''}>Grade 10</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="create-quiz-description">DESCRIPTION</label>
+                            <div class="input-shell">
+                                <textarea id="create-quiz-description" class="cartoon-input" placeholder="Add a short description about this quiz..." style="height: auto; min-height: 100px; padding: var(--t-space-1) var(--t-space-2); resize: vertical; line-height: 1.4;">${escapeHTML(createQuizState.description)}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cartoon-panel create-quiz-card" id="quiz-settings-card" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
+                        <h3 style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin: 0;">Quiz Settings</h3>
+
+                        <div class="form-field">
+                            <label class="field-label" for="create-quiz-time">TIME LIMIT (MINUTES) *</label>
+                            <div class="input-shell">
+                                <input type="number" id="create-quiz-time" class="cartoon-input" min="1" max="180" value="${createQuizState.settings.timeLimit}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="create-quiz-attempts">NUMBER OF ATTEMPTS *</label>
+                            <div class="input-shell">
+                                <input type="number" id="create-quiz-attempts" class="cartoon-input" min="1" max="10" value="${createQuizState.settings.attempts}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="create-quiz-passing">PASSING SCORE (%) *</label>
+                            <div class="input-shell">
+                                <input type="number" id="create-quiz-passing" class="cartoon-input" min="1" max="100" value="${createQuizState.settings.passingScore}" required>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: var(--t-space-1); margin-top: 8px;">
+                            <label class="cartoon-checkbox-container" style="padding: 4px 0; justify-content: flex-start;">
+                                <input type="checkbox" id="create-quiz-shuffle-questions" ${createQuizState.settings.shuffleQuestions ? 'checked' : ''}>
+                                <span class="custom-checkbox"></span>
+                                <span class="checkbox-text">Shuffle Questions</span>
+                            </label>
+
+                            <label class="cartoon-checkbox-container" style="padding: 4px 0; justify-content: flex-start;">
+                                <input type="checkbox" id="create-quiz-shuffle-answers" ${createQuizState.settings.shuffleAnswers ? 'checked' : ''}>
+                                <span class="custom-checkbox"></span>
+                                <span class="checkbox-text">Shuffle Answers</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right column for Quiz Questions -->
+                <div class="create-quiz-col-right" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+                    <div class="cartoon-panel create-quiz-card" id="questions-card" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
+                        <h3 style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin: 0;">Questions</h3>
+
+                        <div id="questions-list-container" style="display: flex; flex-direction: column; max-height: 600px; overflow-y: auto; padding-right: 4px; gap: var(--t-space-2);">
+                            <!-- Dynamic Questions List -->
+                        </div>
+
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" id="create-quiz-add-question-btn" style="padding: 10px 20px; font-size: 1rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
+                            <span data-icon="plus"></span> Add Question
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="create-quiz-bottom-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: var(--t-space-2); margin-top: var(--t-space-2);">
+                <button type="button" class="cartoon-action-btn" id="create-quiz-save-draft-btn" style="padding: 12px 24px; font-size: 1rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Save as Draft
+                </button>
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" id="create-quiz-publish-btn" style="padding: 12px 28px; font-size: 1rem;">
+                    Publish Quiz
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Render Questions List dynamically
+    const renderQuestionsList = () => {
+        const questionsListContainer = document.getElementById('questions-list-container');
+        if (!questionsListContainer) return;
+
+        if (createQuizState.questions.length === 0) {
+            questionsListContainer.innerHTML = `
+                <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-3); text-align: center; background: var(--color-cream); margin-bottom: var(--t-space-2);">
+                    <span style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a;">No questions added yet. Click "+ Add Question" to start building!</span>
+                </div>
+            `;
+            return;
+        }
+
+        questionsListContainer.innerHTML = createQuizState.questions.map((q, index) => {
+            const questionNumber = index + 1;
+            const isMultipleChoice = q.type === 'Multiple Choice';
+
+            let answersHtml = '';
+            if (isMultipleChoice) {
+                answersHtml = `
+                    <div style="display: flex; flex-direction: column; gap: var(--t-space-1); margin-top: var(--t-space-1);">
+                        <p class="field-label" style="margin-bottom: 4px;">ANSWER OPTIONS (SELECT CORRECT ONE) *</p>
+                        ${[0, 1, 2, 3].map(optIndex => {
+                            const letter = String.fromCharCode(65 + optIndex); // A, B, C, D
+                            const isChecked = q.correctAnswer === optIndex;
+                            return `
+                                <div style="display: flex; align-items: center; gap: var(--t-space-1);">
+                                    <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                                        <input type="radio" name="correct-answer-${q.id}" class="correct-answer-radio" data-question-id="${q.id}" data-option-index="${optIndex}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--color-green); cursor: pointer;">
+                                    </label>
+                                    <input type="text" class="cartoon-input question-option-input" data-question-id="${q.id}" data-option-index="${optIndex}" placeholder="Option ${letter}" value="${escapeHTML(q.options[optIndex] || '')}" style="height: 44px; font-size: 0.95rem;">
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } else {
+                // True / False
+                const isTrueChecked = q.correctAnswer === 'True';
+                const isFalseChecked = q.correctAnswer === 'False';
+                answersHtml = `
+                    <div style="display: flex; flex-direction: column; gap: var(--t-space-1); margin-top: var(--t-space-1);">
+                        <p class="field-label" style="margin-bottom: 4px;">CORRECT ANSWER *</p>
+                        <div style="display: flex; gap: var(--t-space-3); align-items: center;">
+                            <label style="display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark); cursor: pointer;">
+                                <input type="radio" name="correct-answer-${q.id}" class="correct-answer-radio-tf" data-question-id="${q.id}" data-value="True" ${isTrueChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--color-green); cursor: pointer;">
+                                True
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark); cursor: pointer;">
+                                <input type="radio" name="correct-answer-${q.id}" class="correct-answer-radio-tf" data-question-id="${q.id}" data-value="False" ${isFalseChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--color-green); cursor: pointer;">
+                                False
+                            </label>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="question-item-card" data-question-id="${q.id}" style="border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); background: var(--color-cream); margin-bottom: var(--t-space-1); display: flex; flex-direction: column; gap: var(--t-space-1); position: relative; box-shadow: var(--shadow-chunky-pressed);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin-bottom: 4px;">
+                        <span style="font-family: var(--font-header); font-size: 1.15rem; color: var(--border-dark); font-weight: 700;">Question ${questionNumber}</span>
+                        <button type="button" class="question-delete-btn" data-question-id="${q.id}" style="background: var(--color-red); border: 2px solid var(--border-dark); border-radius: 8px; padding: 4px 12px; font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); transition: transform 0.1s ease;">
+                            Delete
+                        </button>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">QUESTION TEXT *</label>
+                        <div class="input-shell">
+                            <textarea class="cartoon-input question-text-input" data-question-id="${q.id}" placeholder="Enter question text" style="height: auto; min-height: 70px; padding: 8px 12px; resize: vertical; line-height: 1.4; font-size: 0.95rem;">${escapeHTML(q.text)}</textarea>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--t-space-2); margin-top: 4px;">
+                        <div class="form-field">
+                            <label class="field-label">QUESTION TYPE</label>
+                            <select class="cartoon-input question-type-select" data-question-id="${q.id}" style="height: 40px; padding: 0 8px; font-family: var(--font-header); font-size: 0.85rem;">
+                                <option value="Multiple Choice" ${isMultipleChoice ? 'selected' : ''}>Multiple Choice</option>
+                                <option value="True / False" ${!isMultipleChoice ? 'selected' : ''}>True / False</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label">MARKS / POINTS *</label>
+                            <div class="input-shell">
+                                <input type="number" class="cartoon-input question-marks-input" data-question-id="${q.id}" min="1" max="50" value="${q.marks}" style="height: 40px; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    ${answersHtml}
+                </div>
+            `;
+        }).join('');
+    };
+
+    // Sync functions
+    const syncQuestionsState = () => {
+        const titleEl = document.getElementById('create-quiz-title');
+        const subjectEl = document.getElementById('create-quiz-subject');
+        const gradeEl = document.getElementById('create-quiz-grade');
+        const descEl = document.getElementById('create-quiz-description');
+
+        const timeEl = document.getElementById('create-quiz-time');
+        const attemptsEl = document.getElementById('create-quiz-attempts');
+        const passingEl = document.getElementById('create-quiz-passing');
+        const shuffleQEl = document.getElementById('create-quiz-shuffle-questions');
+        const shuffleAEl = document.getElementById('create-quiz-shuffle-answers');
+
+        if (titleEl) createQuizState.title = titleEl.value;
+        if (subjectEl) createQuizState.subject = subjectEl.value;
+        if (gradeEl) createQuizState.grade = gradeEl.value;
+        if (descEl) createQuizState.description = descEl.value;
+
+        if (timeEl) createQuizState.settings.timeLimit = parseInt(timeEl.value, 10) || 15;
+        if (attemptsEl) createQuizState.settings.attempts = parseInt(attemptsEl.value, 10) || 1;
+        if (passingEl) createQuizState.settings.passingScore = parseInt(passingEl.value, 10) || 70;
+        if (shuffleQEl) createQuizState.settings.shuffleQuestions = shuffleQEl.checked;
+        if (shuffleAEl) createQuizState.settings.shuffleAnswers = shuffleAEl.checked;
+
+        // Sync Question inputs
+        const questionTextEls = dynamicPage.querySelectorAll('.question-text-input');
+        questionTextEls.forEach(el => {
+            const qId = el.dataset.questionId;
+            const q = createQuizState.questions.find(item => item.id === qId);
+            if (q) q.text = el.value;
+        });
+
+        const questionMarksEls = dynamicPage.querySelectorAll('.question-marks-input');
+        questionMarksEls.forEach(el => {
+            const qId = el.dataset.questionId;
+            const q = createQuizState.questions.find(item => item.id === qId);
+            if (q) q.marks = parseInt(el.value, 10) || 5;
+        });
+
+        const optionInputEls = dynamicPage.querySelectorAll('.question-option-input');
+        optionInputEls.forEach(el => {
+            const qId = el.dataset.questionId;
+            const optIndex = parseInt(el.dataset.optionIndex, 10);
+            const q = createQuizState.questions.find(item => item.id === qId);
+            if (q) q.options[optIndex] = el.value;
+        });
+    };
+
+    // Initial render of questions
+    renderQuestionsList();
+    renderIcons(document.getElementById('questions-card'));
+
+    // Attach listeners
+    const backBtn = document.getElementById('create-quiz-back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            navigateToView('quiz-management');
+        });
+    }
+
+    const addQuestionBtn = document.getElementById('create-quiz-add-question-btn');
+    if (addQuestionBtn) {
+        addQuestionBtn.addEventListener('click', () => {
+            syncQuestionsState();
+            createQuizState.questions.push({
+                id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                text: '',
+                type: 'Multiple Choice',
+                options: ['', '', '', ''],
+                correctAnswer: null,
+                marks: 5
+            });
+            renderQuestionsList();
+        });
+    }
+
+    const container = dynamicPage.querySelector('.create-quiz-container');
+    if (container) {
+        container.addEventListener('input', syncQuestionsState);
+        container.addEventListener('change', (e) => {
+            syncQuestionsState();
+
+            // Handle radio changes and type selector changes
+            if (e.target.classList.contains('correct-answer-radio')) {
+                const qId = e.target.dataset.questionId;
+                const optIndex = parseInt(e.target.dataset.optionIndex, 10);
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) q.correctAnswer = optIndex;
+            } else if (e.target.classList.contains('correct-answer-radio-tf')) {
+                const qId = e.target.dataset.questionId;
+                const val = e.target.dataset.value;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) q.correctAnswer = val;
+            } else if (e.target.classList.contains('question-type-select')) {
+                const qId = e.target.dataset.questionId;
+                const type = e.target.value;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) {
+                    q.type = type;
+                    q.correctAnswer = null;
+                    if (type === 'Multiple Choice') {
+                        q.options = ['', '', '', ''];
+                    } else {
+                        q.options = [];
+                    }
+                    renderQuestionsList();
+                }
+            }
+        });
+
+        // Intercept delete clicks
+        container.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.question-delete-btn');
+            if (deleteBtn) {
+                syncQuestionsState();
+                const qId = deleteBtn.dataset.questionId;
+                const idx = createQuizState.questions.findIndex(item => item.id === qId);
+                if (idx !== -1) {
+                    createQuizState.questions.splice(idx, 1);
+                    renderQuestionsList();
+                }
+            }
+        });
+    }
+
+    // Validation Routines
+    const validateDraft = () => {
+        dynamicPage.querySelectorAll('.input-invalid').forEach(el => el.classList.remove('input-invalid'));
+        dynamicPage.querySelectorAll('.question-item-card.input-invalid').forEach(el => el.classList.remove('input-invalid'));
+
+        const errors = [];
+        const titleEl = document.getElementById('create-quiz-title');
+        if (!createQuizState.title.trim()) {
+            errors.push("Quiz Title is required.");
+            if (titleEl) titleEl.classList.add('input-invalid');
+        }
+        const subjectEl = document.getElementById('create-quiz-subject');
+        if (!createQuizState.subject) {
+            errors.push("Subject is required.");
+            if (subjectEl) subjectEl.classList.add('input-invalid');
+        }
+        const gradeEl = document.getElementById('create-quiz-grade');
+        if (!createQuizState.grade) {
+            errors.push("Class / Grade is required.");
+            if (gradeEl) gradeEl.classList.add('input-invalid');
+        }
+
+        return errors;
+    };
+
+    const validatePublish = () => {
+        dynamicPage.querySelectorAll('.input-invalid').forEach(el => el.classList.remove('input-invalid'));
+        dynamicPage.querySelectorAll('.question-item-card.input-invalid').forEach(el => el.classList.remove('input-invalid'));
+
+        const errors = validateDraft();
+
+        if (createQuizState.questions.length === 0) {
+            errors.push("The quiz must have at least one question.");
+        }
+
+        createQuizState.questions.forEach((q, index) => {
+            const num = index + 1;
+            const qCard = dynamicPage.querySelector(`[data-question-id="${q.id}"]`);
+
+            if (!q.text.trim()) {
+                errors.push(`Question ${num}: Question text cannot be blank.`);
+                if (qCard) {
+                    qCard.querySelector('.question-text-input').classList.add('input-invalid');
+                }
+            }
+
+            if (q.type === 'Multiple Choice') {
+                q.options.forEach((opt, optIdx) => {
+                    if (!opt.trim()) {
+                        errors.push(`Question ${num}: Option ${String.fromCharCode(65 + optIdx)} cannot be blank.`);
+                        if (qCard) {
+                            qCard.querySelectorAll('.question-option-input')[optIdx].classList.add('input-invalid');
+                        }
+                    }
+                });
+
+                if (q.correctAnswer === null || q.correctAnswer === undefined) {
+                    errors.push(`Question ${num}: Please select a correct answer.`);
+                    if (qCard) {
+                        qCard.classList.add('input-invalid');
+                    }
+                }
+            } else {
+                if (q.correctAnswer !== 'True' && q.correctAnswer !== 'False') {
+                    errors.push(`Question ${num}: Please select True or False.`);
+                    if (qCard) {
+                        qCard.classList.add('input-invalid');
+                    }
+                }
+            }
+        });
+
+        return errors;
+    };
+
+    const showValidationErrorModal = (errors) => {
+        openOrixaModal(`
+            <div class="orixa-modal-card">
+                <header class="orixa-modal-header" style="background: var(--color-red);">
+                    <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">Missing Information</h3>
+                    <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                        <span data-icon="x"></span>
+                    </button>
+                </header>
+                <div class="orixa-modal-body" style="max-height: 400px; overflow-y: auto;">
+                    <p style="font-weight: 700; color: var(--color-red-dark); margin-bottom: var(--t-space-1);">Please fix the following issues before continuing:</p>
+                    <ul style="padding-left: 20px; color: var(--border-dark); line-height: 1.5; font-family: var(--font-body); display: flex; flex-direction: column; gap: 6px;">
+                        ${errors.map(err => `<li>${escapeHTML(err)}</li>`).join('')}
+                    </ul>
+                </div>
+                <footer class="orixa-modal-footer">
+                    <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                        Got it!
+                    </button>
+                </footer>
+            </div>
+        `);
+    };
+
+    // Save as Draft Event
+    const saveDraftBtn = document.getElementById('create-quiz-save-draft-btn');
+    if (saveDraftBtn) {
+        saveDraftBtn.addEventListener('click', () => {
+            syncQuestionsState();
+            const errors = validateDraft();
+            if (errors.length > 0) {
+                showValidationErrorModal(errors);
+                return;
+            }
+
+            // Save to MOCK_DATA
+            const newId = MOCK_DATA.quizzes.length > 0 ? Math.max(...MOCK_DATA.quizzes.map(q => q.id)) + 1 : 1;
+            const newQuiz = {
+                id: newId,
+                title: createQuizState.title,
+                subject: createQuizState.subject,
+                questions: createQuizState.questions.length,
+                status: 'Draft',
+                icon: 'clipboard',
+                attempts: 0,
+                lastUpdated: new Date().toISOString().split('T')[0]
+            };
+            MOCK_DATA.quizzes.unshift(newQuiz);
+
+            // Show Success Modal
+            openOrixaModal(`
+                <div class="orixa-modal-card">
+                    <header class="orixa-modal-header" style="background: var(--color-green);">
+                        <h3 class="orixa-modal-title" style="color: var(--border-dark);">Draft Saved!</h3>
+                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); navigateToView('quiz-management');" aria-label="Close modal">
+                            <span data-icon="x"></span>
+                        </button>
+                    </header>
+                    <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                        <p style="font-size: 1.2rem; font-weight: 700; color: var(--border-dark);">"${escapeHTML(createQuizState.title)}" has been saved as a Draft.</p>
+                        <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">You can find and edit this quiz in the Quiz Management list at any time.</p>
+                    </div>
+                    <footer class="orixa-modal-footer">
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); navigateToView('quiz-management');" style="padding: 10px 24px; font-size: 0.95rem;">
+                            Go to Quiz Management
+                        </button>
+                    </footer>
+                </div>
+            `);
+
+            // Reset state
+            createQuizState = null;
+        });
+    }
+
+    // Publish Event
+    const publishBtn = document.getElementById('create-quiz-publish-btn');
+    if (publishBtn) {
+        publishBtn.addEventListener('click', () => {
+            syncQuestionsState();
+            const errors = validatePublish();
+            if (errors.length > 0) {
+                showValidationErrorModal(errors);
+                return;
+            }
+
+            // Confirmation Popup
+            openOrixaModal(`
+                <div class="orixa-modal-card">
+                    <header class="orixa-modal-header" style="background: var(--color-yellow);">
+                        <h3 class="orixa-modal-title" style="color: var(--border-dark);">Publish Quiz</h3>
+                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                            <span data-icon="x"></span>
+                        </button>
+                    </header>
+                    <div class="orixa-modal-body" style="padding: var(--t-space-3);">
+                        <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Are you sure you want to publish this quiz?</p>
+                        <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">This will make the quiz live and instantly accessible to your students.</p>
+                    </div>
+                    <footer class="orixa-modal-footer">
+                        <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                            Cancel
+                        </button>
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" id="confirm-publish-btn" style="padding: 10px 24px; font-size: 0.95rem;">
+                            Publish
+                        </button>
+                    </footer>
+                </div>
+            `);
+
+            const confirmBtn = document.getElementById('confirm-publish-btn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', () => {
+                    const newId = MOCK_DATA.quizzes.length > 0 ? Math.max(...MOCK_DATA.quizzes.map(q => q.id)) + 1 : 1;
+                    const newQuiz = {
+                        id: newId,
+                        title: createQuizState.title,
+                        subject: createQuizState.subject,
+                        questions: createQuizState.questions.length,
+                        status: 'Live',
+                        icon: 'trophy',
+                        attempts: 0,
+                        lastUpdated: new Date().toISOString().split('T')[0]
+                    };
+                    MOCK_DATA.quizzes.unshift(newQuiz);
+
+                    closeOrixaModal();
+
+                    // Success Feedback
+                    openOrixaModal(`
+                        <div class="orixa-modal-card">
+                            <header class="orixa-modal-header" style="background: var(--color-green);">
+                                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Published Successfully!</h3>
+                                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); navigateToView('quiz-management');" aria-label="Close modal">
+                                    <span data-icon="x"></span>
+                                </button>
+                            </header>
+                            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                                <p style="font-size: 1.2rem; font-weight: 700; color: var(--border-dark);">"${escapeHTML(createQuizState.title)}" is now live!</p>
+                                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">Students can now view and attempt this quiz on their portals.</p>
+                            </div>
+                            <footer class="orixa-modal-footer">
+                                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); navigateToView('quiz-management');" style="padding: 10px 24px; font-size: 0.95rem;">
+                                    Done
+                                </button>
+                            </footer>
+                        </div>
+                    `);
+
+                    // Reset state
+                    createQuizState = null;
+                });
+            }
+        });
+    }
+}
+
 // Router/Switcher mapping targets to readable titles and content.
 // Dynamically renders the page context without introducing extra heavy HTML files.
 function navigateToView(target) {
@@ -371,6 +982,18 @@ function navigateToView(target) {
         renderQuizManagementPage();
         setActiveNavigation('quiz-management');
         window.history.replaceState(null, '', `#quiz-management`);
+        return;
+    }
+
+    if (target === 'create-quiz') {
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        if (!createQuizState) {
+            resetCreateQuizState();
+        }
+        renderCreateQuizPage();
+        setActiveNavigation('create-quiz');
+        window.history.replaceState(null, '', `#create-quiz`);
         return;
     }
 

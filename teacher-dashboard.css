@@ -678,6 +678,29 @@
     }
 }
 
+/* ==========================================================================
+   QUESTION BANK SPECIFIC STYLES
+   ========================================================================== */
+
+.qb-container {
+    animation: qb-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+}
+
+@keyframes qb-pop {
+    0% { transform: scale(0.98); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.qb-selection-toolbar {
+    border: var(--border-comic-thin) !important;
+    background-color: var(--color-cream) !important;
+    box-shadow: var(--shadow-chunky-pressed) !important;
+}
+
+.qb-select-checkbox:checked ~ .custom-checkbox {
+    background-color: var(--color-green) !important;
+}
+
 @media (max-width: 620px) {
     .dashboard-body {
         padding: var(--t-space-1);

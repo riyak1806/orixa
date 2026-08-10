@@ -43,6 +43,100 @@ const MOCK_DATA = {
         { label: 'Average Score', value: '84%', caption: 'Subject average score', icon: 'target', tone: 'green' },
         { label: 'Recent Activity', value: '14', caption: 'Quiz submissions today', icon: 'clock', tone: 'orange' }
     ],
+    students: [
+        {
+            id: "STU-001",
+            name: "Aarav Sharma",
+            grade: "Grade 8",
+            email: "aarav@example.com",
+            quizzesAttempted: 12,
+            averageScore: 84,
+            status: "Active",
+            lastActivity: "2026-08-11",
+            subject: "Science",
+            bestScore: 95,
+            recentQuizzes: [
+                { title: "Solar System Basics", score: 88, date: "2026-08-10" },
+                { title: "Cell Structure and Function", score: 80, date: "2026-08-08" },
+                { title: "Periodic Table Review", score: 84, date: "2026-07-28" }
+            ]
+        },
+        {
+            id: "STU-002",
+            name: "Anjali Gupta",
+            grade: "Grade 7",
+            email: "anjali@example.com",
+            quizzesAttempted: 8,
+            averageScore: 92,
+            status: "Active",
+            lastActivity: "2026-08-12",
+            subject: "Mathematics",
+            bestScore: 100,
+            recentQuizzes: [
+                { title: "Fractions Sprint", score: 95, date: "2026-08-09" },
+                { title: "Algebra Equations", score: 89, date: "2026-08-07" }
+            ]
+        },
+        {
+            id: "STU-003",
+            name: "Siddharth Sen",
+            grade: "Grade 9",
+            email: "siddharth@example.com",
+            quizzesAttempted: 15,
+            averageScore: 76,
+            status: "Active",
+            lastActivity: "2026-08-12",
+            subject: "History",
+            bestScore: 88,
+            recentQuizzes: [
+                { title: "Ancient Civilizations", score: 72, date: "2026-08-05" },
+                { title: "Roman Empire", score: 80, date: "2026-08-04" }
+            ]
+        },
+        {
+            id: "STU-004",
+            name: "Priya Patel",
+            grade: "Grade 8",
+            email: "priya@example.com",
+            quizzesAttempted: 10,
+            averageScore: 68,
+            status: "Inactive",
+            lastActivity: "2026-07-20",
+            subject: "Science",
+            bestScore: 75,
+            recentQuizzes: [
+                { title: "Cell Structure and Function", score: 65, date: "2026-07-18" }
+            ]
+        },
+        {
+            id: "STU-005",
+            name: "Rohan Das",
+            grade: "Grade 7",
+            email: "rohan@example.com",
+            quizzesAttempted: 5,
+            averageScore: 89,
+            status: "Active",
+            lastActivity: "2026-08-10",
+            subject: "Science",
+            bestScore: 94,
+            recentQuizzes: [
+                { title: "Solar System Basics", score: 90, date: "2026-08-10" }
+            ]
+        },
+        {
+            id: "STU-006",
+            name: "Meera Nair",
+            grade: "Grade 9",
+            email: "meera@example.com",
+            quizzesAttempted: 0,
+            averageScore: 0,
+            status: "Inactive",
+            lastActivity: "2026-08-01",
+            subject: "Mathematics",
+            bestScore: 0,
+            recentQuizzes: []
+        }
+    ],
     activities: [
         { title: 'Quiz Completed', desc: 'Solar System Basics by 26 students', time: '10 mins ago', icon: 'clipboard' },
         { title: 'Student Submission', desc: 'Rahul Sharma submitted Fractions Sprint', time: '25 mins ago', icon: 'clipboard' },
@@ -1090,6 +1184,15 @@ function navigateToView(target) {
         return;
     }
 
+    if (target === 'students') {
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        renderStudentsPage();
+        setActiveNavigation('students');
+        window.history.replaceState(null, '', `#students`);
+        return;
+    }
+
     // Dynamic dynamic placeholders for unimplemented pages
     const navItem = navItems.find(item => item.target === target);
     const pageTitle = navItem ? navItem.label : target.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -1699,6 +1802,739 @@ window.performDeleteQuiz = function(id) {
 };
 
 /* ==========================================================================
+   STUDENTS SECTION CONTROLLER
+   ========================================================================== */
+
+function renderStudentsPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    if (studentsPageState.formMode === 'add' || studentsPageState.formMode === 'edit') {
+        renderStudentForm(dynamicPage);
+        return;
+    }
+
+    // 1. Calculate dynamic statistics
+    const totalStudents = MOCK_DATA.students.length;
+    const activeStudents = MOCK_DATA.students.filter(s => s.status === 'Active').length;
+    const inactiveStudents = MOCK_DATA.students.filter(s => s.status === 'Inactive').length;
+
+    // Calculate average score of students
+    let averageScore = 0;
+    if (totalStudents > 0) {
+        const totalScore = MOCK_DATA.students.reduce((sum, s) => sum + (s.averageScore || 0), 0);
+        averageScore = Math.round(totalScore / totalStudents);
+    }
+
+    // Get unique classes/grades and subjects for dropdown filters
+    const gradesSet = new Set(MOCK_DATA.students.map(s => s.grade));
+    const uniqueGrades = Array.from(gradesSet).sort();
+
+    const subjectsSet = new Set(MOCK_DATA.students.map(s => s.subject));
+    const uniqueSubjects = Array.from(subjectsSet).sort();
+
+    // 2. Build the structural HTML for Students Page
+    dynamicPage.innerHTML = `
+        <div class="students-container" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+
+            <!-- Page Header -->
+            <div class="students-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Students</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">View and manage your students</p>
+                </div>
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" id="students-add-btn" style="padding: 10px 20px; font-size: 1rem; border-radius: 12px; height: 44px; display: inline-flex; align-items: center; gap: 8px;">
+                    <span data-icon="plus"></span> <span>+ Add Student</span>
+                </button>
+            </div>
+
+            <!-- Statistics Row (Dynamic) -->
+            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
+                <article class="stat-card cartoon-panel is-blue">
+                    <div class="stat-topline">
+                        <span class="stat-label">Total Students</span>
+                        <span class="stat-icon" data-icon="users"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="student-stat-total">${totalStudents}</div>
+                        <p class="stat-caption">All assigned students</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-green">
+                    <div class="stat-topline">
+                        <span class="stat-label">Active Students</span>
+                        <span class="stat-icon" data-icon="trophy"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="student-stat-active">${activeStudents}</div>
+                        <p class="stat-caption">Active class members</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-orange">
+                    <div class="stat-topline">
+                        <span class="stat-label">Inactive Students</span>
+                        <span class="stat-icon" data-icon="clock"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="student-stat-inactive">${inactiveStudents}</div>
+                        <p class="stat-caption">Suspended / offline</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-yellow">
+                    <div class="stat-topline">
+                        <span class="stat-label">Average Score</span>
+                        <span class="stat-icon" data-icon="target"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="student-stat-avg">${averageScore}%</div>
+                        <p class="stat-caption">Class average performance</p>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Toolbar (Search & Filters) -->
+            <div class="quiz-mgmt-toolbar">
+                <div class="quiz-mgmt-filters">
+                    <div class="quiz-mgmt-search-container">
+                        <span class="quiz-mgmt-search-icon" data-icon="search"></span>
+                        <input type="search" id="student-search-input" placeholder="Search students by name, ID, email..." value="${escapeHTML(studentsPageState.searchQuery)}" autocomplete="off">
+                    </div>
+                    <select id="student-status-filter" class="quiz-mgmt-select">
+                        <option value="All" ${studentsPageState.statusFilter === 'All' ? 'selected' : ''}>All Statuses</option>
+                        <option value="Active" ${studentsPageState.statusFilter === 'Active' ? 'selected' : ''}>Active</option>
+                        <option value="Inactive" ${studentsPageState.statusFilter === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                    </select>
+                    <select id="student-grade-filter" class="quiz-mgmt-select">
+                        <option value="All">All Grades</option>
+                        ${uniqueGrades.map(g => `<option value="${escapeHTML(g)}" ${studentsPageState.gradeFilter === g ? 'selected' : ''}>${escapeHTML(g)}</option>`).join('')}
+                    </select>
+                    <select id="student-subject-filter" class="quiz-mgmt-select">
+                        <option value="All">All Subjects</option>
+                        ${uniqueSubjects.map(sub => `<option value="${escapeHTML(sub)}" ${studentsPageState.subjectFilter === sub ? 'selected' : ''}>${escapeHTML(sub)}</option>`).join('')}
+                    </select>
+                    <select id="student-sort-select" class="quiz-mgmt-select">
+                        <option value="name-asc" ${studentsPageState.sortBy === 'name-asc' ? 'selected' : ''}>Name A-Z</option>
+                        <option value="name-desc" ${studentsPageState.sortBy === 'name-desc' ? 'selected' : ''}>Name Z-A</option>
+                        <option value="score-desc" ${studentsPageState.sortBy === 'score-desc' ? 'selected' : ''}>Highest Score</option>
+                        <option value="score-asc" ${studentsPageState.sortBy === 'score-asc' ? 'selected' : ''}>Lowest Score</option>
+                        <option value="recently-added" ${studentsPageState.sortBy === 'recently-added' ? 'selected' : ''}>Recently Added</option>
+                    </select>
+                    <button type="button" class="cartoon-action-btn" id="student-clear-filters-btn" style="height: 44px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-dark); background: var(--color-orange); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; border-radius: 12px; display: ${(studentsPageState.searchQuery || studentsPageState.statusFilter !== 'All' || studentsPageState.gradeFilter !== 'All' || studentsPageState.subjectFilter !== 'All') ? 'inline-flex' : 'none'}; align-items: center; justify-content: center; border-width: 3px;">
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Student List Container -->
+            <div id="student-list-container"></div>
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+    renderStudentsList();
+
+    // Attach control event listeners
+    const searchInput = document.getElementById('student-search-input');
+    const statusFilter = document.getElementById('student-status-filter');
+    const gradeFilter = document.getElementById('student-grade-filter');
+    const subjectFilter = document.getElementById('student-subject-filter');
+    const sortSelect = document.getElementById('student-sort-select');
+    const addBtn = document.getElementById('students-add-btn');
+
+    searchInput.addEventListener('input', (e) => {
+        studentsPageState.searchQuery = e.target.value;
+        renderStudentsList();
+    });
+
+    statusFilter.addEventListener('change', (e) => {
+        studentsPageState.statusFilter = e.target.value;
+        renderStudentsList();
+    });
+
+    gradeFilter.addEventListener('change', (e) => {
+        studentsPageState.gradeFilter = e.target.value;
+        renderStudentsList();
+    });
+
+    subjectFilter.addEventListener('change', (e) => {
+        studentsPageState.subjectFilter = e.target.value;
+        renderStudentsList();
+    });
+
+    sortSelect.addEventListener('change', (e) => {
+        studentsPageState.sortBy = e.target.value;
+        renderStudentsList();
+    });
+
+    const clearFiltersBtn = document.getElementById('student-clear-filters-btn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            studentsPageState.searchQuery = '';
+            studentsPageState.statusFilter = 'All';
+            studentsPageState.gradeFilter = 'All';
+            studentsPageState.subjectFilter = 'All';
+            renderStudentsPage();
+        });
+    }
+
+    addBtn.addEventListener('click', () => {
+        studentsPageState.formMode = 'add';
+        renderStudentsPage();
+    });
+}
+
+function renderStudentsList() {
+    const listContainer = document.getElementById('student-list-container');
+    if (!listContainer) return;
+
+    let filtered = [...MOCK_DATA.students];
+
+    // 1. Search Query
+    const query = studentsPageState.searchQuery.trim().toLowerCase();
+    if (query) {
+        filtered = filtered.filter(s =>
+            s.name.toLowerCase().includes(query) ||
+            s.id.toLowerCase().includes(query) ||
+            s.email.toLowerCase().includes(query)
+        );
+    }
+
+    // 2. Status Filter
+    if (studentsPageState.statusFilter !== 'All') {
+        filtered = filtered.filter(s => s.status === studentsPageState.statusFilter);
+    }
+
+    // 3. Grade Filter
+    if (studentsPageState.gradeFilter !== 'All') {
+        filtered = filtered.filter(s => s.grade === studentsPageState.gradeFilter);
+    }
+
+    // 4. Subject Filter
+    if (studentsPageState.subjectFilter !== 'All') {
+        filtered = filtered.filter(s => s.subject === studentsPageState.subjectFilter);
+    }
+
+    // 5. Sorting
+    const sortBy = studentsPageState.sortBy;
+    if (sortBy === 'name-asc') {
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'name-desc') {
+        filtered.sort((a, b) => b.name.localeCompare(a.name));
+    } else if (sortBy === 'score-desc') {
+        filtered.sort((a, b) => b.averageScore - a.averageScore);
+    } else if (sortBy === 'score-asc') {
+        filtered.sort((a, b) => a.averageScore - b.averageScore);
+    } else if (sortBy === 'recently-added') {
+        filtered.sort((a, b) => b.id.localeCompare(a.id)); // Assuming ID corresponds to order
+    }
+
+    // Empty State Check
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `
+            <div class="quiz-mgmt-no-results">
+                <div class="quiz-mgmt-no-results-title">No students found</div>
+                <div class="quiz-mgmt-no-results-desc">Try modifying your search query or dropdown filter settings.</div>
+            </div>
+        `;
+        return;
+    }
+
+    // Output Comic table layout with responsive styling
+    listContainer.innerHTML = `
+        <div class="cartoon-panel" style="overflow-x: auto; background: var(--surface-white); padding: var(--t-space-1);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-body); font-size: 0.95rem;">
+                <thead>
+                    <tr style="border-bottom: 3px solid var(--border-dark); font-family: var(--font-header); font-size: 0.9rem; color: #78909c;">
+                        <th style="padding: 12px var(--t-space-2);">STUDENT NAME</th>
+                        <th style="padding: 12px var(--t-space-2);">STUDENT ID</th>
+                        <th style="padding: 12px var(--t-space-2);">GRADE</th>
+                        <th style="padding: 12px var(--t-space-2);">EMAIL</th>
+                        <th style="padding: 12px var(--t-space-2);">QUIZZES</th>
+                        <th style="padding: 12px var(--t-space-2);">AVG SCORE</th>
+                        <th style="padding: 12px var(--t-space-2);">STATUS</th>
+                        <th style="padding: 12px var(--t-space-2);">LAST ACTIVITY</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.map(s => {
+                        const statusPillClass = s.status === 'Active' ? 'pill-live' : 'pill-closed';
+                        return `
+                            <tr style="border-bottom: 2px dashed rgba(26,26,36,0.15); transition: background 0.15s ease;">
+                                <td style="padding: 12px var(--t-space-2); font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHTML(s.name)}</td>
+                                <td style="padding: 12px var(--t-space-2); font-weight: 700; color: #546e7a;">${escapeHTML(s.id)}</td>
+                                <td style="padding: 12px var(--t-space-2);">${escapeHTML(s.grade)}</td>
+                                <td style="padding: 12px var(--t-space-2); color: #546e7a;">${escapeHTML(s.email)}</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700;">${s.quizzesAttempted}</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; color: ${s.averageScore >= 80 ? 'var(--color-green-dark)' : (s.averageScore >= 60 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)')}">${s.averageScore}%</td>
+                                <td style="padding: 12px var(--t-space-2);">
+                                    <span class="quiz-status-pill ${statusPillClass}" style="font-size: 0.72rem; padding: 2px 8px;">${s.status}</span>
+                                </td>
+                                <td style="padding: 12px var(--t-space-2); color: #78909c;">${s.lastActivity || 'N/A'}</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center;">
+                                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                                        <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewStudentDetails('${s.id}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 10px; width: auto; flex: none;" title="View Details">
+                                            <span data-icon="search"></span> View
+                                        </button>
+                                        <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editStudentForm('${s.id}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 10px; width: auto; flex: none;" title="Edit Student">
+                                            <span data-icon="clipboard"></span> Edit
+                                        </button>
+                                        <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="toggleStudentStatusConfirm('${s.id}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 10px; width: auto; flex: none;" title="${s.status === 'Active' ? 'Deactivate' : 'Activate'}">
+                                            <span data-icon="x"></span> ${s.status === 'Active' ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    renderIcons(listContainer);
+
+    // Toggle clear filters button visibility dynamically
+    const clearBtn = document.getElementById('student-clear-filters-btn');
+    if (clearBtn) {
+        const hasActiveFilters = !!(studentsPageState.searchQuery || studentsPageState.statusFilter !== 'All' || studentsPageState.gradeFilter !== 'All' || studentsPageState.subjectFilter !== 'All');
+        clearBtn.style.display = hasActiveFilters ? 'inline-flex' : 'none';
+    }
+}
+
+window.viewStudentDetails = function(id) {
+    const s = MOCK_DATA.students.find(student => student.id === id);
+    if (!s) return;
+
+    const statusPillClass = s.status === 'Active' ? 'pill-live' : 'pill-closed';
+
+    let quizzesHtml = `
+        <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-2); text-align: center; background: var(--color-cream);">
+            <span style="font-family: var(--font-header); font-size: 0.95rem; color: #546e7a;">No quizzes attempted yet.</span>
+        </div>
+    `;
+
+    if (s.recentQuizzes && s.recentQuizzes.length > 0) {
+        quizzesHtml = `
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${s.recentQuizzes.map(q => `
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px 14px; box-shadow: var(--shadow-chunky-pressed); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div>
+                            <p style="font-family: var(--font-header); font-size: 0.98rem; color: var(--border-dark); margin: 0;">${escapeHTML(q.title)}</p>
+                            <span style="font-size: 0.78rem; color: #78909c;">Completed on ${q.date}</span>
+                        </div>
+                        <span style="font-family: var(--font-header); font-size: 1.1rem; font-weight: 700; color: ${q.score >= 80 ? 'var(--color-green-dark)' : (q.score >= 60 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)')}">${q.score}%</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    const html = `
+        <div class="orixa-modal-card" style="width: min(100%, 540px);">
+            <header class="orixa-modal-header">
+                <h3 class="orixa-modal-title">Student Profile</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="max-height: 520px; overflow-y: auto; gap: var(--t-space-2);">
+                <!-- Avatar & Identity Info -->
+                <div style="display: flex; align-items: center; gap: 16px; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 12px;">
+                    <div class="profile-avatar" style="width: 56px; height: 56px; font-size: 1.4rem; border-width: 3px; font-family: var(--font-header); display: inline-flex; align-items: center; justify-content: center; background: var(--color-blue); border: 2px solid var(--border-dark); border-radius: 50%;">
+                        ${s.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <h3 style="font-family: var(--font-header); font-size: 1.5rem; color: var(--border-dark); margin: 0; line-height: 1.2;">${escapeHTML(s.name)}</h3>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px;">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: #78909c;">ID: ${escapeHTML(s.id)}</span>
+                            <span class="quiz-status-pill ${statusPillClass}" style="font-size: 0.72rem; padding: 1px 8px;">${s.status}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Basic Meta Details -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--t-space-1); font-family: var(--font-body); font-size: 0.9rem;">
+                    <div>
+                        <span style="font-weight: 700; color: #78909c;">Email:</span>
+                        <div style="color: var(--border-dark); font-weight: 700; word-break: break-all;">${escapeHTML(s.email)}</div>
+                    </div>
+                    <div>
+                        <span style="font-weight: 700; color: #78909c;">Grade/Class:</span>
+                        <div style="color: var(--border-dark); font-weight: 700;">${escapeHTML(s.grade)}</div>
+                    </div>
+                    <div>
+                        <span style="font-weight: 700; color: #78909c;">Subject:</span>
+                        <div style="color: var(--border-dark); font-weight: 700;">${escapeHTML(s.subject)}</div>
+                    </div>
+                    <div>
+                        <span style="font-weight: 700; color: #78909c;">Last Activity:</span>
+                        <div style="color: var(--border-dark); font-weight: 700;">${s.lastActivity || 'N/A'}</div>
+                    </div>
+                </div>
+
+                <!-- Performance Highlights Grid -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px;">
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
+                        <span style="font-family: var(--font-header); font-size: 0.78rem; color: #78909c;">ATTEMPTED</span>
+                        <div style="font-family: var(--font-header); font-size: 1.5rem; color: var(--border-dark); margin-top: 2px;">${s.quizzesAttempted}</div>
+                    </div>
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
+                        <span style="font-family: var(--font-header); font-size: 0.78rem; color: #78909c;">AVG SCORE</span>
+                        <div style="font-family: var(--font-header); font-size: 1.5rem; color: var(--color-green-dark); margin-top: 2px;">${s.averageScore}%</div>
+                    </div>
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
+                        <span style="font-family: var(--font-header); font-size: 0.78rem; color: #78909c;">BEST SCORE</span>
+                        <div style="font-family: var(--font-header); font-size: 1.5rem; color: var(--color-blue-dark); margin-top: 2px;">${s.bestScore || 0}%</div>
+                    </div>
+                </div>
+
+                <!-- Recent Quiz Attempts Header -->
+                <div style="margin-top: 8px;">
+                    <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: 8px; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 4px;">Recent Quiz Performance</h4>
+                    ${quizzesHtml}
+                </div>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Close Details
+                </button>
+            </footer>
+        </div>
+    `;
+
+    openOrixaModal(html);
+};
+
+window.editStudentForm = function(id) {
+    studentsPageState.formMode = 'edit';
+    studentsPageState.editingStudentId = id;
+    renderStudentsPage();
+};
+
+window.cancelStudentForm = function() {
+    studentsPageState.formMode = 'list';
+    studentsPageState.editingStudentId = null;
+    renderStudentsPage();
+};
+
+function renderStudentForm(dynamicPage) {
+    const isEdit = studentsPageState.formMode === 'edit';
+    let s = null;
+    if (isEdit) {
+        s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
+    }
+
+    const name = s ? s.name : '';
+    const id = s ? s.id : '';
+    const email = s ? s.email : '';
+    const grade = s ? s.grade : 'Grade 8';
+    const subject = s ? s.subject : 'Science';
+    const status = s ? s.status : 'Active';
+
+    dynamicPage.innerHTML = `
+        <div class="cartoon-panel" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
+
+            <!-- Form Header -->
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal &bull; Students</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2rem;">${isEdit ? 'Edit Student' : 'Add New Student'}</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">${isEdit ? 'Modify student details and academic profile' : 'Register a new student with valid academic configuration'}</p>
+                </div>
+                <button class="cartoon-action-btn" onclick="cancelStudentForm()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Cancel
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="student-profile-form" onsubmit="saveStudentProfile(event)" style="display: flex; flex-direction: column; gap: var(--t-space-2); margin-top: var(--t-space-1);">
+
+                <!-- Student Name -->
+                <div class="form-field">
+                    <label class="field-label" for="form-s-name">STUDENT NAME *</label>
+                    <div class="input-shell">
+                        <input type="text" id="form-s-name" class="cartoon-input" placeholder="Enter student full name" value="${escapeHTML(name)}">
+                    </div>
+                    <span class="field-error" id="err-s-name" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
+                </div>
+
+                <!-- Student ID & Email Row -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--t-space-2);">
+                    <div class="form-field">
+                        <label class="field-label" for="form-s-id">STUDENT ID *</label>
+                        <div class="input-shell">
+                            <input type="text" id="form-s-id" class="cartoon-input" placeholder="e.g. STU-007" value="${escapeHTML(id)}" ${isEdit ? 'disabled style="background: #e0e0e0; cursor: not-allowed;"' : ''}>
+                        </div>
+                        <span class="field-error" id="err-s-id" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label" for="form-s-email">EMAIL ADDRESS *</label>
+                        <div class="input-shell">
+                            <input type="text" id="form-s-email" class="cartoon-input" placeholder="e.g. student@example.com" value="${escapeHTML(email)}">
+                        </div>
+                        <span class="field-error" id="err-s-email" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
+                    </div>
+                </div>
+
+                <!-- Grade, Subject, & Status Row -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--t-space-2);">
+                    <div class="form-field">
+                        <label class="field-label" for="form-s-grade">CLASS / GRADE *</label>
+                        <select id="form-s-grade" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                            <option value="Grade 5" ${grade === 'Grade 5' ? 'selected' : ''}>Grade 5</option>
+                            <option value="Grade 6" ${grade === 'Grade 6' ? 'selected' : ''}>Grade 6</option>
+                            <option value="Grade 7" ${grade === 'Grade 7' ? 'selected' : ''}>Grade 7</option>
+                            <option value="Grade 8" ${grade === 'Grade 8' ? 'selected' : ''}>Grade 8</option>
+                            <option value="Grade 9" ${grade === 'Grade 9' ? 'selected' : ''}>Grade 9</option>
+                            <option value="Grade 10" ${grade === 'Grade 10' ? 'selected' : ''}>Grade 10</option>
+                        </select>
+                        <span class="field-error" id="err-s-grade" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label" for="form-s-subject">SUBJECT *</label>
+                        <select id="form-s-subject" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                            <option value="Science" ${subject === 'Science' ? 'selected' : ''}>Science</option>
+                            <option value="Mathematics" ${subject === 'Mathematics' ? 'selected' : ''}>Mathematics</option>
+                            <option value="History" ${subject === 'History' ? 'selected' : ''}>History</option>
+                            <option value="English" ${subject === 'English' ? 'selected' : ''}>English</option>
+                            <option value="Computer Science" ${subject === 'Computer Science' ? 'selected' : ''}>Computer Science</option>
+                        </select>
+                        <span class="field-error" id="err-s-subject" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label" for="form-s-status">STATUS *</label>
+                        <select id="form-s-status" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                            <option value="Active" ${status === 'Active' ? 'selected' : ''}>Active</option>
+                            <option value="Inactive" ${status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                        </select>
+                        <span class="field-error" id="err-s-status" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
+                    </div>
+                </div>
+
+                <!-- Footer CTA buttons -->
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: var(--t-space-2); margin-top: var(--t-space-2); border-top: 2px dashed rgba(26,26,36,0.15); padding-top: var(--t-space-2);">
+                    <button type="button" class="cartoon-action-btn" onclick="cancelStudentForm()" style="padding: 12px 24px; font-size: 1rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                        Cancel
+                    </button>
+                    <button type="submit" class="cartoon-action-btn primary-yellow-btn" style="padding: 12px 28px; font-size: 1rem;">
+                        Save Student
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+}
+
+window.saveStudentProfile = function(event) {
+    event.preventDefault();
+
+    // Clear previous errors
+    const errorSpans = document.querySelectorAll('.field-error');
+    errorSpans.forEach(span => span.textContent = '');
+    const inputs = document.querySelectorAll('.cartoon-input');
+    inputs.forEach(input => input.classList.remove('input-invalid'));
+
+    let isValid = true;
+
+    const nameInput = document.getElementById('form-s-name');
+    const idInput = document.getElementById('form-s-id');
+    const emailInput = document.getElementById('form-s-email');
+    const gradeSelect = document.getElementById('form-s-grade');
+    const subjectSelect = document.getElementById('form-s-subject');
+    const statusSelect = document.getElementById('form-s-status');
+
+    const nameVal = nameInput.value.trim();
+    const idVal = idInput.value.trim().toUpperCase();
+    const emailVal = emailInput.value.trim();
+    const gradeVal = gradeSelect.value;
+    const subjectVal = subjectSelect.value;
+    const statusVal = statusSelect.value;
+
+    // 1. Validation: Required fields
+    if (!nameVal) {
+        nameInput.classList.add('input-invalid');
+        document.getElementById('err-s-name').textContent = 'Student name is required.';
+        isValid = false;
+    }
+
+    const isEdit = studentsPageState.formMode === 'edit';
+
+    if (!isEdit) {
+        if (!idVal) {
+            idInput.classList.add('input-invalid');
+            document.getElementById('err-s-id').textContent = 'Student ID is required.';
+            isValid = false;
+        } else {
+            // Check for duplicate Student ID
+            const duplicate = MOCK_DATA.students.some(student => student.id.toUpperCase() === idVal);
+            if (duplicate) {
+                idInput.classList.add('input-invalid');
+                document.getElementById('err-s-id').textContent = 'This Student ID is already assigned to another student.';
+                isValid = false;
+            }
+        }
+    }
+
+    if (!emailVal) {
+        emailInput.classList.add('input-invalid');
+        document.getElementById('err-s-email').textContent = 'Email address is required.';
+        isValid = false;
+    } else {
+        // Basic Email Regex
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(emailVal)) {
+            emailInput.classList.add('input-invalid');
+            document.getElementById('err-s-email').textContent = 'Please enter a valid email address.';
+            isValid = false;
+        }
+    }
+
+    if (!gradeVal) {
+        gradeSelect.classList.add('input-invalid');
+        document.getElementById('err-s-grade').textContent = 'Please select a grade.';
+        isValid = false;
+    }
+
+    if (!subjectVal) {
+        subjectSelect.classList.add('input-invalid');
+        document.getElementById('err-s-subject').textContent = 'Please select a subject.';
+        isValid = false;
+    }
+
+    if (!statusVal) {
+        statusSelect.classList.add('input-invalid');
+        document.getElementById('err-s-status').textContent = 'Please select a status.';
+        isValid = false;
+    }
+
+    if (!isValid) {
+        const firstErr = document.querySelector('.input-invalid');
+        if (firstErr) {
+            firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+    }
+
+    const todayDate = new Date().toISOString().split('T')[0];
+
+    if (isEdit) {
+        const s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
+        if (s) {
+            s.name = nameVal;
+            s.email = emailVal;
+            s.grade = gradeVal;
+            s.subject = subjectVal;
+            s.status = statusVal;
+            s.lastActivity = todayDate;
+        }
+    } else {
+        const newStudent = {
+            id: idVal,
+            name: nameVal,
+            grade: gradeVal,
+            email: emailVal,
+            quizzesAttempted: 0,
+            averageScore: 0,
+            status: statusVal,
+            lastActivity: todayDate,
+            subject: subjectVal,
+            bestScore: 0,
+            recentQuizzes: []
+        };
+        MOCK_DATA.students.unshift(newStudent);
+
+        // Add to search list
+        MOCK_DATA.searchableItems.push({
+            title: nameVal,
+            type: "Student",
+            category: "students",
+            target: "students"
+        });
+    }
+
+    studentsPageState.formMode = 'list';
+    studentsPageState.editingStudentId = null;
+
+    openOrixaModal(`
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: var(--color-green);">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">Success!</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); renderStudentsPage();" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                <p style="font-size: 1.25rem; font-weight: 700; color: var(--border-dark);">${isEdit ? 'Student profile updated successfully!' : 'New student profile saved successfully!'}</p>
+                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">The dashboard calculations and active roster have been updated.</p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); renderStudentsPage();" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Got it!
+                </button>
+            </footer>
+        </div>
+    `);
+};
+
+window.toggleStudentStatusConfirm = function(id) {
+    const s = MOCK_DATA.students.find(student => student.id === id);
+    if (!s) return;
+
+    const isActive = s.status === 'Active';
+    const actionWord = isActive ? 'deactivate' : 'activate';
+    const highlightColor = isActive ? 'var(--color-red-dark)' : 'var(--color-green-dark)';
+    const headerBg = isActive ? '#ffebee' : '#e8f5e9';
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: ${headerBg};">
+                <h3 class="orixa-modal-title" style="color: ${highlightColor};">Confirm ${actionWord.charAt(0).toUpperCase() + actionWord.slice(1)}</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <p style="font-size: 1.15rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
+                    Are you sure you want to ${actionWord} student <span style="color: ${highlightColor}; font-family: var(--font-header);">${escapeHTML(s.name)}</span>?
+                </p>
+                <p style="font-size: 0.92rem; color: #546e7a;">
+                    ${isActive
+                        ? 'This will set their status to Inactive and suspend classroom activities.'
+                        : 'This will restore their status to Active and enable classroom activities.'}
+                </p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Cancel
+                </button>
+                <button type="button" class="cartoon-action-btn" onclick="performToggleStudentStatus('${s.id}')" style="padding: 10px 24px; font-size: 0.95rem; border: var(--border-comic-thin); border-radius: 12px; font-family: var(--font-header); font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); background: ${isActive ? 'var(--color-red)' : 'var(--color-green)'};">
+                    Yes, ${actionWord.charAt(0).toUpperCase() + actionWord.slice(1)}
+                </button>
+            </footer>
+        </div>
+    `;
+
+    openOrixaModal(html);
+};
+
+window.performToggleStudentStatus = function(id) {
+    const s = MOCK_DATA.students.find(student => student.id === id);
+    if (s) {
+        s.status = s.status === 'Active' ? 'Inactive' : 'Active';
+        s.lastActivity = new Date().toISOString().split('T')[0];
+        closeOrixaModal();
+        renderStudentsPage();
+    }
+};
+
+/* ==========================================================================
    QUESTION BANK CONTROLLER
    ========================================================================== */
 
@@ -1711,6 +2547,16 @@ let questionBankState = {
     sortBy: 'Recently Added',
     formMode: 'list', // 'list', 'add', 'edit'
     editingQuestionId: null
+};
+
+let studentsPageState = {
+    searchQuery: '',
+    statusFilter: 'All',
+    gradeFilter: 'All',
+    subjectFilter: 'All',
+    sortBy: 'name-asc',
+    formMode: 'list', // 'list', 'add', 'edit'
+    editingStudentId: null
 };
 
 let selectedQuestionIds = new Set();

@@ -114,7 +114,31 @@ const MOCK_DATA = {
         department: "Science & Technology",
         subjects: ["Biology", "Chemistry", "General Science"],
         classes: ["Grade 7 Science", "Grade 8 Biology", "Grade 9 Chemistry"],
-        bio: "Passionate educator specializing in interactive science teaching. Helping students discover the wonders of nature through gamified quizzes."
+        bio: "Passionate educator specializing in interactive science teaching. Helping students discover the wonders of nature through gamified quizzes.",
+        employeeId: "EMP-7392"
+    },
+    settings: {
+        notifications: {
+            quiz: true,
+            studentActivity: true,
+            results: true,
+            system: false
+        },
+        appearance: {
+            theme: "System",
+            animation: "Enabled"
+        },
+        quizPreferences: {
+            defaultDuration: 15,
+            defaultQuestions: 10,
+            showCorrectAnswers: true,
+            allowLateSubmissions: false
+        },
+        activeSessions: [
+            { device: "MacBook Pro (Chrome)", lastActive: "Active now", location: "Mumbai, India" },
+            { device: "iPad Air (Safari)", lastActive: "2 hours ago", location: "Mumbai, India" },
+            { device: "Windows Desktop (Firefox)", lastActive: "3 days ago", location: "Pune, India" }
+        ]
     },
     stats: [
         { label: 'Total Quizzes', value: '48', caption: 'Created this semester', icon: 'clipboard', tone: 'yellow' },
@@ -1580,6 +1604,15 @@ function navigateToView(target) {
         renderPastQuizzesPage();
         setActiveNavigation('past-quizzes');
         window.history.replaceState(null, '', `#past-quizzes`);
+        return;
+    }
+
+    if (target === 'settings') {
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        renderSettingsPage();
+        setActiveNavigation('settings');
+        window.history.replaceState(null, '', `#settings`);
         return;
     }
 
@@ -5723,6 +5756,681 @@ window.viewNotificationDetails = function(id) {
         </div>
     `;
     openOrixaModal(html);
+};
+
+/* ==========================================================================
+   SETTINGS SECTION CONTROLLER
+   ========================================================================== */
+
+function renderSettingsPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    const teacher = MOCK_DATA.teacher;
+    const settings = MOCK_DATA.settings;
+
+    // Split subjects array
+    const subjectsStr = teacher.subjects.join(', ');
+
+    dynamicPage.innerHTML = `
+        <div class="settings-container" style="display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
+            <!-- Header Section of the Settings -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Settings</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Manage your Teacher Portal preferences</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="quiz-status-pill pill-draft hidden" id="settings-unsaved-badge" style="background: var(--color-orange); font-size: 0.85rem; font-weight: 700; padding: 6px 12px; border-width: 2.5px;">
+                        Unsaved Changes
+                    </span>
+                    <button class="cartoon-action-btn primary-yellow-btn" onclick="navigateToView('dashboard')" style="padding: 10px 20px; font-size: 1rem; height: 44px; display: inline-flex; align-items: center;">
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-grid-main">
+                <!-- Left column: PROFILE & ACCOUNT, APPEARANCE -->
+                <div style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+                    <!-- Profile Card -->
+                    <div class="cartoon-panel settings-card">
+                        <h3 class="settings-card-header">Profile Preferences</h3>
+
+                        <div class="form-field">
+                            <label class="field-label" for="settings-profile-name">TEACHER NAME *</label>
+                            <div class="input-shell">
+                                <input type="text" id="settings-profile-name" class="cartoon-input" value="${escapeHTML(teacher.name)}" required>
+                            </div>
+                            <span class="field-error" id="err-settings-name"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="settings-profile-email">EMAIL ADDRESS *</label>
+                            <div class="input-shell">
+                                <input type="email" id="settings-profile-email" class="cartoon-input" value="${escapeHTML(teacher.email)}" required>
+                            </div>
+                            <span class="field-error" id="err-settings-email"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="settings-profile-dept">DEPARTMENT *</label>
+                            <div class="input-shell">
+                                <input type="text" id="settings-profile-dept" class="cartoon-input" value="${escapeHTML(teacher.department)}" required>
+                            </div>
+                            <span class="field-error" id="err-settings-dept"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="settings-profile-subjects">SUBJECTS TAUGHT * (COMMA SEPARATED)</label>
+                            <div class="input-shell">
+                                <input type="text" id="settings-profile-subjects" class="cartoon-input" value="${escapeHTML(subjectsStr)}" required>
+                            </div>
+                            <span class="field-error" id="err-settings-subjects"></span>
+                        </div>
+                    </div>
+
+                    <!-- Account Card -->
+                    <div class="cartoon-panel settings-card">
+                        <h3 class="settings-card-header">Account Details</h3>
+                        <div class="form-field">
+                            <label class="field-label" for="settings-account-empid">EMPLOYEE / TEACHER ID</label>
+                            <div class="input-shell">
+                                <input type="text" id="settings-account-empid" class="cartoon-input" value="${escapeHTML(teacher.employeeId)}" style="opacity: 0.8; background-color: #f1f1f1;" readonly>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #78909c; font-style: italic; margin-top: 2px;">Teacher ID is generated by administration and cannot be modified.</span>
+                        </div>
+                    </div>
+
+                    <!-- Appearance Card -->
+                    <div class="cartoon-panel settings-card">
+                        <h3 class="settings-card-header">Appearance Preferences</h3>
+                        <div class="form-field">
+                            <label class="field-label" for="settings-appearance-theme">THEME</label>
+                            <select id="settings-appearance-theme" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                                <option value="System" ${settings.appearance.theme === 'System' ? 'selected' : ''}>System Default</option>
+                                <option value="Light" ${settings.appearance.theme === 'Light' ? 'selected' : ''}>Light Theme</option>
+                                <option value="Dark" ${settings.appearance.theme === 'Dark' ? 'selected' : ''}>Dark Theme</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="settings-appearance-animation">ANIMATIONS</label>
+                            <select id="settings-appearance-animation" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
+                                <option value="Enabled" ${settings.appearance.animation === 'Enabled' ? 'selected' : ''}>Enabled (Playful)</option>
+                                <option value="Reduced" ${settings.appearance.animation === 'Reduced' ? 'selected' : ''}>Reduced Motion</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right column: NOTIFICATIONS, QUIZ PREFERENCES, SECURITY -->
+                <div style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+                    <!-- Notification Settings -->
+                    <div class="cartoon-panel settings-card">
+                        <h3 class="settings-card-header">Notification Preferences</h3>
+
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span class="settings-row-title">Quiz Notifications</span>
+                                <span class="settings-row-desc">Receive alerts on quiz creations, drafts, and updates</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="toggle-state-text" id="lbl-noti-quiz" style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; min-width: 32px; text-align: right;">${settings.notifications.quiz ? 'ON' : 'OFF'}</span>
+                                <label class="cartoon-switch">
+                                    <input type="checkbox" id="settings-noti-quiz" ${settings.notifications.quiz ? 'checked' : ''}>
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span class="settings-row-title">Student Activity</span>
+                                <span class="settings-row-desc">Get notified when students join, leave, or show inactive status</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="toggle-state-text" id="lbl-noti-activity" style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; min-width: 32px; text-align: right;">${settings.notifications.studentActivity ? 'ON' : 'OFF'}</span>
+                                <label class="cartoon-switch">
+                                    <input type="checkbox" id="settings-noti-activity" ${settings.notifications.studentActivity ? 'checked' : ''}>
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span class="settings-row-title">Result Notifications</span>
+                                <span class="settings-row-desc">Alerts when a student completes a quiz with high accuracy</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="toggle-state-text" id="lbl-noti-results" style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; min-width: 32px; text-align: right;">${settings.notifications.results ? 'ON' : 'OFF'}</span>
+                                <label class="cartoon-switch">
+                                    <input type="checkbox" id="settings-noti-results" ${settings.notifications.results ? 'checked' : ''}>
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span class="settings-row-title">System Notifications</span>
+                                <span class="settings-row-desc">Receive updates about portal maintenance and version changes</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="toggle-state-text" id="lbl-noti-system" style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; min-width: 32px; text-align: right;">${settings.notifications.system ? 'ON' : 'OFF'}</span>
+                                <label class="cartoon-switch">
+                                    <input type="checkbox" id="settings-noti-system" ${settings.notifications.system ? 'checked' : ''}>
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quiz Preferences -->
+                    <div class="cartoon-panel settings-card">
+                        <h3 class="settings-card-header">Quiz Preferences</h3>
+                        <div class="form-field">
+                            <label class="field-label" for="settings-quiz-duration">DEFAULT DURATION (MINUTES)</label>
+                            <div class="input-shell">
+                                <input type="number" id="settings-quiz-duration" class="cartoon-input" min="1" max="180" value="${settings.quizPreferences.defaultDuration}">
+                            </div>
+                            <span class="field-error" id="err-settings-duration"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="settings-quiz-questions">DEFAULT NUMBER OF QUESTIONS</label>
+                            <div class="input-shell">
+                                <input type="number" id="settings-quiz-questions" class="cartoon-input" min="1" max="100" value="${settings.quizPreferences.defaultQuestions}">
+                            </div>
+                            <span class="field-error" id="err-settings-questions"></span>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span class="settings-row-title">Show Correct Answers</span>
+                                <span class="settings-row-desc">Reveal correct answers to students immediately after submission</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="toggle-state-text" id="lbl-quiz-correct" style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; min-width: 32px; text-align: right;">${settings.quizPreferences.showCorrectAnswers ? 'ON' : 'OFF'}</span>
+                                <label class="cartoon-switch">
+                                    <input type="checkbox" id="settings-quiz-correct" ${settings.quizPreferences.showCorrectAnswers ? 'checked' : ''}>
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span class="settings-row-title">Allow Late Submissions</span>
+                                <span class="settings-row-desc">Enable students to attempt quizzes after the deadline</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="toggle-state-text" id="lbl-quiz-late" style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; min-width: 32px; text-align: right;">${settings.quizPreferences.allowLateSubmissions ? 'ON' : 'OFF'}</span>
+                                <label class="cartoon-switch">
+                                    <input type="checkbox" id="settings-quiz-late" ${settings.quizPreferences.allowLateSubmissions ? 'checked' : ''}>
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Preferences -->
+                    <div class="cartoon-panel settings-card">
+                        <h3 class="settings-card-header">Security & Sessions</h3>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 12px; margin-bottom: 8px;">
+                            <div class="settings-row-label">
+                                <span class="settings-row-title">Change Password</span>
+                                <span class="settings-row-desc">Update your teacher credentials</span>
+                            </div>
+                            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="openChangePasswordModal()" style="padding: 8px 16px; font-size: 0.85rem; height: 38px; border-radius: 10px; border-width: 2.5px; box-shadow: var(--shadow-chunky-pressed);">
+                                Change Password
+                            </button>
+                        </div>
+
+                        <div>
+                            <span class="quiz-meta" style="display: block; margin-bottom: 8px;">ACTIVE SESSIONS</span>
+                            <div id="settings-sessions-list">
+                                ${settings.activeSessions.map((session, index) => `
+                                    <div class="session-item">
+                                        <div class="session-info">
+                                            <span class="session-device">${escapeHTML(session.device)}</span>
+                                            <span class="session-meta">${escapeHTML(session.location)} &bull; ${escapeHTML(session.lastActive)}</span>
+                                        </div>
+                                        ${index === 0 ? `<span class="quiz-status-pill session-badge">Current</span>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save / Reset Controls -->
+            <div class="cartoon-panel" style="padding: var(--t-space-2); background: var(--color-cream); border: var(--border-comic-thin); border-radius: 20px; display: flex; align-items: center; justify-content: flex-end; gap: var(--t-space-2); margin-top: var(--t-space-1); box-shadow: var(--shadow-chunky-pressed);">
+                <button type="button" class="cartoon-action-btn" id="settings-reset-btn" style="padding: 10px 24px; font-size: 1rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Reset Changes
+                </button>
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" id="settings-save-btn" style="padding: 10px 28px; font-size: 1rem;">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+    setupSettingsListeners();
+}
+
+function setupSettingsListeners() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    // Helper: update state texts of the cartoon toggles
+    const setupToggleTextUpdate = (checkboxId, labelId) => {
+        const chk = document.getElementById(checkboxId);
+        const lbl = document.getElementById(labelId);
+        if (chk && lbl) {
+            chk.addEventListener('change', () => {
+                lbl.textContent = chk.checked ? 'ON' : 'OFF';
+                checkUnsavedChanges();
+            });
+        }
+    };
+
+    setupToggleTextUpdate('settings-noti-quiz', 'lbl-noti-quiz');
+    setupToggleTextUpdate('settings-noti-activity', 'lbl-noti-activity');
+    setupToggleTextUpdate('settings-noti-results', 'lbl-noti-results');
+    setupToggleTextUpdate('settings-noti-system', 'lbl-noti-system');
+    setupToggleTextUpdate('settings-quiz-correct', 'lbl-quiz-correct');
+    setupToggleTextUpdate('settings-quiz-late', 'lbl-quiz-late');
+
+    // Function to check if any inputs differ from initial MOCK_DATA state
+    const checkUnsavedChanges = () => {
+        const isModified = checkIfModified();
+        const badge = document.getElementById('settings-unsaved-badge');
+        if (badge) {
+            if (isModified) {
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    };
+
+    const checkIfModified = () => {
+        const teacher = MOCK_DATA.teacher;
+        const settings = MOCK_DATA.settings;
+
+        const nameVal = document.getElementById('settings-profile-name').value.trim();
+        const emailVal = document.getElementById('settings-profile-email').value.trim();
+        const deptVal = document.getElementById('settings-profile-dept').value.trim();
+        const subjectsVal = document.getElementById('settings-profile-subjects').value.trim();
+
+        const themeVal = document.getElementById('settings-appearance-theme').value;
+        const animVal = document.getElementById('settings-appearance-animation').value;
+
+        const notiQuizVal = document.getElementById('settings-noti-quiz').checked;
+        const notiActVal = document.getElementById('settings-noti-activity').checked;
+        const notiResVal = document.getElementById('settings-noti-results').checked;
+        const notiSysVal = document.getElementById('settings-noti-system').checked;
+
+        const quizDurationVal = parseInt(document.getElementById('settings-quiz-duration').value, 10) || 0;
+        const quizQuestionsVal = parseInt(document.getElementById('settings-quiz-questions').value, 10) || 0;
+
+        const quizCorrectVal = document.getElementById('settings-quiz-correct').checked;
+        const quizLateVal = document.getElementById('settings-quiz-late').checked;
+
+        // Compare Name, Email, Department
+        if (nameVal !== teacher.name) return true;
+        if (emailVal !== teacher.email) return true;
+        if (deptVal !== teacher.department) return true;
+
+        // Compare subjects list (case insensitive split/join comparison)
+        const currentSubjects = subjectsVal.split(',').map(s => s.trim()).filter(Boolean);
+        const originalSubjects = teacher.subjects;
+        if (currentSubjects.length !== originalSubjects.length) return true;
+        for (let i = 0; i < currentSubjects.length; i++) {
+            if (currentSubjects[i].toLowerCase() !== originalSubjects[i].toLowerCase()) return true;
+        }
+
+        // Compare dropdowns
+        if (themeVal !== settings.appearance.theme) return true;
+        if (animVal !== settings.appearance.animation) return true;
+
+        // Compare toggles
+        if (notiQuizVal !== settings.notifications.quiz) return true;
+        if (notiActVal !== settings.notifications.studentActivity) return true;
+        if (notiResVal !== settings.notifications.results) return true;
+        if (notiSysVal !== settings.notifications.system) return true;
+
+        // Compare quiz pref inputs
+        if (quizDurationVal !== settings.quizPreferences.defaultDuration) return true;
+        if (quizQuestionsVal !== settings.quizPreferences.defaultQuestions) return true;
+
+        // Compare quiz pref toggles
+        if (quizCorrectVal !== settings.quizPreferences.showCorrectAnswers) return true;
+        if (quizLateVal !== settings.quizPreferences.allowLateSubmissions) return true;
+
+        return false;
+    };
+
+    // Attach general input listeners to trigger the unsaved indicator
+    const inputIds = [
+        'settings-profile-name', 'settings-profile-email', 'settings-profile-dept',
+        'settings-profile-subjects', 'settings-appearance-theme', 'settings-appearance-animation',
+        'settings-quiz-duration', 'settings-quiz-questions'
+    ];
+    inputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', checkUnsavedChanges);
+            el.addEventListener('change', checkUnsavedChanges);
+        }
+    });
+
+    // Reset button
+    const resetBtn = document.getElementById('settings-reset-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            renderSettingsPage();
+            // Show reset success popup or subtle notification
+            openOrixaModal(`
+                <div class="orixa-modal-card">
+                    <header class="orixa-modal-header" style="background: var(--color-blue);">
+                        <h3 class="orixa-modal-title" style="color: var(--border-dark);">Settings Reset</h3>
+                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                            <span data-icon="x"></span>
+                        </button>
+                    </header>
+                    <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                        <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">All fields restored to their last saved values.</p>
+                    </div>
+                    <footer class="orixa-modal-footer">
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                            OK
+                        </button>
+                    </footer>
+                </div>
+            `);
+        });
+    }
+
+    // Save button
+    const saveBtn = document.getElementById('settings-save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            // Validate form fields first
+            const errName = document.getElementById('err-settings-name');
+            const errEmail = document.getElementById('err-settings-email');
+            const errDept = document.getElementById('err-settings-dept');
+            const errSubjects = document.getElementById('err-settings-subjects');
+            const errDuration = document.getElementById('err-settings-duration');
+            const errQuestions = document.getElementById('err-settings-questions');
+
+            // Reset errors
+            [errName, errEmail, errDept, errSubjects, errDuration, errQuestions].forEach(el => {
+                if (el) el.textContent = '';
+            });
+            dynamicPage.querySelectorAll('.cartoon-input').forEach(el => el.classList.remove('input-invalid'));
+
+            let isValid = true;
+
+            const nameVal = document.getElementById('settings-profile-name').value.trim();
+            const emailVal = document.getElementById('settings-profile-email').value.trim();
+            const deptVal = document.getElementById('settings-profile-dept').value.trim();
+            const subjectsVal = document.getElementById('settings-profile-subjects').value.trim();
+
+            const themeVal = document.getElementById('settings-appearance-theme').value;
+            const animVal = document.getElementById('settings-appearance-animation').value;
+
+            const notiQuizVal = document.getElementById('settings-noti-quiz').checked;
+            const notiActVal = document.getElementById('settings-noti-activity').checked;
+            const notiResVal = document.getElementById('settings-noti-results').checked;
+            const notiSysVal = document.getElementById('settings-noti-system').checked;
+
+            const quizDurationVal = parseInt(document.getElementById('settings-quiz-duration').value, 10);
+            const quizQuestionsVal = parseInt(document.getElementById('settings-quiz-questions').value, 10);
+
+            const quizCorrectVal = document.getElementById('settings-quiz-correct').checked;
+            const quizLateVal = document.getElementById('settings-quiz-late').checked;
+
+            // Required validations
+            if (!nameVal) {
+                document.getElementById('settings-profile-name').classList.add('input-invalid');
+                if (errName) errName.textContent = 'Name is required.';
+                isValid = false;
+            }
+
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailVal) {
+                document.getElementById('settings-profile-email').classList.add('input-invalid');
+                if (errEmail) errEmail.textContent = 'Email address is required.';
+                isValid = false;
+            } else if (!emailPattern.test(emailVal)) {
+                document.getElementById('settings-profile-email').classList.add('input-invalid');
+                if (errEmail) errEmail.textContent = 'Please enter a valid email address.';
+                isValid = false;
+            }
+
+            if (!deptVal) {
+                document.getElementById('settings-profile-dept').classList.add('input-invalid');
+                if (errDept) errDept.textContent = 'Department is required.';
+                isValid = false;
+            }
+
+            if (!subjectsVal) {
+                document.getElementById('settings-profile-subjects').classList.add('input-invalid');
+                if (errSubjects) errSubjects.textContent = 'Subjects Taught is required.';
+                isValid = false;
+            }
+
+            if (isNaN(quizDurationVal) || quizDurationVal < 1) {
+                document.getElementById('settings-quiz-duration').classList.add('input-invalid');
+                if (errDuration) errDuration.textContent = 'Please enter a valid duration greater than 0.';
+                isValid = false;
+            }
+
+            if (isNaN(quizQuestionsVal) || quizQuestionsVal < 1) {
+                document.getElementById('settings-quiz-questions').classList.add('input-invalid');
+                if (errQuestions) errQuestions.textContent = 'Please enter a valid number of questions greater than 0.';
+                isValid = false;
+            }
+
+            if (!isValid) {
+                const firstErr = dynamicPage.querySelector('.input-invalid');
+                if (firstErr) {
+                    firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+
+            // Save values to MOCK_DATA
+            MOCK_DATA.teacher.name = nameVal;
+            MOCK_DATA.teacher.email = emailVal;
+            MOCK_DATA.teacher.department = deptVal;
+            MOCK_DATA.teacher.subjects = subjectsVal.split(',').map(s => s.trim()).filter(Boolean);
+
+            MOCK_DATA.settings.appearance.theme = themeVal;
+            MOCK_DATA.settings.appearance.animation = animVal;
+
+            MOCK_DATA.settings.notifications.quiz = notiQuizVal;
+            MOCK_DATA.settings.notifications.studentActivity = notiActVal;
+            MOCK_DATA.settings.notifications.results = notiResVal;
+            MOCK_DATA.settings.notifications.system = notiSysVal;
+
+            MOCK_DATA.settings.quizPreferences.defaultDuration = quizDurationVal;
+            MOCK_DATA.settings.quizPreferences.defaultQuestions = quizQuestionsVal;
+            MOCK_DATA.settings.quizPreferences.showCorrectAnswers = quizCorrectVal;
+            MOCK_DATA.settings.quizPreferences.allowLateSubmissions = quizLateVal;
+
+            // Re-render the Settings Profile avatar / name display at the top right if present!
+            const profileChipName = document.querySelector('.profile-chip .profile-name');
+            if (profileChipName) {
+                profileChipName.textContent = nameVal;
+            }
+            const profileAvatarText = document.querySelector('.profile-chip .profile-avatar');
+            if (profileAvatarText) {
+                profileAvatarText.textContent = nameVal.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            }
+
+            // Un-trigger unsaved badge
+            checkUnsavedChanges();
+
+            // Success feedback modal
+            openOrixaModal(`
+                <div class="orixa-modal-card">
+                    <header class="orixa-modal-header" style="background: var(--color-green);">
+                        <h3 class="orixa-modal-title" style="color: var(--border-dark);">Settings Saved</h3>
+                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                            <span data-icon="x"></span>
+                        </button>
+                    </header>
+                    <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                        <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Settings saved successfully.</p>
+                        <p style="color: #546e7a; font-size: 0.92rem; margin-top: 6px;">Your preferences have been updated locally in mock memory storage.</p>
+                    </div>
+                    <footer class="orixa-modal-footer">
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                            Awesome!
+                        </button>
+                    </footer>
+                </div>
+            `);
+        });
+    }
+}
+
+window.openChangePasswordModal = function() {
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: var(--color-yellow);">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Change Password</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <form id="orixa-change-password-form" onsubmit="submitChangePassword(event)">
+                <div class="orixa-modal-body">
+                    <p style="font-family: var(--font-body); font-size: 0.92rem; color: #546e7a; margin-bottom: 8px;">
+                        Set a new secure password for your Teacher Portal account.
+                    </p>
+
+                    <div class="form-field">
+                        <label class="field-label" for="pwd-current">CURRENT PASSWORD *</label>
+                        <div class="input-shell">
+                            <input type="password" id="pwd-current" class="cartoon-input" placeholder="••••••••" required>
+                        </div>
+                        <span class="field-error" id="err-pwd-current"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label" for="pwd-new">NEW PASSWORD *</label>
+                        <div class="input-shell">
+                            <input type="password" id="pwd-new" class="cartoon-input" placeholder="••••••••" required>
+                        </div>
+                        <span class="field-error" id="err-pwd-new"></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label" for="pwd-confirm">CONFIRM NEW PASSWORD *</label>
+                        <div class="input-shell">
+                            <input type="password" id="pwd-confirm" class="cartoon-input" placeholder="••••••••" required>
+                        </div>
+                        <span class="field-error" id="err-pwd-confirm"></span>
+                    </div>
+                </div>
+                <footer class="orixa-modal-footer">
+                    <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                        Cancel
+                    </button>
+                    <button type="submit" class="cartoon-action-btn primary-yellow-btn" style="padding: 10px 24px; font-size: 0.95rem;">
+                        Save Password
+                    </button>
+                </footer>
+            </form>
+        </div>
+    `;
+    openOrixaModal(html);
+};
+
+window.submitChangePassword = function(event) {
+    event.preventDefault();
+
+    const currEl = document.getElementById('pwd-current');
+    const newEl = document.getElementById('pwd-new');
+    const confirmEl = document.getElementById('pwd-confirm');
+
+    const errCurr = document.getElementById('err-pwd-current');
+    const errNew = document.getElementById('err-pwd-new');
+    const errConfirm = document.getElementById('err-pwd-confirm');
+
+    // Reset errors
+    [errCurr, errNew, errConfirm].forEach(el => {
+        if (el) el.textContent = '';
+    });
+    [currEl, newEl, confirmEl].forEach(el => {
+        if (el) el.classList.remove('input-invalid');
+    });
+
+    let isValid = true;
+
+    const currVal = currEl.value.trim();
+    const newVal = newEl.value.trim();
+    const confirmVal = confirmEl.value.trim();
+
+    if (!currVal) {
+        currEl.classList.add('input-invalid');
+        if (errCurr) errCurr.textContent = 'Current Password is required.';
+        isValid = false;
+    }
+
+    if (!newVal) {
+        newEl.classList.add('input-invalid');
+        if (errNew) errNew.textContent = 'New Password is required.';
+        isValid = false;
+    } else if (newVal.length < 6) {
+        newEl.classList.add('input-invalid');
+        if (errNew) errNew.textContent = 'Password must be at least 6 characters.';
+        isValid = false;
+    }
+
+    if (!confirmVal) {
+        confirmEl.classList.add('input-invalid');
+        if (errConfirm) errConfirm.textContent = 'Please confirm your new password.';
+        isValid = false;
+    } else if (newVal !== confirmVal) {
+        confirmEl.classList.add('input-invalid');
+        if (errConfirm) errConfirm.textContent = 'New passwords do not match.';
+        isValid = false;
+    }
+
+    if (!isValid) return;
+
+    // Password change success (only a UI placeholder for backend integration)
+    closeOrixaModal();
+
+    openOrixaModal(`
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: var(--color-green);">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Success</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Password change request saved.</p>
+                <p style="color: #546e7a; font-size: 0.92rem; margin-top: 6px;">Your password change request has been recorded locally as a placeholder.</p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Got it!
+                </button>
+            </footer>
+        </div>
+    `);
 };
 
 function escapeHTML(str) {

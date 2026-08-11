@@ -679,6 +679,157 @@
 }
 
 /* ==========================================================================
+   SETTINGS PAGE SPECIFIC STYLES
+   ========================================================================== */
+.settings-grid-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--t-space-2);
+}
+
+@media (max-width: 900px) {
+    .settings-grid-main {
+        grid-template-columns: 1fr;
+    }
+}
+
+.settings-card {
+    padding: var(--t-space-3);
+    background: var(--surface-white);
+    display: flex;
+    flex-direction: column;
+    gap: var(--t-space-2);
+}
+
+.settings-card-header {
+    font-family: var(--font-header);
+    font-size: 1.3rem;
+    color: var(--border-dark);
+    border-bottom: 2px dashed rgba(26,26,36,0.15);
+    padding-bottom: 8px;
+    margin: 0;
+}
+
+/* Custom Toggle Switch for Orixa */
+.cartoon-switch {
+    position: relative;
+    display: inline-block;
+    width: 64px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.cartoon-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-red);
+    border: var(--border-comic-thin);
+    border-radius: 34px;
+    transition: .25s ease-in-out;
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 3px;
+    background-color: white;
+    border: 2px solid var(--border-dark);
+    border-radius: 50%;
+    transition: .25s ease-in-out;
+}
+
+.cartoon-switch input:checked + .switch-slider {
+    background-color: var(--color-green);
+}
+
+.cartoon-switch input:checked + .switch-slider:before {
+    transform: translateX(30px);
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--t-space-2);
+    padding: 8px 0;
+    border-bottom: 2px dashed rgba(26,26,36,0.1);
+}
+
+.settings-row:last-child {
+    border-bottom: none;
+}
+
+.settings-row-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.settings-row-title {
+    font-family: var(--font-header);
+    font-size: 1rem;
+    color: var(--border-dark);
+}
+
+.settings-row-desc {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: #546e7a;
+}
+
+.session-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--color-cream);
+    border: var(--border-comic-thin);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.session-device {
+    font-family: var(--font-header);
+    font-size: 0.95rem;
+    color: var(--border-dark);
+}
+
+.session-meta {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: #546e7a;
+}
+
+.session-badge {
+    background: var(--color-green);
+    font-family: var(--font-header);
+    font-size: 0.72rem;
+    padding: 2px 8px;
+}
+
+/* ==========================================================================
    QUESTION BANK SPECIFIC STYLES
    ========================================================================== */
 

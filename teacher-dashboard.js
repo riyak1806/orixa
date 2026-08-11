@@ -239,6 +239,200 @@ const MOCK_DATA = {
             lastUpdated: "2026-08-01"
         }
     ],
+    results: [
+        {
+            id: "RES-001",
+            studentId: "STU-001",
+            studentName: "Aarav Sharma",
+            quizId: 1,
+            quizName: "Solar System Basics",
+            subject: "Science",
+            grade: "Grade 8",
+            score: 17,
+            totalQuestions: 20,
+            percentage: 85,
+            correctCount: 17,
+            incorrectCount: 3,
+            daysOffset: 0, // Today
+            questionsBreakdown: [
+                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Jupiter", correctAnswer: "Jupiter", isCorrect: true, marks: 2 },
+                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 },
+                { number: 3, text: "The Battle of Hastings was fought in 1066.", studentAnswer: "True", correctAnswer: "True", isCorrect: true, marks: 1 },
+                { number: 4, text: "Python is an interpreted programming language.", studentAnswer: "False", correctAnswer: "True", isCorrect: false, marks: 0 }
+            ]
+        },
+        {
+            id: "RES-002",
+            studentId: "STU-002",
+            studentName: "Anjali Gupta",
+            quizId: 5,
+            quizName: "Algebra Equations",
+            subject: "Mathematics",
+            grade: "Grade 7",
+            score: 10,
+            totalQuestions: 10,
+            percentage: 100,
+            correctCount: 10,
+            incorrectCount: 0,
+            daysOffset: 1, // Yesterday
+            questionsBreakdown: [
+                { number: 1, text: "Which of the following is a prime number?", studentAnswer: "17", correctAnswer: "17", isCorrect: true, marks: 2 },
+                { number: 2, text: "Solve for x: 2x + 5 = 15", studentAnswer: "5", correctAnswer: "5", isCorrect: true, marks: 2 }
+            ]
+        },
+        {
+            id: "RES-003",
+            studentId: "STU-003",
+            studentName: "Siddharth Sen",
+            quizId: 3,
+            quizName: "Ancient Civilizations",
+            subject: "History",
+            grade: "Grade 9",
+            score: 15,
+            totalQuestions: 20,
+            percentage: 75,
+            correctCount: 15,
+            incorrectCount: 5,
+            daysOffset: 3, // This Week
+            questionsBreakdown: [
+                { number: 1, text: "The Battle of Hastings was fought in 1066.", studentAnswer: "True", correctAnswer: "True", isCorrect: true, marks: 1 },
+                { number: 2, text: "Who was the first emperor of Rome?", studentAnswer: "Julius Caesar", correctAnswer: "Augustus", isCorrect: false, marks: 0 }
+            ]
+        },
+        {
+            id: "RES-004",
+            studentId: "STU-004",
+            studentName: "Priya Patel",
+            quizId: 4,
+            quizName: "Cell Structure and Function",
+            subject: "Science",
+            grade: "Grade 8",
+            score: 7,
+            totalQuestions: 15,
+            percentage: 46,
+            correctCount: 7,
+            incorrectCount: 8,
+            daysOffset: 15, // This Month
+            questionsBreakdown: [
+                { number: 1, text: "What is the powerhouse of the cell?", studentAnswer: "Nucleus", correctAnswer: "Mitochondria", isCorrect: false, marks: 0 },
+                { number: 2, text: "Which organelle performs photosynthesis?", studentAnswer: "Chloroplast", correctAnswer: "Chloroplast", isCorrect: true, marks: 2 }
+            ]
+        },
+        {
+            id: "RES-005",
+            studentId: "STU-005",
+            studentName: "Rohan Das",
+            quizId: 1,
+            quizName: "Solar System Basics",
+            subject: "Science",
+            grade: "Grade 7",
+            score: 18,
+            totalQuestions: 20,
+            percentage: 90,
+            correctCount: 18,
+            incorrectCount: 2,
+            daysOffset: 5, // This Week
+            questionsBreakdown: [
+                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Jupiter", correctAnswer: "Jupiter", isCorrect: true, marks: 2 },
+                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 }
+            ]
+        },
+        {
+            id: "RES-006",
+            studentId: "STU-001",
+            studentName: "Aarav Sharma",
+            quizId: 4,
+            quizName: "Cell Structure and Function",
+            subject: "Science",
+            grade: "Grade 8",
+            score: 12,
+            totalQuestions: 15,
+            percentage: 80,
+            correctCount: 12,
+            incorrectCount: 3,
+            daysOffset: 10, // This Month
+            questionsBreakdown: [
+                { number: 1, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 },
+                { number: 2, text: "Which organelle performs photosynthesis?", studentAnswer: "Chloroplast", correctAnswer: "Chloroplast", isCorrect: true, marks: 2 }
+            ]
+        },
+        {
+            id: "RES-007",
+            studentId: "STU-002",
+            studentName: "Anjali Gupta",
+            quizId: 1,
+            quizName: "Solar System Basics",
+            subject: "Science",
+            grade: "Grade 7",
+            score: 19,
+            totalQuestions: 20,
+            percentage: 95,
+            correctCount: 19,
+            incorrectCount: 1,
+            daysOffset: 45, // All Time
+            questionsBreakdown: [
+                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Jupiter", correctAnswer: "Jupiter", isCorrect: true, marks: 2 },
+                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 }
+            ]
+        },
+        {
+            id: "RES-008",
+            studentId: "STU-003",
+            studentName: "Siddharth Sen",
+            quizId: 8,
+            quizName: "Roman Empire",
+            subject: "History",
+            grade: "Grade 9",
+            score: 11,
+            totalQuestions: 15,
+            percentage: 73,
+            correctCount: 11,
+            incorrectCount: 4,
+            daysOffset: 32, // All Time
+            questionsBreakdown: [
+                { number: 1, text: "Who was the first emperor of Rome?", studentAnswer: "Augustus", correctAnswer: "Augustus", isCorrect: true, marks: 2 },
+                { number: 2, text: "The Battle of Hastings was fought in 1066.", studentAnswer: "True", correctAnswer: "True", isCorrect: true, marks: 1 }
+            ]
+        },
+        {
+            id: "RES-009",
+            studentId: "STU-004",
+            studentName: "Priya Patel",
+            quizId: 1,
+            quizName: "Solar System Basics",
+            subject: "Science",
+            grade: "Grade 8",
+            score: 11,
+            totalQuestions: 20,
+            percentage: 55,
+            correctCount: 11,
+            incorrectCount: 9,
+            daysOffset: 8, // This Month
+            questionsBreakdown: [
+                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Mars", correctAnswer: "Jupiter", isCorrect: false, marks: 0 },
+                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 }
+            ]
+        },
+        {
+            id: "RES-010",
+            studentId: "STU-005",
+            studentName: "Rohan Das",
+            quizId: 5,
+            quizName: "Algebra Equations",
+            subject: "Mathematics",
+            grade: "Grade 7",
+            score: 8,
+            totalQuestions: 10,
+            percentage: 80,
+            correctCount: 8,
+            incorrectCount: 2,
+            daysOffset: 12, // This Month
+            questionsBreakdown: [
+                { number: 1, text: "Which of the following is a prime number?", studentAnswer: "17", correctAnswer: "17", isCorrect: true, marks: 2 },
+                { number: 2, text: "Solve for x: 2x + 5 = 15", studentAnswer: "6", correctAnswer: "5", isCorrect: false, marks: 0 }
+            ]
+        }
+    ],
     searchableItems: [
         // Quizzes
         { title: "Solar System Basics", type: "Quiz", category: "quizzes", target: "quiz-management" },
@@ -1190,6 +1384,15 @@ function navigateToView(target) {
         renderStudentsPage();
         setActiveNavigation('students');
         window.history.replaceState(null, '', `#students`);
+        return;
+    }
+
+    if (target === 'results') {
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        renderResultsPage();
+        setActiveNavigation('results');
+        window.history.replaceState(null, '', `#results`);
         return;
     }
 
@@ -2559,6 +2762,19 @@ let studentsPageState = {
     editingStudentId: null
 };
 
+let resultsPageState = {
+    searchQuery: '',
+    quizFilter: 'All',
+    subjectFilter: 'All',
+    classFilter: 'All',
+    scoreFilter: 'All',
+    dateFilter: 'All Time',
+    sortBy: 'Most Recent',
+    activeTab: 'attempts', // 'attempts', 'quizzes', 'students'
+    selectedQuizId: null,
+    selectedStudentId: null
+};
+
 let selectedQuestionIds = new Set();
 
 function renderQuestionBankPage() {
@@ -3522,6 +3738,793 @@ window.addSelectedToQuiz = function() {
             </footer>
         </div>
     `);
+};
+
+/* ==========================================================================
+   RESULTS SECTION CONTROLLER
+   ========================================================================== */
+
+function renderResultsPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    // Apply active filters on MOCK_DATA.results
+    let filtered = [...MOCK_DATA.results];
+
+    // Search Query (Student Name, Student ID, Quiz Name)
+    const query = resultsPageState.searchQuery.trim().toLowerCase();
+    if (query) {
+        filtered = filtered.filter(r =>
+            r.studentName.toLowerCase().includes(query) ||
+            r.studentId.toLowerCase().includes(query) ||
+            r.quizName.toLowerCase().includes(query)
+        );
+    }
+
+    // Quiz Filter
+    if (resultsPageState.quizFilter !== 'All') {
+        filtered = filtered.filter(r => r.quizName === resultsPageState.quizFilter);
+    }
+
+    // Subject Filter
+    if (resultsPageState.subjectFilter !== 'All') {
+        filtered = filtered.filter(r => r.subject === resultsPageState.subjectFilter);
+    }
+
+    // Class/Grade Filter
+    if (resultsPageState.classFilter !== 'All') {
+        filtered = filtered.filter(r => r.grade === resultsPageState.classFilter);
+    }
+
+    // Score Filter
+    if (resultsPageState.scoreFilter !== 'All') {
+        filtered = filtered.filter(r => {
+            const pct = r.percentage;
+            if (resultsPageState.scoreFilter === 'Excellent') return pct >= 90;
+            if (resultsPageState.scoreFilter === 'Good') return pct >= 75 && pct < 90;
+            if (resultsPageState.scoreFilter === 'Needs Improvement') return pct >= 50 && pct < 75;
+            if (resultsPageState.scoreFilter === 'At Risk') return pct < 50;
+            return true;
+        });
+    }
+
+    // Date Filter (Today, This Week, This Month)
+    if (resultsPageState.dateFilter !== 'All Time') {
+        filtered = filtered.filter(r => {
+            if (resultsPageState.dateFilter === 'Today') return r.daysOffset === 0;
+            if (resultsPageState.dateFilter === 'This Week') return r.daysOffset <= 7;
+            if (resultsPageState.dateFilter === 'This Month') return r.daysOffset <= 30;
+            return true;
+        });
+    }
+
+    // Sort Options
+    if (resultsPageState.sortBy === 'Highest Score') {
+        filtered.sort((a, b) => b.percentage - a.percentage);
+    } else if (resultsPageState.sortBy === 'Lowest Score') {
+        filtered.sort((a, b) => a.percentage - b.percentage);
+    } else if (resultsPageState.sortBy === 'Student A-Z') {
+        filtered.sort((a, b) => a.studentName.localeCompare(b.studentName));
+    } else if (resultsPageState.sortBy === 'Student Z-A') {
+        filtered.sort((a, b) => b.studentName.localeCompare(a.studentName));
+    } else if (resultsPageState.sortBy === 'Most Recent') {
+        filtered.sort((a, b) => a.daysOffset - b.daysOffset);
+    }
+
+    // Calculate dynamic stats from the filtered list (or all attempts if filter yields none, but using filtered is better!)
+    const totalAttempts = filtered.length;
+    let avgScore = 0;
+    let highestScore = 0;
+    let lowestScore = 0;
+
+    if (totalAttempts > 0) {
+        const sum = filtered.reduce((acc, curr) => acc + curr.percentage, 0);
+        avgScore = Math.round(sum / totalAttempts);
+        highestScore = Math.max(...filtered.map(r => r.percentage));
+        lowestScore = Math.min(...filtered.map(r => r.percentage));
+    }
+
+    // Calculate Performance Distribution counts
+    const excellentCount = filtered.filter(r => r.percentage >= 90).length;
+    const goodCount = filtered.filter(r => r.percentage >= 75 && r.percentage < 90).length;
+    const improvementCount = filtered.filter(r => r.percentage >= 50 && r.percentage < 75).length;
+    const atRiskCount = filtered.filter(r => r.percentage < 50).length;
+
+    const excellentPercent = totalAttempts > 0 ? Math.round((excellentCount / totalAttempts) * 100) : 0;
+    const goodPercent = totalAttempts > 0 ? Math.round((goodCount / totalAttempts) * 100) : 0;
+    const improvementPercent = totalAttempts > 0 ? Math.round((improvementCount / totalAttempts) * 100) : 0;
+    const atRiskPercent = totalAttempts > 0 ? Math.round((atRiskCount / totalAttempts) * 100) : 0;
+
+    // Get unique list of quizzes, subjects, grades/classes for filter options
+    const uniqueQuizzes = Array.from(new Set(MOCK_DATA.results.map(r => r.quizName))).sort();
+    const uniqueSubjects = Array.from(new Set(MOCK_DATA.results.map(r => r.subject))).sort();
+    const uniqueClasses = Array.from(new Set(MOCK_DATA.results.map(r => r.grade))).sort();
+
+    // Check if any filters are active
+    const isFiltersActive = resultsPageState.searchQuery !== '' ||
+                            resultsPageState.quizFilter !== 'All' ||
+                            resultsPageState.subjectFilter !== 'All' ||
+                            resultsPageState.classFilter !== 'All' ||
+                            resultsPageState.scoreFilter !== 'All' ||
+                            resultsPageState.dateFilter !== 'All Time';
+
+    // Build overall container structure
+    dynamicPage.innerHTML = `
+        <div class="results-container" style="display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
+            <!-- Page Header -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Results</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Track student performance and quiz results</p>
+                </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
+                <article class="stat-card cartoon-panel is-yellow">
+                    <div class="stat-topline">
+                        <span class="stat-label">Average Score</span>
+                        <span class="stat-icon" data-icon="target"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${avgScore}%</div>
+                        <p class="stat-caption">Filtered average score</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-green">
+                    <div class="stat-topline">
+                        <span class="stat-label">Highest Score</span>
+                        <span class="stat-icon" data-icon="trophy"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${highestScore}%</div>
+                        <p class="stat-caption">Filtered highest score</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-orange">
+                    <div class="stat-topline">
+                        <span class="stat-label">Lowest Score</span>
+                        <span class="stat-icon" data-icon="clock"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${lowestScore}%</div>
+                        <p class="stat-caption">Filtered lowest score</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-blue">
+                    <div class="stat-topline">
+                        <span class="stat-label">Total Attempts</span>
+                        <span class="stat-icon" data-icon="users"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${totalAttempts}</div>
+                        <p class="stat-caption">Total quiz attempts</p>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div style="display: flex; gap: var(--t-space-1); border-bottom: 3px solid var(--border-dark); padding-bottom: var(--t-space-1); margin-bottom: var(--t-space-1);">
+                <button type="button" class="cartoon-action-btn results-tab-btn ${resultsPageState.activeTab === 'attempts' ? 'primary-yellow-btn' : ''}" data-tab="attempts" style="padding: 8px 16px; font-size: 0.95rem; border-radius: 12px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px; box-shadow: ${resultsPageState.activeTab === 'attempts' ? 'var(--shadow-chunky-pressed)' : 'var(--shadow-chunky-small)'};">
+                    Individual Attempts
+                </button>
+                <button type="button" class="cartoon-action-btn results-tab-btn ${resultsPageState.activeTab === 'quizzes' ? 'primary-yellow-btn' : ''}" data-tab="quizzes" style="padding: 8px 16px; font-size: 0.95rem; border-radius: 12px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px; box-shadow: ${resultsPageState.activeTab === 'quizzes' ? 'var(--shadow-chunky-pressed)' : 'var(--shadow-chunky-small)'};">
+                    By Quiz
+                </button>
+                <button type="button" class="cartoon-action-btn results-tab-btn ${resultsPageState.activeTab === 'students' ? 'primary-yellow-btn' : ''}" data-tab="students" style="padding: 8px 16px; font-size: 0.95rem; border-radius: 12px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px; box-shadow: ${resultsPageState.activeTab === 'students' ? 'var(--shadow-chunky-pressed)' : 'var(--shadow-chunky-small)'};">
+                    By Student
+                </button>
+            </div>
+
+            <!-- Main Dynamic Area depending on Tab -->
+            ${resultsPageState.activeTab === 'attempts' ? `
+                <!-- Toolbar for filters -->
+                <div class="quiz-mgmt-toolbar">
+                    <div class="quiz-mgmt-filters">
+                        <div class="quiz-mgmt-search-container">
+                            <span class="quiz-mgmt-search-icon" data-icon="search"></span>
+                            <input type="search" id="results-search-input" placeholder="Search by student or quiz..." value="${escapeHTML(resultsPageState.searchQuery)}" autocomplete="off">
+                        </div>
+                        <select id="results-quiz-filter" class="quiz-mgmt-select">
+                            <option value="All" ${resultsPageState.quizFilter === 'All' ? 'selected' : ''}>All Quizzes</option>
+                            ${uniqueQuizzes.map(qz => `<option value="${escapeHTML(qz)}" ${resultsPageState.quizFilter === qz ? 'selected' : ''}>${escapeHTML(qz)}</option>`).join('')}
+                        </select>
+                        <select id="results-subject-filter" class="quiz-mgmt-select">
+                            <option value="All" ${resultsPageState.subjectFilter === 'All' ? 'selected' : ''}>All Subjects</option>
+                            ${uniqueSubjects.map(sub => `<option value="${escapeHTML(sub)}" ${resultsPageState.subjectFilter === sub ? 'selected' : ''}>${escapeHTML(sub)}</option>`).join('')}
+                        </select>
+                        <select id="results-class-filter" class="quiz-mgmt-select">
+                            <option value="All" ${resultsPageState.classFilter === 'All' ? 'selected' : ''}>All Grades</option>
+                            ${uniqueClasses.map(cl => `<option value="${escapeHTML(cl)}" ${resultsPageState.classFilter === cl ? 'selected' : ''}>${escapeHTML(cl)}</option>`).join('')}
+                        </select>
+                        <select id="results-score-filter" class="quiz-mgmt-select">
+                            <option value="All" ${resultsPageState.scoreFilter === 'All' ? 'selected' : ''}>All Scores</option>
+                            <option value="Excellent" ${resultsPageState.scoreFilter === 'Excellent' ? 'selected' : ''}>90–100% (Excellent)</option>
+                            <option value="Good" ${resultsPageState.scoreFilter === 'Good' ? 'selected' : ''}>75–89% (Good)</option>
+                            <option value="Needs Improvement" ${resultsPageState.scoreFilter === 'Needs Improvement' ? 'selected' : ''}>50–74% (Needs Imp.)</option>
+                            <option value="At Risk" ${resultsPageState.scoreFilter === 'At Risk' ? 'selected' : ''}>Below 50% (At Risk)</option>
+                        </select>
+                        <select id="results-date-filter" class="quiz-mgmt-select">
+                            <option value="All Time" ${resultsPageState.dateFilter === 'All Time' ? 'selected' : ''}>All Time</option>
+                            <option value="Today" ${resultsPageState.dateFilter === 'Today' ? 'selected' : ''}>Today</option>
+                            <option value="This Week" ${resultsPageState.dateFilter === 'This Week' ? 'selected' : ''}>This Week</option>
+                            <option value="This Month" ${resultsPageState.dateFilter === 'This Month' ? 'selected' : ''}>This Month</option>
+                        </select>
+                        <select id="results-sort-select" class="quiz-mgmt-select">
+                            <option value="Most Recent" ${resultsPageState.sortBy === 'Most Recent' ? 'selected' : ''}>Most Recent</option>
+                            <option value="Highest Score" ${resultsPageState.sortBy === 'Highest Score' ? 'selected' : ''}>Highest Score</option>
+                            <option value="Lowest Score" ${resultsPageState.sortBy === 'Lowest Score' ? 'selected' : ''}>Lowest Score</option>
+                            <option value="Student A-Z" ${resultsPageState.sortBy === 'Student A-Z' ? 'selected' : ''}>Student A-Z</option>
+                            <option value="Student Z-A" ${resultsPageState.sortBy === 'Student Z-A' ? 'selected' : ''}>Student Z-A</option>
+                        </select>
+                        ${isFiltersActive ? `
+                            <button type="button" class="cartoon-action-btn" id="results-clear-filters-btn" style="height: 44px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-dark); background: var(--color-orange); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
+                                Clear Filters
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Performance summary distribution visualization -->
+                <article class="cartoon-panel" style="padding: var(--t-space-2); background: var(--surface-white); display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <h3 style="font-family: var(--font-header); font-size: 1.25rem; margin: 0; color: var(--border-dark);">Class Performance Distribution</h3>
+                        <span class="quiz-status-pill" style="font-size: 0.78rem; padding: 3px 10px; background: var(--color-cream);">${totalAttempts} Total attempts in view</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 4px;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; color: var(--border-dark);">
+                                <span style="color: var(--color-green-dark);">Excellent (90-100%)</span>
+                                <span>${excellentCount} (${excellentPercent}%)</span>
+                            </div>
+                            <div style="height: 20px; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-chunky-pressed); position: relative;">
+                                <div style="height: 100%; width: ${excellentPercent}%; background: var(--color-green); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; color: var(--border-dark);">
+                                <span style="color: var(--color-blue-dark);">Good (75-89%)</span>
+                                <span>${goodCount} (${goodPercent}%)</span>
+                            </div>
+                            <div style="height: 20px; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-chunky-pressed); position: relative;">
+                                <div style="height: 100%; width: ${goodPercent}%; background: var(--color-blue); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; color: var(--border-dark);">
+                                <span style="color: var(--color-orange-dark);">Needs Improvement (50-74%)</span>
+                                <span>${improvementCount} (${improvementPercent}%)</span>
+                            </div>
+                            <div style="height: 20px; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-chunky-pressed); position: relative;">
+                                <div style="height: 100%; width: ${improvementPercent}%; background: var(--color-orange); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; color: var(--border-dark);">
+                                <span style="color: var(--color-red-dark);">At Risk (Below 50%)</span>
+                                <span>${atRiskCount} (${atRiskPercent}%)</span>
+                            </div>
+                            <div style="height: 20px; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-chunky-pressed); position: relative;">
+                                <div style="height: 100%; width: ${atRiskPercent}%; background: var(--color-red); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Results table -->
+                <div id="results-table-container"></div>
+            ` : resultsPageState.activeTab === 'quizzes' ? `
+                <!-- Quiz level performance view -->
+                <div id="results-quiz-container"></div>
+            ` : `
+                <!-- Student level performance view -->
+                <div id="results-student-container"></div>
+            `}
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+
+    // Render inner content depending on active tab
+    if (resultsPageState.activeTab === 'attempts') {
+        renderResultsList(filtered);
+    } else if (resultsPageState.activeTab === 'quizzes') {
+        renderQuizGroupedView();
+    } else {
+        renderStudentGroupedView();
+    }
+
+    // Attach general listeners
+    dynamicPage.querySelectorAll('.results-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            resultsPageState.activeTab = e.target.dataset.tab;
+            renderResultsPage();
+        });
+    });
+
+    // Attach filter listeners
+    const searchInput = document.getElementById('results-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            resultsPageState.searchQuery = e.target.value;
+            renderResultsPage();
+        });
+    }
+
+    const quizFilter = document.getElementById('results-quiz-filter');
+    if (quizFilter) {
+        quizFilter.addEventListener('change', (e) => {
+            resultsPageState.quizFilter = e.target.value;
+            renderResultsPage();
+        });
+    }
+
+    const subjectFilter = document.getElementById('results-subject-filter');
+    if (subjectFilter) {
+        subjectFilter.addEventListener('change', (e) => {
+            resultsPageState.subjectFilter = e.target.value;
+            renderResultsPage();
+        });
+    }
+
+    const classFilter = document.getElementById('results-class-filter');
+    if (classFilter) {
+        classFilter.addEventListener('change', (e) => {
+            resultsPageState.classFilter = e.target.value;
+            renderResultsPage();
+        });
+    }
+
+    const scoreFilter = document.getElementById('results-score-filter');
+    if (scoreFilter) {
+        scoreFilter.addEventListener('change', (e) => {
+            resultsPageState.scoreFilter = e.target.value;
+            renderResultsPage();
+        });
+    }
+
+    const dateFilter = document.getElementById('results-date-filter');
+    if (dateFilter) {
+        dateFilter.addEventListener('change', (e) => {
+            resultsPageState.dateFilter = e.target.value;
+            renderResultsPage();
+        });
+    }
+
+    const sortSelect = document.getElementById('results-sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            resultsPageState.sortBy = e.target.value;
+            renderResultsPage();
+        });
+    }
+
+    const clearFiltersBtn = document.getElementById('results-clear-filters-btn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            clearResultsFilters();
+        });
+    }
+}
+
+function clearResultsFilters() {
+    resultsPageState.searchQuery = '';
+    resultsPageState.quizFilter = 'All';
+    resultsPageState.subjectFilter = 'All';
+    resultsPageState.classFilter = 'All';
+    resultsPageState.scoreFilter = 'All';
+    resultsPageState.dateFilter = 'All Time';
+    renderResultsPage();
+}
+
+function renderResultsList(filtered) {
+    const listContainer = document.getElementById('results-table-container');
+    if (!listContainer) return;
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `
+            <div class="quiz-mgmt-no-results" style="background: var(--color-cream); border: 3px dashed rgba(26,26,36,0.15); border-radius: 18px; padding: var(--t-space-4) var(--t-space-2); text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+                <div class="quiz-mgmt-no-results-title" style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark);">No results found</div>
+                <div class="quiz-mgmt-no-results-desc" style="font-family: var(--font-body); font-size: 1rem; color: #546e7a;">Try clearing or adjusting your search queries or drop-down filters!</div>
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="clearResultsFilters()" style="margin-top: 12px; padding: 10px 24px; font-size: 0.95rem; border-radius: 12px; height: auto;">
+                    Clear Filters
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    listContainer.innerHTML = `
+        <div class="cartoon-panel" style="overflow-x: auto; background: var(--surface-white); padding: var(--t-space-1);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-body); font-size: 0.95rem;">
+                <thead>
+                    <tr style="border-bottom: 3px solid var(--border-dark); font-family: var(--font-header); font-size: 0.9rem; color: #78909c;">
+                        <th style="padding: 12px var(--t-space-2);">STUDENT NAME</th>
+                        <th style="padding: 12px var(--t-space-2);">STUDENT ID</th>
+                        <th style="padding: 12px var(--t-space-2);">QUIZ NAME</th>
+                        <th style="padding: 12px var(--t-space-2);">SUBJECT</th>
+                        <th style="padding: 12px var(--t-space-2);">CLASS/GRADE</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">SCORE</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">PERCENTAGE</th>
+                        <th style="padding: 12px var(--t-space-2);">DATE</th>
+                        <th style="padding: 12px var(--t-space-2);">STATUS</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.map(r => {
+                        // Date formatted based on offsets (for realistic presentation)
+                        let dateStr = "Aug 10, 2026";
+                        if (r.daysOffset === 0) dateStr = "Today";
+                        else if (r.daysOffset === 1) dateStr = "Yesterday";
+                        else dateStr = `Aug ${Math.max(1, 12 - r.daysOffset)}, 2026`;
+
+                        // Score status class
+                        let statusText = "Excellent";
+                        let statusClass = "pill-live"; // Green
+                        const pct = r.percentage;
+                        if (pct >= 90) {
+                            statusText = "Excellent";
+                            statusClass = "pill-live";
+                        } else if (pct >= 75) {
+                            statusText = "Good";
+                            statusClass = "pill-draft"; // Yellow/orange
+                        } else if (pct >= 50) {
+                            statusText = "Needs Imp.";
+                            statusClass = "pill-draft";
+                        } else {
+                            statusText = "At Risk";
+                            statusClass = "pill-closed"; // Red
+                        }
+
+                        return `
+                            <tr style="border-bottom: 2px dashed rgba(26,26,36,0.15); transition: background 0.15s ease;">
+                                <td style="padding: 12px var(--t-space-2); font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHTML(r.studentName)}</td>
+                                <td style="padding: 12px var(--t-space-2); font-weight: 700; color: #546e7a;">${escapeHTML(r.studentId)}</td>
+                                <td style="padding: 12px var(--t-space-2); font-weight: 700; color: var(--border-dark);">${escapeHTML(r.quizName)}</td>
+                                <td style="padding: 12px var(--t-space-2); color: #546e7a;">${escapeHTML(r.subject)}</td>
+                                <td style="padding: 12px var(--t-space-2);">${escapeHTML(r.grade)}</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700;">
+                                    ${r.score}/${r.totalQuestions}
+                                    <div style="font-size: 0.75rem; color: #78909c; font-weight: normal;">${r.correctCount} correct</div>
+                                </td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; font-size: 1.05rem; color: ${pct >= 90 ? 'var(--color-green-dark)' : (pct >= 75 ? 'var(--color-blue-dark)' : (pct >= 50 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)'))};">
+                                    ${pct}%
+                                </td>
+                                <td style="padding: 12px var(--t-space-2); color: #78909c;">${dateStr}</td>
+                                <td style="padding: 12px var(--t-space-2);">
+                                    <span class="quiz-status-pill ${statusClass}" style="font-size: 0.72rem; padding: 2px 8px; white-space: nowrap;">${statusText}</span>
+                                </td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center;">
+                                    <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewResultDetails('${r.id}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 12px; width: auto; flex: none; display: inline-flex; align-items: center;" title="View Details">
+                                        <span data-icon="search" style="margin-right: 4px;"></span> View
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    renderIcons(listContainer);
+}
+
+function renderQuizGroupedView() {
+    const container = document.getElementById('results-quiz-container');
+    if (!container) return;
+
+    // Aggregate attempts by quiz
+    const quizMap = {};
+    MOCK_DATA.results.forEach(r => {
+        if (!quizMap[r.quizName]) {
+            quizMap[r.quizName] = {
+                quizName: r.quizName,
+                subject: r.subject,
+                attempts: 0,
+                totalPercentage: 0,
+                percentages: [],
+                passCount: 0
+            };
+        }
+        const q = quizMap[r.quizName];
+        q.attempts++;
+        q.totalPercentage += r.percentage;
+        q.percentages.push(r.percentage);
+        if (r.percentage >= 70) {
+            q.passCount++;
+        }
+    });
+
+    const quizList = Object.values(quizMap).sort((a, b) => b.attempts - a.attempts);
+
+    if (quizList.length === 0) {
+        container.innerHTML = `
+            <div class="quiz-mgmt-no-results">
+                <div class="quiz-mgmt-no-results-title">No quiz metrics available</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="cartoon-panel" style="overflow-x: auto; background: var(--surface-white); padding: var(--t-space-1);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-body); font-size: 0.95rem;">
+                <thead>
+                    <tr style="border-bottom: 3px solid var(--border-dark); font-family: var(--font-header); font-size: 0.9rem; color: #78909c;">
+                        <th style="padding: 12px var(--t-space-2);">QUIZ NAME</th>
+                        <th style="padding: 12px var(--t-space-2);">SUBJECT</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">ATTEMPTS</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">AVG SCORE</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">HIGHEST SCORE</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">LOWEST SCORE</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">PASS RATE (>=70%)</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${quizList.map(q => {
+                        const avg = Math.round(q.totalPercentage / q.attempts);
+                        const highest = Math.max(...q.percentages);
+                        const lowest = Math.min(...q.percentages);
+                        const passRate = Math.round((q.passCount / q.attempts) * 100);
+
+                        return `
+                            <tr style="border-bottom: 2px dashed rgba(26,26,36,0.15); transition: background 0.15s ease;">
+                                <td style="padding: 12px var(--t-space-2); font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHTML(q.quizName)}</td>
+                                <td style="padding: 12px var(--t-space-2); font-weight: 700; color: #546e7a;">${escapeHTML(q.subject)}</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700;">${q.attempts} attempts</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; font-size: 1.05rem; color: ${avg >= 80 ? 'var(--color-green-dark)' : (avg >= 60 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)')};">${avg}%</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; color: var(--color-green-dark);">${highest}%</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; color: var(--color-red-dark);">${lowest}%</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center;">
+                                    <span class="quiz-status-pill ${passRate >= 75 ? 'pill-live' : 'pill-closed'}" style="font-size: 0.78rem; font-weight: 700; padding: 2px 8px;">${passRate}% Pass</span>
+                                </td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center;">
+                                    <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="filterAttemptsByQuiz('${escapeHTML(q.quizName)}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 12px; width: auto; flex: none; display: inline-flex; align-items: center;" title="View attempts">
+                                        View attempts
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    renderIcons(container);
+}
+
+window.filterAttemptsByQuiz = function(quizName) {
+    resultsPageState.quizFilter = quizName;
+    resultsPageState.activeTab = 'attempts';
+    renderResultsPage();
+};
+
+function renderStudentGroupedView() {
+    const container = document.getElementById('results-student-container');
+    if (!container) return;
+
+    // Aggregate attempts by student
+    const studentMap = {};
+    MOCK_DATA.results.forEach(r => {
+        if (!studentMap[r.studentId]) {
+            studentMap[r.studentId] = {
+                studentId: r.studentId,
+                studentName: r.studentName,
+                attempts: 0,
+                totalPercentage: 0,
+                percentages: [],
+                recentQuizzes: []
+            };
+        }
+        const s = studentMap[r.studentId];
+        s.attempts++;
+        s.totalPercentage += r.percentage;
+        s.percentages.push(r.percentage);
+        s.recentQuizzes.push({ name: r.quizName, score: r.percentage });
+    });
+
+    const studentList = Object.values(studentMap).sort((a, b) => a.studentName.localeCompare(b.studentName));
+
+    if (studentList.length === 0) {
+        container.innerHTML = `
+            <div class="quiz-mgmt-no-results">
+                <div class="quiz-mgmt-no-results-title">No student performance metrics available</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="cartoon-panel" style="overflow-x: auto; background: var(--surface-white); padding: var(--t-space-1);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-body); font-size: 0.95rem;">
+                <thead>
+                    <tr style="border-bottom: 3px solid var(--border-dark); font-family: var(--font-header); font-size: 0.9rem; color: #78909c;">
+                        <th style="padding: 12px var(--t-space-2);">STUDENT NAME</th>
+                        <th style="padding: 12px var(--t-space-2);">STUDENT ID</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">QUIZZES ATTEMPTED</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">AVG SCORE</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">HIGHEST SCORE</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">LOWEST SCORE</th>
+                        <th style="padding: 12px var(--t-space-2);">RECENT RESULTS</th>
+                        <th style="padding: 12px var(--t-space-2); text-align: center;">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${studentList.map(s => {
+                        const avg = Math.round(s.totalPercentage / s.attempts);
+                        const highest = Math.max(...s.percentages);
+                        const lowest = Math.min(...s.percentages);
+                        const historyHtml = s.recentQuizzes.slice(0, 2).map(rq => `
+                            <span class="quiz-status-pill" style="font-size: 0.7rem; padding: 1px 6px; background: var(--color-cream); margin-right: 4px; display: inline-block; margin-top: 2px;">
+                                ${escapeHTML(rq.name)}: ${rq.score}%
+                            </span>
+                        `).join('');
+
+                        return `
+                            <tr style="border-bottom: 2px dashed rgba(26,26,36,0.15); transition: background 0.15s ease;">
+                                <td style="padding: 12px var(--t-space-2); font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHTML(s.studentName)}</td>
+                                <td style="padding: 12px var(--t-space-2); font-weight: 700; color: #546e7a;">${escapeHTML(s.studentId)}</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700;">${s.attempts} attempts</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; font-size: 1.05rem; color: ${avg >= 80 ? 'var(--color-green-dark)' : (avg >= 60 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)')};">${avg}%</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; color: var(--color-green-dark);">${highest}%</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; color: var(--color-red-dark);">${lowest}%</td>
+                                <td style="padding: 12px var(--t-space-2);">${historyHtml}</td>
+                                <td style="padding: 12px var(--t-space-2); text-align: center;">
+                                    <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="filterAttemptsByStudent('${escapeHTML(s.studentName)}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 12px; width: auto; flex: none; display: inline-flex; align-items: center;" title="View history">
+                                        View history
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    renderIcons(container);
+}
+
+window.filterAttemptsByStudent = function(studentName) {
+    resultsPageState.searchQuery = studentName;
+    resultsPageState.activeTab = 'attempts';
+    renderResultsPage();
+};
+
+window.viewResultDetails = function(resultId) {
+    const r = MOCK_DATA.results.find(res => res.id === resultId);
+    if (!r) return;
+
+    let dateStr = "Aug 10, 2026";
+    if (r.daysOffset === 0) dateStr = "Today";
+    else if (r.daysOffset === 1) dateStr = "Yesterday";
+    else dateStr = `Aug ${Math.max(1, 12 - r.daysOffset)}, 2026`;
+
+    // Status label mapping
+    let statusText = "Excellent";
+    let statusColor = "var(--color-green)";
+    const pct = r.percentage;
+    if (pct >= 90) {
+        statusText = "Excellent";
+        statusColor = "var(--color-green)";
+    } else if (pct >= 75) {
+        statusText = "Good";
+        statusColor = "var(--color-blue)";
+    } else if (pct >= 50) {
+        statusText = "Needs Improvement";
+        statusColor = "var(--color-orange)";
+    } else {
+        statusText = "At Risk";
+        statusColor = "var(--color-red)";
+    }
+
+    const html = `
+        <div class="orixa-modal-card" style="width: min(100%, 600px);">
+            <header class="orixa-modal-header" style="background: ${statusColor};">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">Detailed Result</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="max-height: 500px; overflow-y: auto; gap: var(--t-space-2);">
+                <!-- Student details & Score Header -->
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 12px;">
+                    <div>
+                        <h2 style="font-family: var(--font-header); font-size: 1.6rem; color: var(--border-dark); margin: 0 0 4px 0;">${escapeHTML(r.studentName)}</h2>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #546e7a;">STUDENT ID: ${escapeHTML(r.studentId)} | ${escapeHTML(r.grade)}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-family: var(--font-header); font-size: 2.2rem; font-weight: 700; line-height: 1; color: ${pct >= 75 ? 'var(--color-green-dark)' : 'var(--color-red-dark)'};">${pct}%</div>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #546e7a; margin-top: 2px;">Score: ${r.score}/${r.totalQuestions}</div>
+                    </div>
+                </div>
+
+                <!-- Quiz details -->
+                <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; box-shadow: var(--shadow-chunky-pressed);">
+                    <div>
+                        <span class="quiz-meta" style="color: #78909c;">Quiz Name:</span>
+                        <div style="font-weight: 700; color: var(--border-dark);">${escapeHTML(r.quizName)}</div>
+                    </div>
+                    <div>
+                        <span class="quiz-meta" style="color: #78909c;">Subject:</span>
+                        <div style="font-weight: 700; color: var(--border-dark);">${escapeHTML(r.subject)}</div>
+                    </div>
+                    <div>
+                        <span class="quiz-meta" style="color: #78909c;">Date Attempted:</span>
+                        <div style="font-weight: 700; color: var(--border-dark);">${dateStr}</div>
+                    </div>
+                    <div>
+                        <span class="quiz-meta" style="color: #78909c;">Performance:</span>
+                        <div style="font-weight: 700; color: var(--border-dark);"><span class="quiz-status-pill" style="background: ${statusColor}; font-size: 0.72rem; padding: 2px 8px; font-family: var(--font-header);">${statusText}</span></div>
+                    </div>
+                </div>
+
+                <!-- Breakdowns counts -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; margin-top: 4px;">
+                    <div style="border: 2px solid var(--border-dark); border-radius: 10px; padding: 6px; background: #e8f5e9;">
+                        <span style="font-size: 0.75rem; color: var(--color-green-dark); font-weight: 700;">CORRECT</span>
+                        <div style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-header); color: var(--border-dark);">${r.correctCount}</div>
+                    </div>
+                    <div style="border: 2px solid var(--border-dark); border-radius: 10px; padding: 6px; background: #ffebee;">
+                        <span style="font-size: 0.75rem; color: var(--color-red-dark); font-weight: 700;">INCORRECT</span>
+                        <div style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-header); color: var(--border-dark);">${r.incorrectCount}</div>
+                    </div>
+                    <div style="border: 2px solid var(--border-dark); border-radius: 10px; padding: 6px; background: #e3f2fd;">
+                        <span style="font-size: 0.75rem; color: var(--color-blue-dark); font-weight: 700;">TOTAL QUESTIONS</span>
+                        <div style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-header); color: var(--border-dark);">${r.totalQuestions}</div>
+                    </div>
+                </div>
+
+                <!-- Question break down -->
+                <div style="margin-top: 8px;">
+                    <h3 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: 8px; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 4px;">Question-by-Question Breakdown</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        ${r.questionsBreakdown.map(q => {
+                            const isCorrect = q.isCorrect;
+                            const borderCol = isCorrect ? 'var(--color-green)' : 'var(--color-red)';
+                            const badgeBg = isCorrect ? 'var(--color-green)' : 'var(--color-red)';
+                            const badgeText = isCorrect ? 'Correct' : 'Incorrect';
+                            const badgeColorClass = isCorrect ? 'pill-live' : 'pill-closed';
+                            return `
+                                <div style="border: 2px solid var(--border-dark); border-radius: 12px; padding: var(--t-space-1); background: var(--color-cream); display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow-chunky-pressed);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(26,26,36,0.1); padding-bottom: 4px; margin-bottom: 4px;">
+                                        <span style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; color: var(--border-dark);">Question ${q.number}</span>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span class="quiz-status-pill ${badgeColorClass}" style="font-size: 0.68rem; padding: 1px 6px;">${badgeText}</span>
+                                            <span class="quiz-status-pill" style="font-size: 0.68rem; padding: 1px 6px; background: var(--color-yellow);">${q.marks} Earned</span>
+                                        </div>
+                                    </div>
+                                    <p style="font-weight: 700; font-size: 0.95rem; line-height: 1.3; color: var(--border-dark); margin: 0 0 4px 0;">${escapeHTML(q.text)}</p>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; font-family: var(--font-body);">
+                                        <div style="background: ${isCorrect ? '#e8f5e9' : '#ffebee'}; border: 1px solid var(--border-dark); border-radius: 6px; padding: 4px 8px;">
+                                            <span style="font-size: 0.75rem; font-weight: 700; color: #78909c;">Student's Answer:</span>
+                                            <div style="font-weight: 700; color: var(--border-dark);">${escapeHTML(q.studentAnswer)}</div>
+                                        </div>
+                                        <div style="background: #e8f5e9; border: 1px solid var(--border-dark); border-radius: 6px; padding: 4px 8px;">
+                                            <span style="font-size: 0.75rem; font-weight: 700; color: #78909c;">Correct Answer:</span>
+                                            <div style="font-weight: 700; color: var(--border-dark);">${escapeHTML(q.correctAnswer)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Close Breakdown
+                </button>
+            </footer>
+        </div>
+    `;
+
+    openOrixaModal(html);
 };
 
 function escapeHTML(str) {

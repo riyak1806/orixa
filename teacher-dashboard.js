@@ -463,6 +463,101 @@ const MOCK_DATA = {
         { title: "Teacher Profile", type: "Page", category: "profile", target: "profile" },
         { title: "Settings Page", type: "Page", category: "settings", target: "settings" },
         { title: "Notifications Page", type: "Page", category: "notifications", target: "notifications" }
+    ],
+    pastQuizzes: [
+        {
+            id: 101,
+            title: "Ancient Civilizations",
+            subject: "History",
+            grade: "Grade 8",
+            questionsCount: 20,
+            attempts: 42,
+            averageScore: 78,
+            highestScore: 96,
+            lowestScore: 41,
+            completionDate: "2026-08-08",
+            status: "Completed",
+            description: "A comprehensive review of ancient Egyptian, Greek, and Roman societies, key figures, and cultural contributions.",
+            passRate: 85,
+            studentPerformance: [
+                { name: "Siddharth Sen", id: "STU-003", score: 15, percentage: 75, correctAnswers: 15, date: "2026-08-05" },
+                { name: "Aarav Sharma", id: "STU-001", score: 18, percentage: 90, correctAnswers: 18, date: "2026-08-06" },
+                { name: "Anjali Gupta", id: "STU-002", score: 19, percentage: 95, correctAnswers: 19, date: "2026-08-07" },
+                { name: "Priya Patel", id: "STU-004", score: 11, percentage: 55, correctAnswers: 11, date: "2026-08-08" }
+            ],
+            questionPerformance: [
+                { number: 1, text: "Which river was essential to the survival of Ancient Egyptian civilization?", correct: 38, incorrect: 4, accuracy: 90 },
+                { number: 2, text: "Who was the first emperor of Rome?", correct: 30, incorrect: 12, accuracy: 71 },
+                { number: 3, text: "In which year did the Western Roman Empire fall?", correct: 28, incorrect: 14, accuracy: 67 }
+            ]
+        },
+        {
+            id: 102,
+            title: "Periodic Table Review",
+            subject: "Science",
+            grade: "Grade 9",
+            questionsCount: 30,
+            attempts: 55,
+            averageScore: 82,
+            highestScore: 100,
+            lowestScore: 50,
+            completionDate: "2026-07-28",
+            status: "Completed",
+            description: "End-of-unit assessment on chemical groups, periodic trends, atomic numbers, and element classifications.",
+            passRate: 91,
+            studentPerformance: [
+                { name: "Rohan Das", id: "STU-005", score: 27, percentage: 90, correctAnswers: 27, date: "2026-07-27" },
+                { name: "Aarav Sharma", id: "STU-001", score: 24, percentage: 80, correctAnswers: 24, date: "2026-07-28" }
+            ],
+            questionPerformance: [
+                { number: 1, text: "What is the atomic symbol for Gold?", correct: 52, incorrect: 3, accuracy: 95 },
+                { number: 2, text: "Which group of elements is known as the Halogens?", correct: 48, incorrect: 7, accuracy: 87 }
+            ]
+        },
+        {
+            id: 103,
+            title: "Algebra Equations",
+            subject: "Mathematics",
+            grade: "Grade 7",
+            questionsCount: 10,
+            attempts: 35,
+            averageScore: 74,
+            highestScore: 100,
+            lowestScore: 30,
+            completionDate: "2026-08-07",
+            status: "Completed",
+            description: "Solving single-variable linear equations and word problems involving basic algebraic relationships.",
+            passRate: 77,
+            studentPerformance: [
+                { name: "Anjali Gupta", id: "STU-002", score: 10, percentage: 100, correctAnswers: 10, date: "2026-08-07" },
+                { name: "Rohan Das", id: "STU-005", score: 8, percentage: 80, correctAnswers: 8, date: "2026-08-07" }
+            ],
+            questionPerformance: [
+                { number: 1, text: "Solve for x: 2x + 5 = 15", correct: 32, incorrect: 3, accuracy: 91 }
+            ]
+        },
+        {
+            id: 104,
+            title: "Solar System Basics",
+            subject: "Science",
+            grade: "Grade 8",
+            questionsCount: 18,
+            attempts: 26,
+            averageScore: 88,
+            highestScore: 100,
+            lowestScore: 60,
+            completionDate: "2026-08-10",
+            status: "Completed",
+            description: "Introduction to planetary sizes, orbits, moons, and astronomical milestones in our solar system.",
+            passRate: 96,
+            studentPerformance: [
+                { name: "Aarav Sharma", id: "STU-001", score: 17, percentage: 94, correctAnswers: 17, date: "2026-08-10" },
+                { name: "Rohan Das", id: "STU-005", score: 16, percentage: 89, correctAnswers: 16, date: "2026-08-10" }
+            ],
+            questionPerformance: [
+                { number: 1, text: "What is the largest planet in our solar system?", correct: 25, incorrect: 1, accuracy: 96 }
+            ]
+        }
     ]
 };
 
@@ -1393,6 +1488,15 @@ function navigateToView(target) {
         renderResultsPage();
         setActiveNavigation('results');
         window.history.replaceState(null, '', `#results`);
+        return;
+    }
+
+    if (target === 'past-quizzes') {
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        renderPastQuizzesPage();
+        setActiveNavigation('past-quizzes');
+        window.history.replaceState(null, '', `#past-quizzes`);
         return;
     }
 
@@ -2773,6 +2877,14 @@ let resultsPageState = {
     activeTab: 'attempts', // 'attempts', 'quizzes', 'students'
     selectedQuizId: null,
     selectedStudentId: null
+};
+
+let pastQuizzesPageState = {
+    searchQuery: '',
+    subjectFilter: 'All',
+    gradeFilter: 'All',
+    dateFilter: 'All Time',
+    sortBy: 'Most Recent'
 };
 
 let selectedQuestionIds = new Set();
@@ -4394,6 +4506,524 @@ window.filterAttemptsByStudent = function(studentName) {
     resultsPageState.searchQuery = studentName;
     resultsPageState.activeTab = 'attempts';
     renderResultsPage();
+};
+
+/* ==========================================================================
+   PAST QUIZZES SECTION CONTROLLER
+   ========================================================================== */
+
+function renderPastQuizzesPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    // Apply active filters on MOCK_DATA.pastQuizzes
+    let filtered = [...MOCK_DATA.pastQuizzes];
+
+    // Search Query
+    const query = pastQuizzesPageState.searchQuery.trim().toLowerCase();
+    if (query) {
+        filtered = filtered.filter(q =>
+            q.title.toLowerCase().includes(query) ||
+            q.subject.toLowerCase().includes(query) ||
+            (q.description && q.description.toLowerCase().includes(query))
+        );
+    }
+
+    // Subject Filter
+    if (pastQuizzesPageState.subjectFilter !== 'All') {
+        filtered = filtered.filter(q => q.subject === pastQuizzesPageState.subjectFilter);
+    }
+
+    // Grade Filter
+    if (pastQuizzesPageState.gradeFilter !== 'All') {
+        filtered = filtered.filter(q => q.grade === pastQuizzesPageState.gradeFilter);
+    }
+
+    // Date Filter (All Time, This Week, This Month, This Semester)
+    if (pastQuizzesPageState.dateFilter !== 'All Time') {
+        filtered = filtered.filter(q => {
+            const limitDate = new Date("2026-08-13");
+            const qDate = new Date(q.completionDate);
+            const diffTime = Math.abs(limitDate - qDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (pastQuizzesPageState.dateFilter === 'This Week') return diffDays <= 7;
+            if (pastQuizzesPageState.dateFilter === 'This Month') return diffDays <= 30;
+            if (pastQuizzesPageState.dateFilter === 'This Semester') return diffDays <= 120;
+            return true;
+        });
+    }
+
+    // Sort Options (Most Recent, Oldest, Highest Average Score, Lowest Average Score, A-Z, Z-A)
+    if (pastQuizzesPageState.sortBy === 'Most Recent') {
+        filtered.sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
+    } else if (pastQuizzesPageState.sortBy === 'Oldest') {
+        filtered.sort((a, b) => new Date(a.completionDate) - new Date(b.completionDate));
+    } else if (pastQuizzesPageState.sortBy === 'Highest Average Score') {
+        filtered.sort((a, b) => b.averageScore - a.averageScore);
+    } else if (pastQuizzesPageState.sortBy === 'Lowest Average Score') {
+        filtered.sort((a, b) => a.averageScore - b.averageScore);
+    } else if (pastQuizzesPageState.sortBy === 'A-Z') {
+        filtered.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (pastQuizzesPageState.sortBy === 'Z-A') {
+        filtered.sort((a, b) => b.title.localeCompare(a.title));
+    }
+
+    // Compute stats dynamically from current mock data array
+    const totalPastQuizzes = MOCK_DATA.pastQuizzes.length;
+    const totalAttempts = MOCK_DATA.pastQuizzes.reduce((sum, q) => sum + q.attempts, 0);
+    const avgScore = totalPastQuizzes > 0 ? Math.round(MOCK_DATA.pastQuizzes.reduce((sum, q) => sum + q.averageScore, 0) / totalPastQuizzes) : 0;
+
+    // Most recent past quiz
+    let mostRecentQuizTitle = "N/A";
+    if (MOCK_DATA.pastQuizzes.length > 0) {
+        const sortedByDate = [...MOCK_DATA.pastQuizzes].sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
+        mostRecentQuizTitle = sortedByDate[0].title;
+    }
+
+    const uniqueSubjects = Array.from(new Set(MOCK_DATA.pastQuizzes.map(q => q.subject))).sort();
+    const uniqueGrades = Array.from(new Set(MOCK_DATA.pastQuizzes.map(q => q.grade))).sort();
+
+    const isFiltersActive = pastQuizzesPageState.searchQuery !== '' ||
+                            pastQuizzesPageState.subjectFilter !== 'All' ||
+                            pastQuizzesPageState.gradeFilter !== 'All' ||
+                            pastQuizzesPageState.dateFilter !== 'All Time';
+
+    dynamicPage.innerHTML = `
+        <div class="past-quizzes-container" style="display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
+            <!-- Page Header -->
+            <div>
+                <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Past Quizzes</h2>
+                <p class="cartoon-subtitle" style="margin-top: 4px;">View and manage your completed quizzes</p>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
+                <article class="stat-card cartoon-panel is-yellow">
+                    <div class="stat-topline">
+                        <span class="stat-label">Total Past Quizzes</span>
+                        <span class="stat-icon" data-icon="clipboard"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${totalPastQuizzes}</div>
+                        <p class="stat-caption">Completed quizzes</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-blue">
+                    <div class="stat-topline">
+                        <span class="stat-label">Total Attempts</span>
+                        <span class="stat-icon" data-icon="users"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${totalAttempts}</div>
+                        <p class="stat-caption">Student submissions</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-green">
+                    <div class="stat-topline">
+                        <span class="stat-label">Average Score</span>
+                        <span class="stat-icon" data-icon="target"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value">${avgScore}%</div>
+                        <p class="stat-caption">Mean class performance</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-orange">
+                    <div class="stat-topline">
+                        <span class="stat-label">Most Recent Quiz</span>
+                        <span class="stat-icon" data-icon="clock"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" style="font-size: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(mostRecentQuizTitle)}">${escapeHTML(mostRecentQuizTitle)}</div>
+                        <p class="stat-caption">Latest closure</p>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Toolbar (Search & Filters) -->
+            <div class="quiz-mgmt-toolbar">
+                <div class="quiz-mgmt-filters">
+                    <div class="quiz-mgmt-search-container">
+                        <span class="quiz-mgmt-search-icon" data-icon="search"></span>
+                        <input type="search" id="past-quiz-search-input" placeholder="Search past quizzes by name, subject..." value="${escapeHTML(pastQuizzesPageState.searchQuery)}" autocomplete="off">
+                    </div>
+                    <select id="past-quiz-subject-filter" class="quiz-mgmt-select">
+                        <option value="All">All Subjects</option>
+                        ${uniqueSubjects.map(sub => `<option value="${escapeHTML(sub)}" ${pastQuizzesPageState.subjectFilter === sub ? 'selected' : ''}>${escapeHTML(sub)}</option>`).join('')}
+                    </select>
+                    <select id="past-quiz-grade-filter" class="quiz-mgmt-select">
+                        <option value="All">All Grades</option>
+                        ${uniqueGrades.map(g => `<option value="${escapeHTML(g)}" ${pastQuizzesPageState.gradeFilter === g ? 'selected' : ''}>${escapeHTML(g)}</option>`).join('')}
+                    </select>
+                    <select id="past-quiz-date-filter" class="quiz-mgmt-select">
+                        <option value="All Time" ${pastQuizzesPageState.dateFilter === 'All Time' ? 'selected' : ''}>All Time</option>
+                        <option value="This Week" ${pastQuizzesPageState.dateFilter === 'This Week' ? 'selected' : ''}>This Week</option>
+                        <option value="This Month" ${pastQuizzesPageState.dateFilter === 'This Month' ? 'selected' : ''}>This Month</option>
+                        <option value="This Semester" ${pastQuizzesPageState.dateFilter === 'This Semester' ? 'selected' : ''}>This Semester</option>
+                    </select>
+                    <select id="past-quiz-sort-select" class="quiz-mgmt-select">
+                        <option value="Most Recent" ${pastQuizzesPageState.sortBy === 'Most Recent' ? 'selected' : ''}>Most Recent</option>
+                        <option value="Oldest" ${pastQuizzesPageState.sortBy === 'Oldest' ? 'selected' : ''}>Oldest</option>
+                        <option value="Highest Average Score" ${pastQuizzesPageState.sortBy === 'Highest Average Score' ? 'selected' : ''}>Highest Score</option>
+                        <option value="Lowest Average Score" ${pastQuizzesPageState.sortBy === 'Lowest Average Score' ? 'selected' : ''}>Lowest Score</option>
+                        <option value="A-Z" ${pastQuizzesPageState.sortBy === 'A-Z' ? 'selected' : ''}>A-Z</option>
+                        <option value="Z-A" ${pastQuizzesPageState.sortBy === 'Z-A' ? 'selected' : ''}>Z-A</option>
+                    </select>
+                    ${isFiltersActive ? `
+                        <button type="button" class="cartoon-action-btn" id="past-quiz-clear-filters-btn" style="height: 44px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-dark); background: var(--color-orange); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
+                            Clear Filters
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+
+            <!-- Quiz List Container -->
+            <div id="past-quiz-list-container"></div>
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+    renderPastQuizzesList(filtered);
+
+    // Attach control event listeners
+    const searchInput = document.getElementById('past-quiz-search-input');
+    const subjectFilter = document.getElementById('past-quiz-subject-filter');
+    const gradeFilter = document.getElementById('past-quiz-grade-filter');
+    const dateFilter = document.getElementById('past-quiz-date-filter');
+    const sortSelect = document.getElementById('past-quiz-sort-select');
+
+    searchInput.addEventListener('input', (e) => {
+        pastQuizzesPageState.searchQuery = e.target.value;
+        renderPastQuizzesPage();
+    });
+
+    subjectFilter.addEventListener('change', (e) => {
+        pastQuizzesPageState.subjectFilter = e.target.value;
+        renderPastQuizzesPage();
+    });
+
+    gradeFilter.addEventListener('change', (e) => {
+        pastQuizzesPageState.gradeFilter = e.target.value;
+        renderPastQuizzesPage();
+    });
+
+    dateFilter.addEventListener('change', (e) => {
+        pastQuizzesPageState.dateFilter = e.target.value;
+        renderPastQuizzesPage();
+    });
+
+    sortSelect.addEventListener('change', (e) => {
+        pastQuizzesPageState.sortBy = e.target.value;
+        renderPastQuizzesPage();
+    });
+
+    const clearFiltersBtn = document.getElementById('past-quiz-clear-filters-btn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            pastQuizzesPageState.searchQuery = '';
+            pastQuizzesPageState.subjectFilter = 'All';
+            pastQuizzesPageState.gradeFilter = 'All';
+            pastQuizzesPageState.dateFilter = 'All Time';
+            renderPastQuizzesPage();
+        });
+    }
+}
+
+function renderPastQuizzesList(filtered) {
+    const listContainer = document.getElementById('past-quiz-list-container');
+    if (!listContainer) return;
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `
+            <div class="quiz-mgmt-no-results">
+                <div class="quiz-mgmt-no-results-title">No past quizzes found</div>
+                <div class="quiz-mgmt-no-results-desc">Try modifying your search or filter settings.</div>
+            </div>
+        `;
+        return;
+    }
+
+    listContainer.innerHTML = `
+        <div class="quiz-grid">
+            ${filtered.map(quiz => {
+                return `
+                    <article class="quiz-mgmt-card">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h3 class="quiz-mgmt-card-title">${escapeHTML(quiz.title)}</h3>
+                                <div class="quiz-mgmt-card-subject">${escapeHTML(quiz.subject)} | ${escapeHTML(quiz.grade)}</div>
+                            </div>
+                            <span class="quiz-status-pill pill-closed">Completed</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span class="quiz-meta">Questions</span>
+                                <span style="font-weight: 700;">${quiz.questionsCount} questions</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span class="quiz-meta">Participants / Attempts</span>
+                                <span style="font-weight: 700;">${quiz.attempts} students</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span class="quiz-meta">Scores (Avg / High / Low)</span>
+                                <span style="font-weight: 700; color: var(--color-green-dark);">${quiz.averageScore}% / ${quiz.highestScore}% / ${quiz.lowestScore}%</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span class="quiz-meta">Completed On</span>
+                                <span style="font-weight: 700; color: #546e7a;">${quiz.completionDate}</span>
+                            </div>
+                        </div>
+                        <div class="quiz-mgmt-card-actions">
+                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewPastQuizDetails(${quiz.id})" title="View Details">
+                                <span data-icon="search"></span> View
+                            </button>
+                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="duplicatePastQuiz(${quiz.id})" style="background: var(--color-green);" title="Duplicate Quiz">
+                                <span data-icon="plus"></span> Duplicate
+                            </button>
+                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="archivePastQuizConfirm(${quiz.id})" title="Archive/Delete Quiz">
+                                <span data-icon="x"></span> Archive
+                            </button>
+                        </div>
+                    </article>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    renderIcons(listContainer);
+}
+
+window.viewPastQuizDetails = function(id) {
+    const quiz = MOCK_DATA.pastQuizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    // Student list rendering with fictional details
+    const studentPerformanceHtml = quiz.studentPerformance && quiz.studentPerformance.length > 0 ? `
+        <div class="cartoon-panel" style="overflow-x: auto; background: var(--surface-white); padding: var(--t-space-1); margin-top: 8px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-body); font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 3px solid var(--border-dark); font-family: var(--font-header); font-size: 0.82rem; color: #78909c;">
+                        <th style="padding: 8px var(--t-space-1);">STUDENT NAME</th>
+                        <th style="padding: 8px var(--t-space-1);">STUDENT ID</th>
+                        <th style="padding: 8px var(--t-space-1); text-align: center;">SCORE</th>
+                        <th style="padding: 8px var(--t-space-1); text-align: center;">PERCENTAGE</th>
+                        <th style="padding: 8px var(--t-space-1); text-align: center;">CORRECT</th>
+                        <th style="padding: 8px var(--t-space-1);">COMPLETED DATE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${quiz.studentPerformance.map(s => {
+                        return `
+                            <tr style="border-bottom: 2px dashed rgba(26,26,36,0.1); transition: background 0.15s ease;">
+                                <td style="padding: 8px var(--t-space-1); font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHTML(s.name)}</td>
+                                <td style="padding: 8px var(--t-space-1); font-weight: 700; color: #546e7a;">${escapeHTML(s.id)}</td>
+                                <td style="padding: 8px var(--t-space-1); text-align: center; font-weight: 700;">${s.score}/${quiz.questionsCount}</td>
+                                <td style="padding: 8px var(--t-space-1); text-align: center; font-weight: 700; color: ${s.percentage >= 80 ? 'var(--color-green-dark)' : (s.percentage >= 60 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)')};">${s.percentage}%</td>
+                                <td style="padding: 8px var(--t-space-1); text-align: center; font-weight: 700;">${s.correctAnswers}</td>
+                                <td style="padding: 8px var(--t-space-1); color: #78909c;">${s.date}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    ` : `
+        <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-2); text-align: center; background: var(--color-cream); margin-top: 8px;">
+            <span style="font-family: var(--font-header); font-size: 0.95rem; color: #546e7a;">No student performance metrics available.</span>
+        </div>
+    `;
+
+    // Question-level metrics breakdown
+    const questionPerformanceHtml = quiz.questionPerformance && quiz.questionPerformance.length > 0 ? `
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+            ${quiz.questionPerformance.map(q => {
+                return `
+                    <div style="border: 2px solid var(--border-dark); border-radius: 12px; padding: var(--t-space-1); background: var(--color-cream); display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow-chunky-pressed);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(26,26,36,0.1); padding-bottom: 4px; margin-bottom: 4px;">
+                            <span style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; color: var(--border-dark);">Question ${q.number}</span>
+                            <span class="quiz-status-pill" style="font-size: 0.72rem; padding: 1px 6px; background: var(--color-yellow);">${q.accuracy}% Accuracy</span>
+                        </div>
+                        <p style="font-weight: 700; font-size: 0.95rem; line-height: 1.3; color: var(--border-dark); margin: 0 0 4px 0;">${escapeHTML(q.text)}</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.82rem; font-family: var(--font-body); text-align: center;">
+                            <div style="background: #e8f5e9; border: 1px solid var(--border-dark); border-radius: 6px; padding: 4px;">
+                                <span style="font-weight: 700; color: var(--color-green-dark);">Correct: ${q.correct} students</span>
+                            </div>
+                            <div style="background: #ffebee; border: 1px solid var(--border-dark); border-radius: 6px; padding: 4px;">
+                                <span style="font-weight: 700; color: var(--color-red-dark);">Incorrect: ${q.incorrect} students</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    ` : `
+        <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-2); text-align: center; background: var(--color-cream); margin-top: 8px;">
+            <span style="font-family: var(--font-header); font-size: 0.95rem; color: #546e7a;">No question-level metrics available.</span>
+        </div>
+    `;
+
+    const html = `
+        <div class="orixa-modal-card" style="width: min(100%, 650px); max-height: 90vh;">
+            <header class="orixa-modal-header" style="background: var(--color-yellow);">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">${escapeHTML(quiz.title)} Details</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto; gap: var(--t-space-2); padding: var(--t-space-2);">
+                <!-- General Info & Description -->
+                <div>
+                    <span class="quiz-meta" style="text-transform: uppercase;">Description</span>
+                    <p style="font-size: 0.95rem; line-height: 1.4; color: var(--border-dark); margin-top: 2px;">${escapeHTML(quiz.description || "No description provided.")}</p>
+                </div>
+
+                <!-- Score Summary Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 4px;">
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
+                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">AVG SCORE</span>
+                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--color-green-dark); margin-top: 2px;">${quiz.averageScore}%</div>
+                    </div>
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
+                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">HIGHEST SCORE</span>
+                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--color-blue-dark); margin-top: 2px;">${quiz.highestScore}%</div>
+                    </div>
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
+                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">LOWEST SCORE</span>
+                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--color-red-dark); margin-top: 2px;">${quiz.lowestScore}%</div>
+                    </div>
+                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
+                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">PASS RATE</span>
+                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark); margin-top: 2px;">${quiz.passRate}%</div>
+                    </div>
+                </div>
+
+                <!-- Section Tabs or Combined View -->
+                <div style="margin-top: 8px;">
+                    <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 4px; margin-bottom: 4px;">Student Performance</h4>
+                    ${studentPerformanceHtml}
+                </div>
+
+                <div style="margin-top: 12px;">
+                    <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 4px; margin-bottom: 4px;">Question Performance Breakdown</h4>
+                    ${questionPerformanceHtml}
+                </div>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Close Analysis
+                </button>
+            </footer>
+        </div>
+    `;
+
+    openOrixaModal(html);
+};
+
+window.duplicatePastQuiz = function(id) {
+    const quiz = MOCK_DATA.pastQuizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    // Load original questions or format fictional ones to draft state
+    createQuizState = {
+        title: `${quiz.title} — Copy`,
+        subject: quiz.subject,
+        grade: quiz.grade,
+        description: quiz.description || "",
+        settings: {
+            timeLimit: 15,
+            attempts: 1,
+            passingScore: 70,
+            shuffleQuestions: false,
+            shuffleAnswers: false
+        },
+        questions: quiz.questionPerformance ? quiz.questionPerformance.map((q, index) => {
+            return {
+                id: Date.now() + '-' + Math.floor(Math.random() * 1000) + '-' + index,
+                text: q.text,
+                type: 'Multiple Choice',
+                options: ['Option A', 'Option B', 'Option C', 'Option D'],
+                correctAnswer: 0,
+                marks: 5
+            };
+        }) : [
+            {
+                id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                text: 'Sample Question text',
+                type: 'Multiple Choice',
+                options: ['Option A', 'Option B', 'Option C', 'Option D'],
+                correctAnswer: 0,
+                marks: 5
+            }
+        ]
+    };
+
+    openOrixaModal(`
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: var(--color-green);">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Quiz Duplicated!</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); navigateToView('create-quiz');" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                <p style="font-size: 1.2rem; font-weight: 700; color: var(--border-dark);">"${escapeHTML(createQuizState.title)}" is ready as a draft!</p>
+                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">We've preloaded all original quiz properties and questions. You can now edit, configure, or publish this copy.</p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); navigateToView('create-quiz');" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Edit Duplicated Quiz
+                </button>
+            </footer>
+        </div>
+    `);
+};
+
+window.archivePastQuizConfirm = function(id) {
+    const quiz = MOCK_DATA.pastQuizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: #ffebee;">
+                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Archive</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <p style="font-size: 1.15rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
+                    Are you sure you want to archive this quiz?
+                </p>
+                <p style="font-size: 0.95rem; color: var(--border-dark); background: var(--color-cream); border: var(--border-comic-thin); padding: 12px; border-radius: 12px; font-style: italic; margin-top: 8px; word-break: break-word;">
+                    "${escapeHTML(quiz.title)}"
+                </p>
+                <p style="font-size: 0.9rem; color: #546e7a; margin-top: 8px;">
+                    This will remove the quiz from your active completed quiz metrics. You can restore it later if needed.
+                </p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Cancel
+                </button>
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performArchivePastQuiz(${quiz.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Archive
+                </button>
+            </footer>
+        </div>
+    `;
+
+    openOrixaModal(html);
+};
+
+window.performArchivePastQuiz = function(id) {
+    const index = MOCK_DATA.pastQuizzes.findIndex(q => q.id === id);
+    if (index !== -1) {
+        MOCK_DATA.pastQuizzes.splice(index, 1);
+        closeOrixaModal();
+        renderPastQuizzesPage();
+    }
 };
 
 window.viewResultDetails = function(resultId) {

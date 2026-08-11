@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Login | ORIXA</title>
+    <title>ORIXA | Welcome</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -12,6 +12,102 @@
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="teacher.css">
+    <style>
+        .role-selection-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .role-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 20px;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--border-dark);
+            text-align: center;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+
+        .role-card .role-icon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 15px;
+            color: var(--border-dark);
+            fill: currentColor;
+            transition: transform 0.2s ease;
+        }
+
+        .role-card:hover .role-icon {
+            transform: scale(1.15) rotate(5deg);
+        }
+
+        .role-card h2 {
+            font-family: var(--font-header);
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            -webkit-text-stroke: 1.5px var(--border-dark);
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .role-card p {
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            color: #546e7a;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .role-card-teacher {
+            background-color: var(--color-yellow);
+            box-shadow: 0 8px 0 var(--border-dark);
+        }
+
+        .role-card-teacher:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 0 var(--border-dark);
+            background-color: #ffeb3b;
+        }
+
+        .role-card-teacher:active {
+            transform: translateY(2px);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        .role-card-student {
+            background-color: var(--color-green);
+            box-shadow: 0 8px 0 var(--border-dark);
+        }
+
+        .role-card-student:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 0 var(--border-dark);
+            background-color: #a5d6a7;
+        }
+
+        .role-card-student:active {
+            transform: translateY(2px);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        @media (max-width: 480px) {
+            .role-selection-container {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            .role-card {
+                padding: 24px 16px;
+            }
+            .role-card h2 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
 </head>
 
 <body class="teacher-body">
@@ -21,72 +117,30 @@
         <main class="teacher-card cartoon-panel">
             <header class="teacher-card-header">
                 <h1 class="cartoon-logo teacher-logo bounce-anim">ORIXA</h1>
-                <p class="cartoon-subtitle teacher-subtitle">Teacher Login</p>
+                <p class="cartoon-subtitle teacher-subtitle">Choose Your Adventure</p>
             </header>
 
-            <form id="teacher-login-form" class="teacher-form" novalidate>
-                <div class="form-field">
-                    <label for="login-email" class="field-label">
-                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                                d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"
-                                fill="currentColor" />
-                        </svg>
-                        <span>EMAIL</span>
-                    </label>
-                    <div class="input-shell">
-                        <input type="email" id="login-email" name="email" class="cartoon-input"
-                            placeholder="you@school.edu" autocomplete="email">
-                    </div>
-                    <span class="field-error" id="login-email-error"></span>
-                </div>
+            <div class="role-selection-container">
+                <!-- Teacher Card -->
+                <a href="teacher-login.html" class="role-card role-card-teacher cartoon-panel" id="role-btn-teacher">
+                    <!-- Graduation Cap SVG Icon -->
+                    <svg class="role-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" />
+                    </svg>
+                    <h2>TEACHER</h2>
+                    <p>Manage quizzes & track student progress</p>
+                </a>
 
-                <div class="form-field">
-                    <label for="login-password" class="field-label">
-                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm3 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
-                                fill="currentColor" />
-                        </svg>
-                        <span>PASSWORD</span>
-                    </label>
-                    <div class="input-shell">
-                        <input type="password" id="login-password" name="password" class="cartoon-input"
-                            placeholder="Enter your password" autocomplete="current-password">
-                        <button type="button" class="input-action-btn" id="login-password-toggle"
-                            aria-label="Show password">
-                            <svg class="monotone-icon" id="login-eye-open" viewBox="0 0 24 24">
-                                <path
-                                    d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
-                                    fill="currentColor" />
-                            </svg>
-                            <svg class="monotone-icon hidden" id="login-eye-closed" viewBox="0 0 24 24">
-                                <path
-                                    d="M12 6c3.79 0 7.17 2.13 8.82 5.5a10.1 10.1 0 0 1-2.6 3.44l1.42 1.42c1.39-1.23 2.53-2.77 3.36-4.5C21.27 7.61 17 4.5 12 4.5c-1.27 0-2.49.2-3.64.57l1.65 1.65C10.6 6.24 11.29 6 12 6zm-1.07 1.14L13 9.21c.57.25 1.03.71 1.28 1.28l2.07 2.07c.08-.34.13-.7.13-1.06 0-2.76-2.24-5-5-5-.36 0-.72.05-1.06.13zM2.01 3.87l2.68 2.68A11.738 11.738 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l3.32 3.32 1.41-1.41L3.42 2.45 2.01 3.87zm7.5 7.5 2.61 2.61c-.04.01-.08.02-.12.02-1.66 0-3-1.34-3-3 0-.05.01-.08.02-.12zm-3.9-3.9 1.55 1.55c-.29.71-.46 1.49-.46 2.31 0 1.94.94 3.65 2.38 4.72l1.45 1.45c-2.71-.51-5-2.24-6.2-4.6.51-1.01 1.2-1.9 2.02-2.63l-.74-.8z"
-                                    fill="currentColor" />
-                            </svg>
-                        </button>
-                    </div>
-                    <span class="field-error" id="login-password-error"></span>
-                </div>
-
-                <div class="form-options-row">
-                    <label class="cartoon-checkbox-container teacher-checkbox">
-                        <input type="checkbox" id="remember-me-checkbox">
-                        <span class="custom-checkbox"></span>
-                        <span class="checkbox-text">Remember Me</span>
-                    </label>
-                    <a href="#" class="teacher-link forgot-link" id="forgot-password-link">Forgot Password?</a>
-                </div>
-
-                <button type="submit" class="cartoon-action-btn primary-yellow-btn teacher-submit-btn"
-                    id="login-submit-btn">
-                    <span class="btn-label">LOG IN</span>
-                    <span class="btn-spinner hidden" aria-hidden="true"></span>
-                </button>
-
-                <p class="teacher-form-msg" id="login-form-msg" role="status" aria-live="polite"></p>
-            </form>
+                <!-- Student Card -->
+                <a href="student-login.html" class="role-card role-card-student cartoon-panel" id="role-btn-student">
+                    <!-- Gamepad SVG Icon -->
+                    <svg class="role-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M21.58 7.47a2 2 0 00-1.4-1.4A22.8 22.8 0 0012 5.5a22.8 22.8 0 00-8.18.57 2 2 0 00-1.4 1.4A22.8 22.8 0 002 12a22.8 22.8 0 00.57 3.82 2 2 0 001.4 1.4 22.8 22.8 0 008.18.57 22.8 22.8 0 008.18-.57 2 2 0 001.4-1.4A22.8 22.8 0 0022 12a22.8 22.8 0 00-.42-4.53zM11 11H9v2H8v-2H6v-1h2V8h1v2h2v1zm7-.25a.75.75 0 11-.75-.75.75.75 0 01.75.75zm1.5 1.5a.75.75 0 11-.75-.75.75.75 0 01.75.75z" />
+                    </svg>
+                    <h2>STUDENT</h2>
+                    <p>Play interactive educational quizzes</p>
+                </a>
+            </div>
         </main>
     </div>
 

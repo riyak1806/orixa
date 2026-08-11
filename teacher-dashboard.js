@@ -29,6 +29,85 @@ const ICONS = {
 // Centralized Data Architecture
 const MOCK_DATA = {
     unreadCount: 3,
+    notifications: [
+        {
+            id: 1,
+            title: "Quiz Completed",
+            message: "Aarav Sharma completed Solar System Basics with a score of 92%.",
+            category: "Quiz",
+            priority: "Normal",
+            read: false,
+            timestamp: "2026-08-12T10:30:00Z",
+            dateStr: "10 mins ago",
+            target: "results"
+        },
+        {
+            id: 2,
+            title: "New Student Added",
+            message: "A new student Anjali Gupta has been added to Grade 7 Science.",
+            category: "Student",
+            priority: "Normal",
+            read: true,
+            timestamp: "2026-08-11T14:15:00Z",
+            dateStr: "1 day ago",
+            target: "students"
+        },
+        {
+            id: 3,
+            title: "Quiz Results Available",
+            message: "Results for Ancient Civilizations are now available.",
+            category: "Results",
+            priority: "Important",
+            read: false,
+            timestamp: "2026-08-12T09:00:00Z",
+            dateStr: "2 hours ago",
+            target: "results"
+        },
+        {
+            id: 4,
+            title: "Quiz Draft Saved",
+            message: "Your Fractions Sprint quiz has been saved as a draft.",
+            category: "Quiz",
+            priority: "Normal",
+            read: true,
+            timestamp: "2026-08-10T11:00:00Z",
+            dateStr: "2 days ago",
+            target: "quiz-management"
+        },
+        {
+            id: 5,
+            title: "System Update",
+            message: "ORIXA Teacher Portal has been updated to version 1.2.0 with improved analysis.",
+            category: "System",
+            priority: "Important",
+            read: true,
+            timestamp: "2026-08-08T08:30:00Z",
+            dateStr: "4 days ago",
+            target: "dashboard"
+        },
+        {
+            id: 6,
+            title: "Student Activity Warning",
+            message: "Priya Patel has been marked inactive due to no activity for 2 weeks.",
+            category: "Student",
+            priority: "Important",
+            read: false,
+            timestamp: "2026-08-12T06:45:00Z",
+            dateStr: "4 hours ago",
+            target: "students"
+        },
+        {
+            id: 7,
+            title: "General Announcement",
+            message: "The school science fair is scheduled for next Friday. Prepare quiz modules accordingly.",
+            category: "General",
+            priority: "Normal",
+            read: true,
+            timestamp: "2026-08-07T13:00:00Z",
+            dateStr: "5 days ago",
+            target: "dashboard"
+        }
+    ],
     teacher: {
         name: "Professor Riley",
         email: "riley@orixa.edu",
@@ -1417,8 +1496,12 @@ function navigateToView(target) {
     }
 
     if (target === 'notifications') {
-        MOCK_DATA.unreadCount = 0;
-        renderNotificationDot();
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        renderNotificationsPage();
+        setActiveNavigation('notifications');
+        window.history.replaceState(null, '', `#notifications`);
+        return;
     }
 
     // Always hide search dropdown on navigate
@@ -2885,6 +2968,14 @@ let pastQuizzesPageState = {
     gradeFilter: 'All',
     dateFilter: 'All Time',
     sortBy: 'Most Recent'
+};
+
+let notificationsPageState = {
+    searchQuery: '',
+    statusFilter: 'All',
+    categoryFilter: 'All',
+    priorityFilter: 'All',
+    sortBy: 'Newest'
 };
 
 let selectedQuestionIds = new Set();
@@ -5154,6 +5245,483 @@ window.viewResultDetails = function(resultId) {
         </div>
     `;
 
+    openOrixaModal(html);
+};
+
+/* ==========================================================================
+   NOTIFICATIONS SECTION CONTROLLER
+   ========================================================================== */
+
+function getCategoryIcon(category) {
+    if (category === 'Quiz') return 'clipboard';
+    if (category === 'Student') return 'users';
+    if (category === 'Results') return 'chart';
+    if (category === 'System') return 'settings';
+    return 'bell'; // General
+}
+
+function getCategoryColor(category) {
+    if (category === 'Quiz') return 'var(--color-yellow)';
+    if (category === 'Student') return 'var(--color-blue)';
+    if (category === 'Results') return 'var(--color-green)';
+    if (category === 'System') return '#cfd8dc'; // grey
+    return 'var(--color-cream)';
+}
+
+function renderNotificationsPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    // 1. Calculate dynamic statistics
+    const totalNotifications = MOCK_DATA.notifications.length;
+    const unreadCount = MOCK_DATA.notifications.filter(n => !n.read).length;
+    const readCount = MOCK_DATA.notifications.filter(n => n.read).length;
+    const importantCount = MOCK_DATA.notifications.filter(n => n.priority === 'Important').length;
+
+    // Sync with the main application unreadCount
+    MOCK_DATA.unreadCount = unreadCount;
+    renderNotificationDot();
+
+    // 2. Build the structural HTML for Notifications Page
+    dynamicPage.innerHTML = `
+        <div class="notifications-container" style="display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
+
+            <!-- Page Header -->
+            <div class="notifications-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Notifications</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Stay updated with your quizzes, students, and classroom activity</p>
+                </div>
+                <div style="display: flex; gap: var(--t-space-1); flex-wrap: wrap;">
+                    <button type="button" class="cartoon-action-btn primary-yellow-btn" id="notifications-mark-all-btn" style="height: 44px; padding: 0 16px; font-size: 0.9rem; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
+                        Mark All as Read
+                    </button>
+                    <button type="button" class="cartoon-action-btn" id="notifications-clear-all-btn" style="height: 44px; padding: 0 16px; font-size: 0.9rem; border-radius: 12px; border-color: var(--border-dark); background: var(--color-red); color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics Row (Dynamic) -->
+            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
+                <article class="stat-card cartoon-panel is-blue">
+                    <div class="stat-topline">
+                        <span class="stat-label">Total Notifications</span>
+                        <span class="stat-icon" data-icon="bell"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="noti-stat-total">${totalNotifications}</div>
+                        <p class="stat-caption">All notifications</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-orange">
+                    <div class="stat-topline">
+                        <span class="stat-label">Unread</span>
+                        <span class="stat-icon" data-icon="clock"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="noti-stat-unread">${unreadCount}</div>
+                        <p class="stat-caption">Unread updates</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-green">
+                    <div class="stat-topline">
+                        <span class="stat-label">Read</span>
+                        <span class="stat-icon" data-icon="clipboard"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="noti-stat-read">${readCount}</div>
+                        <p class="stat-caption">Acknowledged updates</p>
+                    </div>
+                </article>
+                <article class="stat-card cartoon-panel is-yellow">
+                    <div class="stat-topline">
+                        <span class="stat-label">Important</span>
+                        <span class="stat-icon" data-icon="target"></span>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="noti-stat-important">${importantCount}</div>
+                        <p class="stat-caption">High priority alerts</p>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Toolbar (Search & Filters) -->
+            <div class="quiz-mgmt-toolbar">
+                <div class="quiz-mgmt-filters">
+                    <div class="quiz-mgmt-search-container">
+                        <span class="quiz-mgmt-search-icon" data-icon="search"></span>
+                        <input type="search" id="noti-search-input" placeholder="Search notifications..." value="${escapeHTML(notificationsPageState.searchQuery)}" autocomplete="off">
+                    </div>
+                    <select id="noti-status-filter" class="quiz-mgmt-select">
+                        <option value="All" ${notificationsPageState.statusFilter === 'All' ? 'selected' : ''}>All Statuses</option>
+                        <option value="Unread" ${notificationsPageState.statusFilter === 'Unread' ? 'selected' : ''}>Unread</option>
+                        <option value="Read" ${notificationsPageState.statusFilter === 'Read' ? 'selected' : ''}>Read</option>
+                    </select>
+                    <select id="noti-category-filter" class="quiz-mgmt-select">
+                        <option value="All" ${notificationsPageState.categoryFilter === 'All' ? 'selected' : ''}>All Categories</option>
+                        <option value="Quiz" ${notificationsPageState.categoryFilter === 'Quiz' ? 'selected' : ''}>Quiz</option>
+                        <option value="Student" ${notificationsPageState.categoryFilter === 'Student' ? 'selected' : ''}>Student</option>
+                        <option value="Results" ${notificationsPageState.categoryFilter === 'Results' ? 'selected' : ''}>Results</option>
+                        <option value="System" ${notificationsPageState.categoryFilter === 'System' ? 'selected' : ''}>System</option>
+                        <option value="General" ${notificationsPageState.categoryFilter === 'General' ? 'selected' : ''}>General</option>
+                    </select>
+                    <select id="noti-priority-filter" class="quiz-mgmt-select">
+                        <option value="All" ${notificationsPageState.priorityFilter === 'All' ? 'selected' : ''}>All Priorities</option>
+                        <option value="Important" ${notificationsPageState.priorityFilter === 'Important' ? 'selected' : ''}>Important</option>
+                        <option value="Normal" ${notificationsPageState.priorityFilter === 'Normal' ? 'selected' : ''}>Normal</option>
+                    </select>
+                    <select id="noti-sort-select" class="quiz-mgmt-select">
+                        <option value="Newest" ${notificationsPageState.sortBy === 'Newest' ? 'selected' : ''}>Newest First</option>
+                        <option value="Oldest" ${notificationsPageState.sortBy === 'Oldest' ? 'selected' : ''}>Oldest First</option>
+                    </select>
+                    <button type="button" class="cartoon-action-btn" id="noti-clear-filters-btn" style="height: 44px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-dark); background: var(--color-orange); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; border-radius: 12px; display: ${(notificationsPageState.searchQuery || notificationsPageState.statusFilter !== 'All' || notificationsPageState.categoryFilter !== 'All' || notificationsPageState.priorityFilter !== 'All') ? 'inline-flex' : 'none'}; align-items: center; justify-content: center; border-width: 3px;">
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Notifications List Container -->
+            <div id="notifications-list-container" style="display: flex; flex-direction: column; gap: var(--t-space-1);"></div>
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+    renderFilteredNotifications();
+
+    // Attach control event listeners
+    const searchInput = document.getElementById('noti-search-input');
+    const statusFilter = document.getElementById('noti-status-filter');
+    const categoryFilter = document.getElementById('noti-category-filter');
+    const priorityFilter = document.getElementById('noti-priority-filter');
+    const sortSelect = document.getElementById('noti-sort-select');
+
+    searchInput.addEventListener('input', (e) => {
+        notificationsPageState.searchQuery = e.target.value;
+        renderFilteredNotifications();
+    });
+
+    statusFilter.addEventListener('change', (e) => {
+        notificationsPageState.statusFilter = e.target.value;
+        renderFilteredNotifications();
+    });
+
+    categoryFilter.addEventListener('change', (e) => {
+        notificationsPageState.categoryFilter = e.target.value;
+        renderFilteredNotifications();
+    });
+
+    priorityFilter.addEventListener('change', (e) => {
+        notificationsPageState.priorityFilter = e.target.value;
+        renderFilteredNotifications();
+    });
+
+    sortSelect.addEventListener('change', (e) => {
+        notificationsPageState.sortBy = e.target.value;
+        renderFilteredNotifications();
+    });
+
+    const clearFiltersBtn = document.getElementById('noti-clear-filters-btn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            notificationsPageState.searchQuery = '';
+            notificationsPageState.statusFilter = 'All';
+            notificationsPageState.categoryFilter = 'All';
+            notificationsPageState.priorityFilter = 'All';
+            renderNotificationsPage();
+        });
+    }
+
+    const markAllBtn = document.getElementById('notifications-mark-all-btn');
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', () => {
+            markAllNotificationsRead();
+        });
+    }
+
+    const clearAllBtn = document.getElementById('notifications-clear-all-btn');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', () => {
+            clearAllNotificationsConfirm();
+        });
+    }
+}
+
+function renderFilteredNotifications() {
+    const listContainer = document.getElementById('notifications-list-container');
+    if (!listContainer) return;
+
+    let filtered = [...MOCK_DATA.notifications];
+
+    // 1. Search Query
+    const query = notificationsPageState.searchQuery.trim().toLowerCase();
+    if (query) {
+        filtered = filtered.filter(n =>
+            n.title.toLowerCase().includes(query) ||
+            n.message.toLowerCase().includes(query)
+        );
+    }
+
+    // 2. Status Filter
+    if (notificationsPageState.statusFilter === 'Unread') {
+        filtered = filtered.filter(n => !n.read);
+    } else if (notificationsPageState.statusFilter === 'Read') {
+        filtered = filtered.filter(n => n.read);
+    }
+
+    // 3. Category Filter
+    if (notificationsPageState.categoryFilter !== 'All') {
+        filtered = filtered.filter(n => n.category === notificationsPageState.categoryFilter);
+    }
+
+    // 4. Priority Filter
+    if (notificationsPageState.priorityFilter !== 'All') {
+        filtered = filtered.filter(n => n.priority === notificationsPageState.priorityFilter);
+    }
+
+    // 5. Sorting
+    if (notificationsPageState.sortBy === 'Newest') {
+        filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    } else if (notificationsPageState.sortBy === 'Oldest') {
+        filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    }
+
+    // Toggle clear filters button visibility dynamically
+    const clearBtn = document.getElementById('noti-clear-filters-btn');
+    if (clearBtn) {
+        const hasActiveFilters = !!(notificationsPageState.searchQuery || notificationsPageState.statusFilter !== 'All' || notificationsPageState.categoryFilter !== 'All' || notificationsPageState.priorityFilter !== 'All');
+        clearBtn.style.display = hasActiveFilters ? 'inline-flex' : 'none';
+    }
+
+    // Check if total list is empty vs filtered empty
+    if (MOCK_DATA.notifications.length === 0) {
+        listContainer.innerHTML = `
+            <div class="quiz-mgmt-no-results">
+                <div class="quiz-mgmt-no-results-title">No notifications</div>
+                <div class="quiz-mgmt-no-results-desc">You're all caught up.</div>
+            </div>
+        `;
+        return;
+    }
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `
+            <div class="quiz-mgmt-no-results">
+                <div class="quiz-mgmt-no-results-title">No matching notifications</div>
+                <div class="quiz-mgmt-no-results-desc">Try modifying your search or filter settings.</div>
+            </div>
+        `;
+        return;
+    }
+
+    listContainer.innerHTML = filtered.map(noti => {
+        return `
+            <article class="notification-card cartoon-panel" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--t-space-2); padding: var(--t-space-2); border-width: 3px; border-radius: 16px; transition: transform 0.15s ease; ${noti.read ? 'background: var(--surface-white); border-left: 3px solid var(--border-dark);' : 'background: var(--color-cream); border-left: 8px solid var(--color-blue);' }">
+                <div style="display: flex; align-items: center; gap: var(--t-space-2); flex: 1; min-width: 0;">
+                    <!-- Icon -->
+                    <span class="activity-icon" style="flex-shrink: 0;">
+                        <span data-icon="${getCategoryIcon(noti.category)}"></span>
+                    </span>
+                    <!-- Content -->
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <h4 class="notification-title" style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin: 0; ${noti.read ? 'font-weight: 600;' : 'font-weight: 700;' }">
+                                ${escapeHTML(noti.title)}
+                            </h4>
+                            <!-- Category Badge -->
+                            <span class="quiz-status-pill" style="font-size: 0.7rem; padding: 1px 8px; background: ${getCategoryColor(noti.category)};">
+                                ${noti.category}
+                            </span>
+                            <!-- Priority Badge -->
+                            ${noti.priority === 'Important' ? `
+                            <span class="quiz-status-pill pill-closed" style="font-size: 0.7rem; padding: 1px 8px;">
+                                Important
+                            </span>
+                            ` : ''}
+                            <!-- Subtle Unread Dot inside the card header -->
+                            ${!noti.read ? `
+                            <span style="display: inline-block; width: 8px; height: 8px; background: var(--color-red); border-radius: 50%; border: 1px solid var(--border-dark);"></span>
+                            ` : ''}
+                        </div>
+                        <p style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a; margin: 0; line-height: 1.4; word-break: break-word;">
+                            ${escapeHTML(noti.message)}
+                        </p>
+                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">
+                            ${noti.dateStr}
+                        </span>
+                    </div>
+                </div>
+                <!-- Actions -->
+                <div style="display: flex; gap: var(--t-space-1); align-items: center; flex-shrink: 0; flex-wrap: wrap;">
+                    <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewNotificationDetails(${noti.id})" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="View Details">
+                        <span data-icon="search"></span> View
+                    </button>
+                    <button class="quiz-mgmt-action-btn" onclick="toggleNotificationRead(${noti.id})" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto; border: var(--border-comic-thin); font-family: var(--font-header); font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); background: ${noti.read ? 'var(--color-yellow)' : '#cfd8dc'};" title="${noti.read ? 'Mark as Unread' : 'Mark as Read'}">
+                        <span data-icon="clipboard"></span> ${noti.read ? 'Mark Unread' : 'Mark Read'}
+                    </button>
+                    <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteNotificationConfirm(${noti.id})" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="Delete Notification">
+                        <span data-icon="x"></span> Delete
+                    </button>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    renderIcons(listContainer);
+}
+
+window.toggleNotificationRead = function(id) {
+    const noti = MOCK_DATA.notifications.find(n => n.id === id);
+    if (noti) {
+        noti.read = !noti.read;
+        renderNotificationsPage();
+    }
+};
+
+window.markAllNotificationsRead = function() {
+    MOCK_DATA.notifications.forEach(n => n.read = true);
+    renderNotificationsPage();
+};
+
+window.deleteNotificationConfirm = function(id) {
+    const noti = MOCK_DATA.notifications.find(n => n.id === id);
+    if (!noti) return;
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: #ffebee;">
+                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Delete</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <p style="font-size: 1.1rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
+                    Are you sure you want to delete this notification?
+                </p>
+                <p style="font-size: 0.95rem; color: var(--border-dark); background: var(--color-cream); border: var(--border-comic-thin); padding: 12px; border-radius: 12px; font-style: italic; margin-top: 8px; word-break: break-word;">
+                    "${escapeHTML(noti.title)}"
+                </p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Cancel
+                </button>
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteNotification(${noti.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Delete
+                </button>
+            </footer>
+        </div>
+    `;
+    openOrixaModal(html);
+};
+
+window.performDeleteNotification = function(id) {
+    const idx = MOCK_DATA.notifications.findIndex(n => n.id === id);
+    if (idx !== -1) {
+        MOCK_DATA.notifications.splice(idx, 1);
+        closeOrixaModal();
+        renderNotificationsPage();
+    }
+};
+
+window.clearAllNotificationsConfirm = function() {
+    if (MOCK_DATA.notifications.length === 0) return;
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: #ffebee;">
+                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Clear All</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <p style="font-size: 1.1rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
+                    Are you sure you want to clear all notifications?
+                </p>
+                <p style="font-size: 0.9rem; color: #546e7a; margin-top: 4px;">
+                    This will remove every notification permanently from your list. This action cannot be undone.
+                </p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Cancel
+                </button>
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performClearAllNotifications()" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Clear All
+                </button>
+            </footer>
+        </div>
+    `;
+    openOrixaModal(html);
+};
+
+window.performClearAllNotifications = function() {
+    MOCK_DATA.notifications = [];
+    closeOrixaModal();
+    renderNotificationsPage();
+};
+
+window.viewNotificationDetails = function(id) {
+    const noti = MOCK_DATA.notifications.find(n => n.id === id);
+    if (!noti) return;
+
+    // Automatically mark as read when viewed!
+    if (!noti.read) {
+        noti.read = true;
+        renderNotificationsPage();
+    }
+
+    let actionButtonHtml = '';
+    if (noti.target) {
+        let actionLabel = 'Go to Page';
+        if (noti.category === 'Quiz') actionLabel = 'Open Quiz';
+        else if (noti.category === 'Student') actionLabel = 'View Student';
+        else if (noti.category === 'Results') actionLabel = 'View Results';
+        else if (noti.category === 'Past Quiz') actionLabel = 'View Past Quiz';
+
+        actionButtonHtml = `
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); navigateToView('${noti.target}');" style="padding: 10px 24px; font-size: 0.95rem;">
+                ${actionLabel}
+            </button>
+        `;
+    }
+
+    const priorityBadge = noti.priority === 'Important' ? `
+        <span class="quiz-status-pill pill-closed" style="font-size: 0.78rem;">Important</span>
+    ` : `
+        <span class="quiz-status-pill" style="font-size: 0.78rem; background: var(--color-cream);">Normal</span>
+    `;
+
+    const html = `
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: ${getCategoryColor(noti.category)};">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark);">${escapeHTML(noti.title)}</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="gap: var(--t-space-2); padding: var(--t-space-2);">
+                <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-body); font-size: 1.05rem; color: var(--border-dark); line-height: 1.5; word-break: break-word;">
+                    ${escapeHTML(noti.message)}
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <span class="quiz-status-pill" style="font-size: 0.78rem; background: ${getCategoryColor(noti.category)};">Category: ${noti.category}</span>
+                    ${priorityBadge}
+                    <span class="quiz-status-pill" style="font-size: 0.78rem; background: white;">Received: ${noti.dateStr}</span>
+                </div>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
+                    Close
+                </button>
+                ${actionButtonHtml}
+            </footer>
+        </div>
+    `;
     openOrixaModal(html);
 };
 

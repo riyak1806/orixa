@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal | ORIXA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="teacher-dashboard.css">
+    <style>
+        /* Student customized overrides of dashboard layout */
+        .student-portal-shell {
+            position: relative;
+            z-index: 10;
+            width: min(100%, 1200px);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--t-space-2);
+            min-width: 0;
+        }
+
+        .student-topbar {
+            grid-template-columns: auto 1fr auto;
+        }
+
+        .student-quest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: var(--t-space-2);
+            margin-bottom: var(--t-space-3);
+        }
+
+        .quest-card {
+            background: var(--surface-white);
+            border: var(--border-comic-thin);
+            border-radius: 18px;
+            padding: var(--t-space-2);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: var(--t-space-2);
+            box-shadow: var(--shadow-chunky-small);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+        }
+
+        .quest-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 0 var(--border-dark);
+        }
+
+        .quest-reward-badge {
+            background: var(--color-purple);
+            color: var(--border-dark);
+            font-family: var(--font-header);
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border: 2px solid var(--border-dark);
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .play-quest-btn {
+            background: var(--color-green);
+            color: var(--border-dark);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-family: var(--font-header);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow-chunky-pressed);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
+        }
+
+        .play-quest-btn:hover {
+            background-color: #a5d6a7;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-chunky-small);
+        }
+
+        .play-quest-btn:active {
+            transform: translateY(1px);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        /* Puzzle game tile simulation in preview modal */
+        .puzzle-grid-preview {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #b0bec5;
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .puzzle-bg-img-mock {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            filter: brightness(0.85);
+        }
+
+        .puzzle-tile-mock {
+            background: var(--color-cream);
+            border: 1px solid var(--border-dark);
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-header);
+            font-size: 1.2rem;
+            color: #90a4ae;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.2s ease, background-color 0.15s ease;
+        }
+
+        .puzzle-tile-mock:hover {
+            background-color: var(--color-yellow);
+            color: var(--border-dark);
+            transform: scale(1.02);
+        }
+
+        .puzzle-tile-mock.revealed {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .xp-text {
+            color: var(--color-purple-dark);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body class="dashboard-body">
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="student-portal-shell">
+        <div class="decorative-bg-logo-wrapper">
+            <div class="decorative-bg-logo bounce-anim" aria-hidden="true">ORIXA</div>
+        </div>
+
+        <!-- Student Top Bar -->
+        <header class="dashboard-topbar cartoon-panel student-topbar">
+            <div class="topbar-brand-container">
+                <div class="topbar-brand">
+                    <span class="topbar-logo bounce-anim">ORIXA</span>
+                    <span class="topbar-label" style="color: var(--color-green);">STUDENT AREA</span>
+                </div>
+            </div>
+
+            <div></div>
+
+            <div class="topbar-actions">
+                <button class="profile-chip" type="button" aria-label="Student profile">
+                    <span class="profile-avatar" style="background-color: var(--color-green);">ST</span>
+                    <span class="profile-name">Star Student</span>
+                </button>
+                <a href="index.html" class="icon-button" style="background-color: var(--color-red);" title="Log Out">
+                    <!-- Log Out Icon -->
+                    <svg class="monotone-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px;">
+                        <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" fill="currentColor" />
+                    </svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Hub Content -->
+        <main class="dashboard-main">
+            <!-- Header section -->
+            <section class="dashboard-title-row" aria-labelledby="portal-heading" style="margin-bottom: 5px;">
+                <div>
+                    <h2 id="portal-heading">Ready for Your Next Quiz?</h2>
+                    <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a;">Complete quests to reveal the puzzle and earn points!</p>
+                </div>
+                <div class="dashboard-status" style="background-color: var(--color-purple); color: white;">
+                    RANK #5 (Explorer)
+                </div>
+            </section>
+
+            <!-- Stats Grid -->
+            <section class="stats-grid" aria-label="Student statistics">
+                <!-- Quizzes Played -->
+                <div class="stat-card cartoon-panel is-yellow">
+                    <div class="stat-topline">
+                        <span class="stat-label">QUIZZES PLAYED</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-quizzes-played">12</div>
+                    <div class="stat-caption">Keep it up!</div>
+                </div>
+
+                <!-- XP Points -->
+                <div class="stat-card cartoon-panel is-green">
+                    <div class="stat-topline">
+                        <span class="stat-label">TOTAL SCORE (XP)</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-xp">1,450</div>
+                    <div class="stat-caption">Gold Badge approaching</div>
+                </div>
+
+                <!-- Stars Collected -->
+                <div class="stat-card cartoon-panel is-blue">
+                    <div class="stat-topline">
+                        <span class="stat-label">STARS EARNED</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17h-2v6H5v2h6v6h2v-6h6v-2h-6V5z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-stars">36</div>
+                    <div class="stat-caption">Perfect score bonus!</div>
+                </div>
+
+                <!-- Completion Rate -->
+                <div class="stat-card cartoon-panel is-orange">
+                    <div class="stat-topline">
+                        <span class="stat-label">ACCURACY RATE</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.25z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-accuracy">92%</div>
+                    <div class="stat-caption">Awesome work!</div>
+                </div>
+            </section>
+
+            <!-- Quests Section -->
+            <section aria-labelledby="quests-heading">
+                <div class="panel-header" style="margin-bottom: 12px;">
+                    <div>
+                        <p class="panel-kicker">AVAILABLE QUESTS</p>
+                        <h3 id="quests-heading" style="font-size: 1.5rem;">Pick Your Quest</h3>
+                    </div>
+                </div>
+
+                <div class="student-quest-grid">
+                    <!-- Quest 1 -->
+                    <div class="quest-card cartoon-panel">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Ancient Egypt Quest</h4>
+                                <span class="quiz-mgmt-card-subject">History</span>
+                            </div>
+                            <span class="quest-reward-badge">+100 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Questions</span>
+                                <span style="font-family: var(--font-header);">10 Questions</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Difficulty</span>
+                                <span style="color: var(--color-green-dark); font-family: var(--font-header);">Easy</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" onclick="openQuestGame('Ancient Egypt Quest', 10, 'history')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- Quest 2 -->
+                    <div class="quest-card cartoon-panel">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Math Galaxy Challenge</h4>
+                                <span class="quiz-mgmt-card-subject">Math</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-orange);">+120 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Questions</span>
+                                <span style="font-family: var(--font-header);">8 Questions</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Difficulty</span>
+                                <span style="color: var(--color-orange-dark); font-family: var(--font-header);">Medium</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-yellow);" onclick="openQuestGame('Math Galaxy Challenge', 8, 'math')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- Quest 3 -->
+                    <div class="quest-card cartoon-panel">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Space Explorer Mission</h4>
+                                <span class="quiz-mgmt-card-subject">Science</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-blue); color: white;">+150 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Questions</span>
+                                <span style="font-family: var(--font-header);">12 Questions</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Difficulty</span>
+                                <span style="color: var(--color-red-dark); font-family: var(--font-header);">Hard</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-blue); color: white;" onclick="openQuestGame('Space Explorer Mission', 12, 'science')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Interactive Puzzle Reveal Modal Overlay -->
+    <div id="quest-modal" class="orixa-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-quest-title">
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header">
+                <h3 class="orixa-modal-title" id="modal-quest-title">Ancient Egypt Quest</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeQuestModal()" aria-label="Close modal">
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor" />
+                    </svg>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <p id="modal-quest-intro" style="margin: 0; font-family: var(--font-body);">Reveal the hidden puzzle by answering questions correctly!</p>
+
+                <!-- Simulated Puzzle Game Tile Grid -->
+                <div class="puzzle-grid-preview" id="puzzle-grid">
+                    <!-- Background placeholder matching cartoon-like aesthetic -->
+                    <div style="position: absolute; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-family: var(--font-header); font-size: 2rem; color: white; text-shadow: 2px 2px var(--border-dark); z-index: 1;">
+                        ⭐ SOLVED! ⭐
+                    </div>
+                    <!-- 12 tiles simulating gameplay reveal -->
+                    <div class="puzzle-tile-mock" id="tile-1" onclick="revealTile('tile-1')">1</div>
+                    <div class="puzzle-tile-mock" id="tile-2" onclick="revealTile('tile-2')">2</div>
+                    <div class="puzzle-tile-mock" id="tile-3" onclick="revealTile('tile-3')">3</div>
+                    <div class="puzzle-tile-mock" id="tile-4" onclick="revealTile('tile-4')">4</div>
+                    <div class="puzzle-tile-mock" id="tile-5" onclick="revealTile('tile-5')">5</div>
+                    <div class="puzzle-tile-mock" id="tile-6" onclick="revealTile('tile-6')">6</div>
+                    <div class="puzzle-tile-mock" id="tile-7" onclick="revealTile('tile-7')">7</div>
+                    <div class="puzzle-tile-mock" id="tile-8" onclick="revealTile('tile-8')">8</div>
+                    <div class="puzzle-tile-mock" id="tile-9" onclick="revealTile('tile-9')">9</div>
+                    <div class="puzzle-tile-mock" id="tile-10" onclick="revealTile('tile-10')">10</div>
+                    <div class="puzzle-tile-mock" id="tile-11" onclick="revealTile('tile-11')">11</div>
+                    <div class="puzzle-tile-mock" id="tile-12" onclick="revealTile('tile-12')">12</div>
+                </div>
+
+                <p style="font-size: 0.85rem; color: #546e7a; font-family: var(--font-body); text-align: center; margin-top: 5px;">
+                    💡 Click on numbered tiles to simulate answering questions and revealing the board!
+                </p>
+            </div>
+            <div class="orixa-modal-footer">
+                <button type="button" class="quiz-mgmt-action-btn quiz-btn-view" style="max-width: 140px; height: 42px;" onclick="resetPuzzleTiles()">RESET BOARD</button>
+                <button type="button" class="quiz-mgmt-action-btn quiz-btn-delete" style="max-width: 120px; height: 42px;" onclick="closeQuestModal()">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Particle script loading -->
+    <script src="student.js"></script>
+    <script src="student-portal.js"></script>
+</body>
+
+</html>

@@ -1382,8 +1382,109 @@
 }
 
 /* ==========================================================================
-   CREATE QUIZ SPECIFIC STYLES
+   CREATE QUIZ SPECIFIC STYLES & GAME SELECTION
    ========================================================================== */
+
+.game-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--t-space-2);
+    margin-top: var(--t-space-1);
+    margin-bottom: var(--t-space-1);
+}
+
+.game-selection-card {
+    padding: var(--t-space-3);
+    background: var(--surface-white);
+    border: var(--border-comic-thin);
+    border-radius: 20px;
+    box-shadow: var(--shadow-chunky-small);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--t-space-1);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.game-selection-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 0 var(--border-dark);
+    background: var(--color-cream);
+}
+
+.game-selection-card.is-selected {
+    background: var(--color-cream);
+    border-color: var(--border-dark);
+    box-shadow: 0 6px 0 var(--border-dark);
+    transform: translateY(-2px);
+}
+
+.game-card-icon-wrapper {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: var(--color-yellow);
+    border: 3px solid var(--border-dark);
+    box-shadow: var(--shadow-chunky-pressed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.game-selection-card:nth-child(2) .game-card-icon-wrapper {
+    background: var(--color-blue);
+}
+
+.game-selection-card:nth-child(3) .game-card-icon-wrapper {
+    background: var(--color-green);
+}
+
+.game-selection-card:nth-child(4) .game-card-icon-wrapper {
+    background: var(--color-orange);
+}
+
+.game-card-icon-wrapper svg {
+    width: 32px;
+    height: 32px;
+}
+
+.game-card-title {
+    font-family: var(--font-header);
+    font-size: 1.25rem;
+    color: var(--border-dark);
+    margin: 0;
+}
+
+.game-card-desc {
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    color: #546e7a;
+    line-height: 1.4;
+    margin: 0;
+    flex: 1;
+}
+
+.game-card-action {
+    margin-top: var(--t-space-1);
+    width: 100%;
+}
+
+.game-card-select-btn {
+    width: 100%;
+    padding: 8px 16px;
+    font-size: 0.95rem;
+}
+
+.how-it-works-panel {
+    background: var(--surface-white);
+    border: var(--border-comic-thin);
+    border-radius: 18px;
+    padding: var(--t-space-2) var(--t-space-3);
+    box-shadow: var(--shadow-chunky-pressed);
+}
 
 .create-quiz-grid {
     display: grid;

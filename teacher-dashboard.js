@@ -23,7 +23,8 @@ const ICONS = {
     chevronLeft: '<path d="m15 18-6-6 6-6"></path>',
     chevronRight: '<path d="m9 18 6-6-6-6"></path>',
     menu: '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>',
-    x: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>'
+    x: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
+    help: '<circle cx="12" cy="12" r="9"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>'
 };
 
 // Centralized Data Architecture
@@ -565,7 +566,8 @@ const MOCK_DATA = {
         // Teacher Pages / Navigation Pages
         { title: "Teacher Profile", type: "Page", category: "profile", target: "profile" },
         { title: "Settings Page", type: "Page", category: "settings", target: "settings" },
-        { title: "Notifications Page", type: "Page", category: "notifications", target: "notifications" }
+        { title: "Notifications Page", type: "Page", category: "notifications", target: "notifications" },
+        { title: "Help Section", type: "Page", category: "help", target: "help" }
     ],
     pastQuizzes: [
         {
@@ -673,7 +675,8 @@ const navItems = [
     { label: 'Results', icon: 'chart', target: 'results' },
     { label: 'Past Quizzes', icon: 'history', target: 'past-quizzes' },
     { label: 'Notifications', icon: 'bell', target: 'notifications' },
-    { label: 'Settings', icon: 'settings', target: 'settings' }
+    { label: 'Settings', icon: 'settings', target: 'settings' },
+    { label: 'Help', icon: 'help', target: 'help' }
 ];
 
 function icon(name) {
@@ -770,13 +773,14 @@ function renderActivities() {
 function createQuizItem(quiz) {
     const item = document.createElement('div');
     item.className = 'quiz-item';
+    const statusClass = quiz.status === 'Live' ? 'status-live' : (quiz.status === 'Draft' ? 'status-draft' : 'status-closed');
     item.innerHTML = `
         <span class="quiz-icon">${icon(quiz.icon)}</span>
         <div class="quiz-info">
             <p class="quiz-title">${quiz.title}</p>
             <div class="quiz-bottomline">
                 <span class="quiz-meta">${quiz.subject} | ${quiz.questions} questions</span>
-                <span class="quiz-status">${quiz.status}</span>
+                <span class="quiz-status ${statusClass}">${quiz.status}</span>
             </div>
         </div>
     `;
@@ -800,6 +804,29 @@ function setActiveNavigation(target) {
     });
 }
 
+function getInitials(name) {
+    if (!name) return 'TR';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) {
+        return parts[0].substring(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function updateTopBarProfileChip() {
+    const profileChipName = document.querySelector('.profile-chip .profile-name');
+    const profileAvatarText = document.querySelector('.profile-chip .profile-avatar');
+    if (MOCK_DATA.teacher && MOCK_DATA.teacher.name) {
+        const name = MOCK_DATA.teacher.name;
+        if (profileChipName) {
+            profileChipName.textContent = name;
+        }
+        if (profileAvatarText) {
+            profileAvatarText.textContent = getInitials(name);
+        }
+    }
+}
+
 function renderTeacherProfile() {
     const dynamicPage = document.getElementById('dynamic-placeholder-page');
     if (!dynamicPage) {
@@ -815,7 +842,7 @@ function renderTeacherProfile() {
             <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: var(--t-space-2);">
                 <div style="display: flex; align-items: center; gap: var(--t-space-2);">
                     <div class="profile-avatar" style="width: 64px; height: 64px; font-size: 1.5rem; border-width: 3px; font-family: var(--font-header); display: inline-flex; align-items: center; justify-content: center; background: var(--color-blue); border: 2px solid var(--border-dark); border-radius: 50%;">
-                        PR
+                        ${getInitials(teacher.name)}
                     </div>
                     <div>
                         <p class="panel-kicker" style="margin-bottom: 2px;">Faculty Profile</p>
@@ -1616,6 +1643,15 @@ function navigateToView(target) {
         return;
     }
 
+    if (target === 'help') {
+        overviewPage.classList.add('hidden');
+        dynamicPage.classList.remove('hidden');
+        renderHelpPage();
+        setActiveNavigation('help');
+        window.history.replaceState(null, '', `#help`);
+        return;
+    }
+
     // Dynamic dynamic placeholders for unimplemented pages
     const navItem = navItems.find(item => item.target === target);
     const pageTitle = navItem ? navItem.label : target.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -1678,6 +1714,13 @@ function initSidebarCollapsible() {
     const sidebar = document.querySelector('.dashboard-sidebar');
 
     if (sidebarToggle && shell) {
+        const initialIcon = sidebarToggle.querySelector('[data-icon]');
+        if (initialIcon) {
+            const isCollapsed = shell.classList.contains('is-sidebar-collapsed');
+            initialIcon.dataset.icon = isCollapsed ? 'chevronRight' : 'chevronLeft';
+            renderIcons(sidebarToggle);
+        }
+
         sidebarToggle.addEventListener('click', () => {
             const isCollapsed = shell.classList.toggle('is-sidebar-collapsed');
 
@@ -5550,7 +5593,7 @@ function renderFilteredNotifications() {
 
     listContainer.innerHTML = filtered.map(noti => {
         return `
-            <article class="notification-card cartoon-panel" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--t-space-2); padding: var(--t-space-2); border-width: 3px; border-radius: 16px; transition: transform 0.15s ease; ${noti.read ? 'background: var(--surface-white); border-left: 3px solid var(--border-dark);' : 'background: var(--color-cream); border-left: 8px solid var(--color-blue);' }">
+            <article class="notification-card cartoon-panel" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--t-space-2); padding: var(--t-space-2); border-width: 3px; border-radius: 16px; transition: transform 0.15s ease; ${noti.read ? 'background: var(--surface-white);' : 'background: var(--color-cream);' }">
                 <div style="display: flex; align-items: center; gap: var(--t-space-2); flex: 1; min-width: 0;">
                     <!-- Icon -->
                     <span class="activity-icon" style="flex-shrink: 0;">
@@ -6267,14 +6310,7 @@ function setupSettingsListeners() {
             MOCK_DATA.settings.quizPreferences.allowLateSubmissions = quizLateVal;
 
             // Re-render the Settings Profile avatar / name display at the top right if present!
-            const profileChipName = document.querySelector('.profile-chip .profile-name');
-            if (profileChipName) {
-                profileChipName.textContent = nameVal;
-            }
-            const profileAvatarText = document.querySelector('.profile-chip .profile-avatar');
-            if (profileAvatarText) {
-                profileAvatarText.textContent = nameVal.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-            }
+            updateTopBarProfileChip();
 
             // Un-trigger unsaved badge
             checkUnsavedChanges();
@@ -6433,6 +6469,210 @@ window.submitChangePassword = function(event) {
     `);
 };
 
+/* ==========================================================================
+   HELP SECTION CONTROLLER
+   ========================================================================== */
+
+const HELP_TOPICS = [
+    {
+        id: 'faq-1',
+        title: "I can't create a quiz",
+        solution: "Ensure that all required fields (Quiz Title, Subject, Class/Grade) are filled out and at least one question with options and a correct answer is added. Check for red error outlines before clicking Publish or Save as Draft."
+    },
+    {
+        id: 'faq-2',
+        title: "My quiz is not appearing",
+        solution: "Verify if your quiz is saved as a 'Draft' or 'Live'. Draft quizzes are visible under Quiz Management but will not appear on the student portal until published. Use the status filter in Quiz Management to locate it."
+    },
+    {
+        id: 'faq-3',
+        title: "I can't find a student",
+        solution: "Navigate to the Students section and clear active search queries or dropdown filters. If the student is new, click '+ Add Student' to register their account with their unique Student ID and Grade."
+    },
+    {
+        id: 'faq-4',
+        title: "Results are not showing correctly",
+        solution: "Results update automatically upon quiz submission by students. Try switching between 'Individual Attempts', 'By Quiz', and 'By Student' tabs in the Results section or click 'Clear Filters' to refresh the view."
+    },
+    {
+        id: 'faq-5',
+        title: "I can't access a feature",
+        solution: "Ensure your browser is up to date and JavaScript is enabled. If a section appears locked, check your account permissions or clear your browser cache."
+    },
+    {
+        id: 'faq-6',
+        title: "Something is not working",
+        solution: "Try refreshing the page or logging out and back in. If the problem persists, use the 'Report a Problem' form below to submit details to our support team."
+    }
+];
+
+function renderHelpPage() {
+    const dynamicPage = document.getElementById('dynamic-placeholder-page');
+    if (!dynamicPage) return;
+
+    dynamicPage.innerHTML = `
+        <div class="help-container" style="display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
+            <!-- Header section -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Help</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Find solutions or report a problem</p>
+                </div>
+                <button class="cartoon-action-btn primary-yellow-btn" onclick="navigateToView('dashboard')" style="padding: 10px 20px; font-size: 1rem; height: 44px; display: inline-flex; align-items: center;">
+                    Back to Dashboard
+                </button>
+            </div>
+
+            <!-- Two Main Sections Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--t-space-2);">
+
+                <!-- AREA 1: COMMON PROBLEMS -->
+                <div class="cartoon-panel" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
+                    <div style="border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px;">
+                        <p class="panel-kicker" style="margin-bottom: 2px;">FAQ & GUIDES</p>
+                        <h3 style="font-family: var(--font-header); font-size: 1.35rem; color: var(--border-dark); margin: 0;">Common Problems</h3>
+                    </div>
+
+                    <div id="help-faq-accordion" style="display: flex; flex-direction: column; gap: var(--t-space-1);">
+                        ${HELP_TOPICS.map(item => `
+                            <div class="help-faq-item" style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 14px; box-shadow: var(--shadow-chunky-pressed); overflow: hidden;">
+                                <button type="button" class="help-faq-trigger" data-faq="${item.id}" style="width: 100%; text-align: left; padding: 12px 16px; background: none; border: none; font-family: var(--font-header); font-size: 1rem; font-weight: 700; color: var(--border-dark); cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                    <span>${escapeHTML(item.title)}</span>
+                                    <span data-icon="chevronRight" class="help-faq-arrow" style="transition: transform 0.2s ease;"></span>
+                                </button>
+                                <div id="${item.id}-body" class="help-faq-body hidden" style="padding: 0 16px 14px 16px; font-family: var(--font-body); font-size: 0.92rem; color: #546e7a; line-height: 1.5; border-top: 1px dashed rgba(26,26,36,0.1); margin-top: 4px; padding-top: 10px;">
+                                    ${escapeHTML(item.solution)}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- AREA 2: REPORT A PROBLEM -->
+                <div class="cartoon-panel" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
+                    <div style="border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px;">
+                        <p class="panel-kicker" style="margin-bottom: 2px;">CONTACT SUPPORT</p>
+                        <h3 style="font-family: var(--font-header); font-size: 1.35rem; color: var(--border-dark); margin: 0;">Report a Problem</h3>
+                    </div>
+
+                    <form id="help-report-form" onsubmit="handleHelpReportSubmit(event)" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+                        <div class="form-field">
+                            <label class="field-label" for="help-problem-type">PROBLEM TYPE *</label>
+                            <select id="help-problem-type" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);" required>
+                                <option value="" disabled selected>Select a problem category</option>
+                                <option value="Technical Issue">Technical Issue</option>
+                                <option value="Quiz Issue">Quiz Issue</option>
+                                <option value="Student Issue">Student Issue</option>
+                                <option value="Results Issue">Results Issue</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="help-subject">SUBJECT *</label>
+                            <div class="input-shell">
+                                <input type="text" id="help-subject" class="cartoon-input" placeholder="Brief summary of the issue" required>
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="help-description">DESCRIPTION *</label>
+                            <div class="input-shell">
+                                <textarea id="help-description" class="cartoon-input" placeholder="Please describe what happened and steps to reproduce..." style="height: auto; min-height: 110px; padding: 10px 14px; resize: vertical; line-height: 1.4;" required></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label" for="help-attachment">ATTACHMENT (OPTIONAL)</label>
+                            <div class="input-shell">
+                                <input type="file" id="help-attachment" class="cartoon-input" style="padding: 8px 12px; font-size: 0.85rem;" accept="image/*,.pdf">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="cartoon-action-btn primary-yellow-btn" style="padding: 12px 24px; font-size: 1rem; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                            Send Feedback
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+
+    // FAQ Accordion click handler
+    const accordion = dynamicPage.querySelector('#help-faq-accordion');
+    if (accordion) {
+        accordion.addEventListener('click', (e) => {
+            const btn = e.target.closest('.help-faq-trigger');
+            if (!btn) return;
+            const faqId = btn.dataset.faq;
+            const body = document.getElementById(`${faqId}-body`);
+            const arrow = btn.querySelector('.help-faq-arrow');
+
+            if (body) {
+                const isHidden = body.classList.contains('hidden');
+
+                // Collapse all FAQ items first
+                dynamicPage.querySelectorAll('.help-faq-body').forEach(el => el.classList.add('hidden'));
+                dynamicPage.querySelectorAll('.help-faq-arrow').forEach(el => el.style.transform = 'rotate(0deg)');
+
+                if (isHidden) {
+                    body.classList.remove('hidden');
+                    if (arrow) arrow.style.transform = 'rotate(90deg)';
+                }
+            }
+        });
+    }
+}
+
+function handleHelpReportSubmit(e) {
+    e.preventDefault();
+
+    const problemType = document.getElementById('help-problem-type').value;
+    const subject = document.getElementById('help-subject').value.trim();
+    const description = document.getElementById('help-description').value.trim();
+
+    if (!problemType || !subject || !description) {
+        return;
+    }
+
+    // Reset form fields
+    const form = document.getElementById('help-report-form');
+    if (form) {
+        form.reset();
+    }
+
+    // Show frontend submission confirmation modal
+    openOrixaModal(`
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header" style="background: var(--color-green);">
+                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Feedback Received</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                    <span data-icon="x"></span>
+                </button>
+            </header>
+            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                <p style="font-size: 1.2rem; font-weight: 700; color: var(--border-dark); margin: 0 0 8px 0;">
+                    Thank you. Your feedback has been submitted.
+                </p>
+                <p style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a; margin: 0; line-height: 1.4;">
+                    We have logged your report regarding "<strong>${escapeHTML(subject)}</strong>". Our support team will review it shortly.
+                </p>
+            </div>
+            <footer class="orixa-modal-footer">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                    Close
+                </button>
+            </footer>
+        </div>
+    `);
+}
+
+window.handleHelpReportSubmit = handleHelpReportSubmit;
+
 function escapeHTML(str) {
     return str.replace(/[&<>'"]/g,
         tag => ({
@@ -6455,4 +6695,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initSidebarCollapsible();
     initSearch();
     renderNotificationDot();
+    updateTopBarProfileChip();
 });

@@ -36,7 +36,8 @@
     position: sticky;
     top: var(--t-space-2);
     margin-top: 0;
-    align-self: stretch;
+    align-self: flex-start;
+    height: fit-content;
     min-width: 0;
     min-height: auto;
     padding: var(--t-space-2);
@@ -552,6 +553,18 @@
     background: var(--color-green);
     border: 2px solid var(--border-dark);
     border-radius: 9999px;
+}
+
+.quiz-status.status-live {
+    background: var(--color-green);
+}
+
+.quiz-status.status-draft {
+    background: var(--color-yellow);
+}
+
+.quiz-status.status-closed {
+    background: var(--color-red);
 }
 
 .dashboard-icon {

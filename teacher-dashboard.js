@@ -24,7 +24,11 @@ const ICONS = {
     chevronRight: '<path d="m9 18 6-6-6-6"></path>',
     menu: '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>',
     x: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
-    help: '<circle cx="12" cy="12" r="9"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>'
+    help: '<circle cx="12" cy="12" r="9"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>',
+    tilePuzzle: '<rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect>',
+    matchFollowing: '<circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><circle cx="18" cy="18" r="3"></circle><path d="M9 6h6"></path><path d="M9 18l6-12"></path>',
+    fillBlanks: '<path d="M4 6h16"></path><path d="M4 12h5"></path><path d="M11 15h9"></path><path d="M4 18h16"></path>',
+    trueFalse: '<path d="m9 12 2 2 4-4"></path><circle cx="12" cy="12" r="9"></circle>'
 };
 
 // Centralized Data Architecture
@@ -250,14 +254,14 @@ const MOCK_DATA = {
         { title: 'Question Bank Activity', desc: '35 new algebra questions added', time: '2 days ago', icon: 'bank' }
     ],
     quizzes: [
-        { id: 1, title: 'Solar System Basics', subject: 'Science', questions: 18, status: 'Live', icon: 'trophy', attempts: 26, lastUpdated: '2026-08-10' },
-        { id: 2, title: 'Fractions Sprint', subject: 'Maths', questions: 12, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-09' },
-        { id: 3, title: 'Ancient Civilizations', subject: 'History', questions: 20, status: 'Closed', icon: 'history', attempts: 18, lastUpdated: '2026-08-05' },
-        { id: 4, title: 'Cell Structure and Function', subject: 'Science', questions: 15, status: 'Live', icon: 'trophy', attempts: 42, lastUpdated: '2026-08-08' },
-        { id: 5, title: 'Algebra Equations', subject: 'Maths', questions: 10, status: 'Live', icon: 'clipboard', attempts: 35, lastUpdated: '2026-08-07' },
-        { id: 6, title: 'Periodic Table Review', subject: 'Science', questions: 30, status: 'Closed', icon: 'history', attempts: 55, lastUpdated: '2026-07-28' },
-        { id: 7, title: 'Intro to Geometry', subject: 'Maths', questions: 15, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-02' },
-        { id: 8, title: 'Roman Empire', subject: 'History', questions: 15, status: 'Live', icon: 'trophy', attempts: 12, lastUpdated: '2026-08-04' }
+        { id: 1, title: 'Solar System Basics', subject: 'Science', questions: 18, status: 'Live', icon: 'trophy', attempts: 26, lastUpdated: '2026-08-10', gameType: 'TILE_PUZZLE' },
+        { id: 2, title: 'Fractions Sprint', subject: 'Maths', questions: 12, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-09', gameType: 'TILE_PUZZLE' },
+        { id: 3, title: 'Ancient Civilizations', subject: 'History', questions: 20, status: 'Closed', icon: 'history', attempts: 18, lastUpdated: '2026-08-05', gameType: 'MATCH_FOLLOWING' },
+        { id: 4, title: 'Cell Structure and Function', subject: 'Science', questions: 15, status: 'Live', icon: 'trophy', attempts: 42, lastUpdated: '2026-08-08', gameType: 'TILE_PUZZLE' },
+        { id: 5, title: 'Algebra Equations', subject: 'Maths', questions: 10, status: 'Live', icon: 'clipboard', attempts: 35, lastUpdated: '2026-08-07', gameType: 'FILL_BLANKS' },
+        { id: 6, title: 'Periodic Table Review', subject: 'Science', questions: 30, status: 'Closed', icon: 'history', attempts: 55, lastUpdated: '2026-07-28', gameType: 'TRUE_FALSE' },
+        { id: 7, title: 'Intro to Geometry', subject: 'Maths', questions: 15, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-02', gameType: 'TILE_PUZZLE' },
+        { id: 8, title: 'Roman Empire', subject: 'History', questions: 15, status: 'Live', icon: 'trophy', attempts: 12, lastUpdated: '2026-08-04', gameType: 'TRUE_FALSE' }
     ],
     questionBank: [
         {
@@ -928,6 +932,8 @@ let createQuizState = null;
 
 function resetCreateQuizState() {
     createQuizState = {
+        step: 'select-game',
+        gameType: null,
         title: '',
         subject: 'Mathematics',
         grade: 'Grade 5',
@@ -939,34 +945,170 @@ function resetCreateQuizState() {
             shuffleQuestions: false,
             shuffleAnswers: false
         },
-        questions: [
-            {
-                id: Date.now() + '-' + Math.floor(Math.random() * 1000),
-                text: '',
-                type: 'Multiple Choice',
-                options: ['', '', '', ''],
-                correctAnswer: null,
-                marks: 5
-            }
-        ]
+        questions: []
     };
 }
+
+const GAME_OPTIONS = [
+    {
+        type: 'TILE_PUZZLE',
+        name: 'Tile Puzzle',
+        icon: 'tilePuzzle',
+        description: 'Students reveal questions by selecting tiles. Answer all questions correctly to complete the puzzle.',
+        howItWorks: 'Each tile contains one question. Students select a tile to reveal its question and answer it. Clear all tiles to complete the quiz.'
+    },
+    {
+        type: 'MATCH_FOLLOWING',
+        name: 'Match the Following',
+        icon: 'matchFollowing',
+        description: 'Students drag questions and connect them with their correct answers.',
+        howItWorks: 'Students drag each question to its correct answer. Match all questions correctly to complete the quiz.'
+    },
+    {
+        type: 'FILL_BLANKS',
+        name: 'Fill in the Blanks',
+        icon: 'fillBlanks',
+        description: 'Students drag the correct words into the missing spaces.',
+        howItWorks: 'Create a sentence and select the word or words that should be hidden. Students drag the correct word into each blank.'
+    },
+    {
+        type: 'TRUE_FALSE',
+        name: 'True or False',
+        icon: 'trueFalse',
+        description: 'Students decide whether each statement is true or false.',
+        howItWorks: 'Students read each statement and choose whether it is True or False.'
+    }
+];
 
 function renderCreateQuizPage() {
     const dynamicPage = document.getElementById('dynamic-placeholder-page');
     if (!dynamicPage) return;
+
+    if (!createQuizState) {
+        resetCreateQuizState();
+    }
+
+    if (createQuizState.step === 'select-game') {
+        renderGameSelectionStep(dynamicPage);
+    } else {
+        renderGameBuilderStep(dynamicPage);
+    }
+}
+
+function renderGameSelectionStep(dynamicPage) {
+    if (!createQuizState.gameType) {
+        createQuizState.gameType = 'TILE_PUZZLE';
+    }
+
+    const selectedOption = GAME_OPTIONS.find(g => g.type === createQuizState.gameType) || GAME_OPTIONS[0];
 
     dynamicPage.innerHTML = `
         <div class="create-quiz-container" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
             <div class="create-quiz-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
                 <div>
                     <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
-                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Create Quiz</h2>
-                    <p class="cartoon-subtitle" style="margin-top: 4px;">Create an engaging quiz for your students</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Choose Your Game</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Select how students will play this quiz.</p>
                 </div>
                 <button type="button" class="cartoon-action-btn create-quiz-back-btn" id="create-quiz-back-btn" style="padding: 10px 20px; font-size: 0.95rem;">
                     ← Back to Quiz Management
                 </button>
+            </div>
+
+            <!-- Four Game Cards Grid -->
+            <div class="game-selection-grid">
+                ${GAME_OPTIONS.map(opt => {
+                    const isSelected = opt.type === createQuizState.gameType;
+                    return `
+                        <div class="game-selection-card cartoon-panel ${isSelected ? 'is-selected' : ''}" data-game-type="${opt.type}">
+                            <div class="game-card-icon-wrapper">
+                                <span data-icon="${opt.icon}"></span>
+                            </div>
+                            <h3 class="game-card-title">${escapeHTML(opt.name)}</h3>
+                            <p class="game-card-desc">${escapeHTML(opt.description)}</p>
+                            <div class="game-card-action">
+                                <button type="button" class="cartoon-action-btn ${isSelected ? 'primary-yellow-btn' : ''} game-card-select-btn">
+                                    ${isSelected ? 'Selected ✓' : 'Select'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+
+            <!-- How This Game Works Panel -->
+            <div class="cartoon-panel how-it-works-panel" id="how-it-works-panel">
+                <div style="display: flex; align-items: center; gap: 8px; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin-bottom: 8px;">
+                    <span data-icon="help" style="color: var(--color-blue-dark);"></span>
+                    <h4 style="font-family: var(--font-header); font-size: 1.2rem; color: var(--border-dark); margin: 0;">How This Game Works: <span id="how-it-works-title" style="color: var(--color-blue-dark);">${escapeHTML(selectedOption.name)}</span></h4>
+                </div>
+                <p id="how-it-works-text" style="font-family: var(--font-body); font-size: 1rem; color: var(--border-dark); line-height: 1.5; margin: 0;">
+                    ${escapeHTML(selectedOption.howItWorks)}
+                </p>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="create-quiz-bottom-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: var(--t-space-2); margin-top: var(--t-space-2);">
+                <button type="button" class="cartoon-action-btn primary-yellow-btn" id="game-selection-continue-btn" style="padding: 12px 32px; font-size: 1.05rem;">
+                    Continue →
+                </button>
+            </div>
+        </div>
+    `;
+
+    renderIcons(dynamicPage);
+
+    // Event listeners
+    const backBtn = document.getElementById('create-quiz-back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            navigateToView('quiz-management');
+        });
+    }
+
+    const cards = dynamicPage.querySelectorAll('.game-selection-card');
+    cards.forEach(card => {
+        card.addEventListener('click', () => {
+            const gameType = card.dataset.gameType;
+            createQuizState.gameType = gameType;
+
+            // Re-render game selection to update selected states and explanation
+            renderGameSelectionStep(dynamicPage);
+        });
+    });
+
+    const continueBtn = document.getElementById('game-selection-continue-btn');
+    if (continueBtn) {
+        continueBtn.addEventListener('click', () => {
+            createQuizState.step = 'builder';
+            renderCreateQuizPage();
+        });
+    }
+}
+
+function renderGameBuilderStep(dynamicPage) {
+    const selectedOption = GAME_OPTIONS.find(g => g.type === createQuizState.gameType) || GAME_OPTIONS[0];
+
+    dynamicPage.innerHTML = `
+        <div class="create-quiz-container" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+            <div class="create-quiz-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
+                <div>
+                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal &bull; ${escapeHTML(selectedOption.name)} Builder</p>
+                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Create Quiz</h2>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Build questions for your ${escapeHTML(selectedOption.name)} quiz</p>
+                </div>
+                <button type="button" class="cartoon-action-btn create-quiz-back-btn" id="create-quiz-back-game-btn" style="padding: 10px 20px; font-size: 0.95rem;">
+                    ← Back to Game Selection
+                </button>
+            </div>
+
+            <!-- How Game Works Banner in Builder -->
+            <div class="cartoon-panel how-it-works-panel" style="background: var(--color-cream); padding: var(--t-space-2);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span data-icon="${selectedOption.icon}"></span>
+                    <strong style="font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">${escapeHTML(selectedOption.name)}:</strong>
+                    <span style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a;">${escapeHTML(selectedOption.howItWorks)}</span>
+                </div>
             </div>
 
             <div class="create-quiz-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--t-space-2);">
@@ -1231,6 +1373,14 @@ function renderCreateQuizPage() {
     renderIcons(document.getElementById('questions-card'));
 
     // Attach listeners
+    const backGameBtn = document.getElementById('create-quiz-back-game-btn');
+    if (backGameBtn) {
+        backGameBtn.addEventListener('click', () => {
+            createQuizState.step = 'select-game';
+            renderCreateQuizPage();
+        });
+    }
+
     const backBtn = document.getElementById('create-quiz-back-btn');
     if (backBtn) {
         backBtn.addEventListener('click', () => {
@@ -1423,7 +1573,8 @@ function renderCreateQuizPage() {
                 status: 'Draft',
                 icon: 'clipboard',
                 attempts: 0,
-                lastUpdated: new Date().toISOString().split('T')[0]
+                lastUpdated: new Date().toISOString().split('T')[0],
+                gameType: createQuizState.gameType
             };
             MOCK_DATA.quizzes.unshift(newQuiz);
 
@@ -1500,7 +1651,8 @@ function renderCreateQuizPage() {
                         status: 'Live',
                         icon: 'trophy',
                         attempts: 0,
-                        lastUpdated: new Date().toISOString().split('T')[0]
+                        lastUpdated: new Date().toISOString().split('T')[0],
+                        gameType: createQuizState.gameType
                     };
                     MOCK_DATA.quizzes.unshift(newQuiz);
 
@@ -5094,6 +5246,8 @@ window.duplicatePastQuiz = function(id) {
 
     // Load original questions or format fictional ones to draft state
     createQuizState = {
+        step: 'builder',
+        gameType: quiz.gameType || 'TILE_PUZZLE',
         title: `${quiz.title} — Copy`,
         subject: quiz.subject,
         grade: quiz.grade,

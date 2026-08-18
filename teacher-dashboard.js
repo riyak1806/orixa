@@ -1086,6 +1086,48 @@ function renderGameSelectionStep(dynamicPage) {
     }
 }
 
+function getTilePuzzleGridInfo(questionCount) {
+    if (questionCount <= 0) {
+        return {
+            isValid: false,
+            gridDimension: 0,
+            targetQuestions: 4,
+            neededQuestions: 4,
+            statusText: "Tile Puzzle requires a square number of questions. Use 4, 9, 16, 25, ... questions.",
+            previewSlotsTotal: 4,
+            previewFilledCount: 0
+        };
+    }
+
+    const root = Math.sqrt(questionCount);
+    if (Number.isInteger(root) && root >= 2) {
+        return {
+            isValid: true,
+            gridDimension: root,
+            targetQuestions: questionCount,
+            neededQuestions: 0,
+            statusText: `Ready — ${root} × ${root} Tile Grid`,
+            previewSlotsTotal: questionCount,
+            previewFilledCount: questionCount
+        };
+    }
+
+    let targetDim = Math.ceil(root);
+    if (targetDim < 2) targetDim = 2;
+    const targetQuestions = targetDim * targetDim;
+    const neededQuestions = targetQuestions - questionCount;
+
+    return {
+        isValid: false,
+        gridDimension: targetDim,
+        targetQuestions: targetQuestions,
+        neededQuestions: neededQuestions,
+        statusText: `Add ${neededQuestions} more question${neededQuestions === 1 ? '' : 's'} to create a ${targetDim} × ${targetDim} grid. Tile Puzzle requires a square number of questions. Use 4, 9, 16, 25, ... questions.`,
+        previewSlotsTotal: targetQuestions,
+        previewFilledCount: questionCount
+    };
+}
+
 function renderGameBuilderStep(dynamicPage) {
     const selectedOption = GAME_OPTIONS.find(g => g.type === createQuizState.gameType) || GAME_OPTIONS[0];
 
@@ -1104,10 +1146,14 @@ function renderGameBuilderStep(dynamicPage) {
 
             <!-- How Game Works Banner in Builder -->
             <div class="cartoon-panel how-it-works-panel" style="background: var(--color-cream); padding: var(--t-space-2);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span data-icon="${selectedOption.icon}"></span>
-                    <strong style="font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">${escapeHTML(selectedOption.name)}:</strong>
-                    <span style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a;">${escapeHTML(selectedOption.howItWorks)}</span>
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                    <span data-icon="${selectedOption.icon}" style="margin-top: 2px;"></span>
+                    <div>
+                        <strong style="font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">${createQuizState.gameType === 'TILE_PUZZLE' ? 'How Tile Puzzle works:' : escapeHTML(selectedOption.name) + ':'}</strong>
+                        <span style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a; margin-left: 4px;">
+                            ${createQuizState.gameType === 'TILE_PUZZLE' ? 'Students see a grid of tiles. Each tile contains one question. Selecting a tile reveals its question. Students answer each question to clear the tile and complete the puzzle.' : escapeHTML(selectedOption.howItWorks)}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -1154,6 +1200,15 @@ function renderGameBuilderStep(dynamicPage) {
                             </div>
                         </div>
                     </div>
+
+                    ${createQuizState.gameType === 'TILE_PUZZLE' ? `
+                    <div class="cartoon-panel create-quiz-card" id="tile-grid-preview-card" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
+                        <h3 style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin: 0;">Tile Grid Preview</h3>
+                        <div id="tile-grid-preview-container" class="tile-grid-preview-container">
+                            <!-- Dynamic Tile Grid Preview Content -->
+                        </div>
+                    </div>
+                    ` : ''}
 
                     <div class="cartoon-panel create-quiz-card" id="quiz-settings-card" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
                         <h3 style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin: 0;">Quiz Settings</h3>
@@ -1223,8 +1278,44 @@ function renderGameBuilderStep(dynamicPage) {
         </div>
     `;
 
+    // Render Tile Grid Preview dynamically
+    const renderTileGridPreview = () => {
+        if (createQuizState.gameType !== 'TILE_PUZZLE') return;
+        const container = document.getElementById('tile-grid-preview-container');
+        if (!container) return;
+
+        const count = createQuizState.questions.length;
+        const info = getTilePuzzleGridInfo(count);
+
+        let gridHtml = '';
+        if (info.previewSlotsTotal > 0) {
+            let cellsHtml = '';
+            for (let i = 0; i < info.previewSlotsTotal; i++) {
+                const isFilled = i < info.previewFilledCount;
+                cellsHtml += `
+                    <div class="tile-preview-cell ${isFilled ? 'is-filled' : 'is-missing'}">
+                        ${isFilled ? `Tile ${i + 1}` : '+'}
+                    </div>
+                `;
+            }
+            gridHtml = `
+                <div class="tile-grid-preview-board" style="grid-template-columns: repeat(${info.gridDimension || 2}, 1fr);">
+                    ${cellsHtml}
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="tile-grid-preview-status ${info.isValid ? 'is-valid' : 'is-invalid'}">
+                ${escapeHTML(info.statusText)}
+            </div>
+            ${gridHtml}
+        `;
+    };
+
     // Render Questions List dynamically
     const renderQuestionsList = () => {
+        renderTileGridPreview();
         const questionsListContainer = document.getElementById('questions-list-container');
         if (!questionsListContainer) return;
 
@@ -1473,6 +1564,13 @@ function renderGameBuilderStep(dynamicPage) {
         if (!createQuizState.grade) {
             errors.push("Class / Grade is required.");
             if (gradeEl) gradeEl.classList.add('input-invalid');
+        }
+
+        if (createQuizState.gameType === 'TILE_PUZZLE') {
+            const gridInfo = getTilePuzzleGridInfo(createQuizState.questions.length);
+            if (!gridInfo.isValid) {
+                errors.push(gridInfo.statusText);
+            }
         }
 
         return errors;

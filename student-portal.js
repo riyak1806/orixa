@@ -124,16 +124,69 @@ function resetPuzzleTiles() {
     renderMockTiles(currentQuestQuestions);
 }
 
+function filterQuizzes() {
+    const searchInput = document.getElementById('student-quiz-search');
+    const noResults = document.getElementById('no-quizzes-found');
+    const questCards = document.querySelectorAll('.student-quest-grid .quest-card');
+
+    if (!searchInput) return;
+
+    const query = searchInput.value.trim().toLowerCase();
+    let visibleCount = 0;
+
+    questCards.forEach(card => {
+        const title = (card.getAttribute('data-title') || card.querySelector('.quiz-mgmt-card-title')?.textContent || '').toLowerCase();
+        const subject = (card.getAttribute('data-subject') || card.querySelector('.quiz-mgmt-card-subject')?.textContent || '').toLowerCase();
+        const topic = (card.getAttribute('data-topic') || '').toLowerCase();
+
+        const matches = query === '' || title.includes(query) || subject.includes(query) || topic.includes(query);
+
+        if (matches) {
+            card.style.display = '';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    if (noResults) {
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    }
+}
+
+function openStudentProfileModal() {
+    const modal = document.getElementById('student-profile-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeStudentProfileModal() {
+    const modal = document.getElementById('student-profile-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
 // Close on outside clicks or escape key
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
         closeQuestModal();
+        closeStudentProfileModal();
     }
 });
 
 document.addEventListener('click', event => {
-    const modal = document.getElementById('quest-modal');
-    if (event.target === modal) {
+    const questModal = document.getElementById('quest-modal');
+    const profileModal = document.getElementById('student-profile-modal');
+    if (event.target === questModal) {
         closeQuestModal();
+    }
+    if (event.target === profileModal) {
+        closeStudentProfileModal();
     }
 });

@@ -84,16 +84,19 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
         }
 
-        .play-quest-btn:hover {
-            background-color: #a5d6a7;
+        .play-quest-btn:hover,
+        .play-quest-btn:focus-visible {
+            filter: brightness(1.1);
             transform: translateY(-2px);
             box-shadow: var(--shadow-chunky-small);
+            outline: none;
         }
 
         .play-quest-btn:active {
+            filter: brightness(0.95);
             transform: translateY(1px);
             box-shadow: var(--shadow-chunky-pressed);
         }
@@ -172,12 +175,19 @@
                 </div>
             </div>
 
-            <div></div>
+            <div class="dashboard-search">
+                <span class="search-icon">
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+                    </svg>
+                </span>
+                <input type="text" id="student-quiz-search" placeholder="Search quizzes..." aria-label="Search quizzes" oninput="filterQuizzes()">
+            </div>
 
             <div class="topbar-actions">
-                <button class="profile-chip" type="button" aria-label="Student profile">
-                    <span class="profile-avatar" style="background-color: var(--color-green);">ST</span>
-                    <span class="profile-name">Star Student</span>
+                <button class="profile-chip" type="button" aria-label="Student profile" onclick="openStudentProfileModal()">
+                    <span class="profile-avatar" style="background-color: var(--color-green);">AS</span>
+                    <span class="profile-name">Aarav Sharma</span>
                 </button>
                 <a href="index.html" class="icon-button" style="background-color: var(--color-red);" title="Log Out">
                     <!-- Log Out Icon -->
@@ -209,7 +219,7 @@
                         <span class="stat-label">QUIZZES PLAYED</span>
                         <div class="stat-icon">
                             <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/>
                             </svg>
                         </div>
                     </div>
@@ -223,7 +233,7 @@
                         <span class="stat-label">TOTAL SCORE (XP)</span>
                         <div class="stat-icon">
                             <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                                <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 17.9V19H7v2h10v-2h-4v-1.1a5.01 5.01 0 003.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="currentColor"/>
                             </svg>
                         </div>
                     </div>
@@ -237,7 +247,7 @@
                         <span class="stat-label">STARS EARNED</span>
                         <div class="stat-icon">
                             <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-                                <path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17h-2v6H5v2h6v6h2v-6h6v-2h-6V5z" fill="currentColor"/>
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
                             </svg>
                         </div>
                     </div>
@@ -251,7 +261,7 @@
                         <span class="stat-label">ACCURACY RATE</span>
                         <div class="stat-icon">
                             <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.25z" fill="currentColor"/>
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/>
                             </svg>
                         </div>
                     </div>
@@ -271,7 +281,7 @@
 
                 <div class="student-quest-grid">
                     <!-- Quest 1 -->
-                    <div class="quest-card cartoon-panel">
+                    <div class="quest-card cartoon-panel" data-title="Ancient Egypt Quest" data-subject="History" data-topic="Ancient Egypt Pharaohs Pyramids History">
                         <div class="quiz-mgmt-card-header">
                             <div>
                                 <h4 class="quiz-mgmt-card-title">Ancient Egypt Quest</h4>
@@ -298,7 +308,7 @@
                     </div>
 
                     <!-- Quest 2 -->
-                    <div class="quest-card cartoon-panel">
+                    <div class="quest-card cartoon-panel" data-title="Math Galaxy Challenge" data-subject="Math" data-topic="Math Galaxy Challenge Algebra Numbers Geometry">
                         <div class="quiz-mgmt-card-header">
                             <div>
                                 <h4 class="quiz-mgmt-card-title">Math Galaxy Challenge</h4>
@@ -325,7 +335,7 @@
                     </div>
 
                     <!-- Quest 3 -->
-                    <div class="quest-card cartoon-panel">
+                    <div class="quest-card cartoon-panel" data-title="Space Explorer Mission" data-subject="Science" data-topic="Space Explorer Mission Physics Astronomy Planets Stars">
                         <div class="quiz-mgmt-card-header">
                             <div>
                                 <h4 class="quiz-mgmt-card-title">Space Explorer Mission</h4>
@@ -350,9 +360,64 @@
                             <span>LAUNCH QUEST</span>
                         </button>
                     </div>
+
+                    <!-- No Results State -->
+                    <div id="no-quizzes-found" class="quiz-mgmt-no-results hidden" style="grid-column: 1 / -1;">
+                        <p class="quiz-mgmt-no-results-title">No quizzes found</p>
+                        <p class="quiz-mgmt-no-results-desc">Try searching with a different title, subject, or topic.</p>
+                    </div>
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Student Profile Information Modal Overlay -->
+    <div id="student-profile-modal" class="orixa-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header">
+                <h3 class="orixa-modal-title" id="modal-profile-title">Student Profile</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeStudentProfileModal()" aria-label="Close modal">
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor" />
+                    </svg>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 2px dashed rgba(26,26,36,0.15);">
+                    <div class="profile-avatar" style="width: 54px; height: 54px; font-size: 1.2rem; background-color: var(--color-green);">AS</div>
+                    <div>
+                        <h4 style="margin: 0; font-family: var(--font-header); font-size: 1.3rem; color: var(--border-dark);">Aarav Sharma</h4>
+                        <p style="margin: 2px 0 0 0; font-family: var(--font-header); font-size: 0.85rem; color: var(--color-purple-dark);">STU-2026-001</p>
+                    </div>
+                </div>
+
+                <div class="quiz-mgmt-card-body" style="gap: 10px; margin-top: 4px;">
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Student ID</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">STU-2026-001</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Name</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">Aarav Sharma</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Class</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">B.Tech — Computer Engineering</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Department</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">Computer Engineering</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Academic Year</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">2026–27</span>
+                    </div>
+                </div>
+            </div>
+            <div class="orixa-modal-footer">
+                <button type="button" class="quiz-mgmt-action-btn quiz-btn-delete" style="max-width: 120px; height: 42px;" onclick="closeStudentProfileModal()">CLOSE</button>
+            </div>
+        </div>
     </div>
 
     <!-- Interactive Puzzle Reveal Modal Overlay -->

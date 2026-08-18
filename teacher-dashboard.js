@@ -1111,6 +1111,22 @@ function renderGameBuilderStep(dynamicPage) {
                 </div>
             </div>
 
+            ${createQuizState.gameType === 'TILE_PUZZLE' ? `
+            <!-- Live Tile Grid Preview Panel for Teacher -->
+            <div class="cartoon-panel tile-grid-preview-panel" style="padding: var(--t-space-2); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-1);">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span data-icon="tilePuzzle"></span>
+                        <h4 style="font-family: var(--font-header); font-size: 1.15rem; color: var(--border-dark); margin: 0;">Tile Grid Preview (<span id="preview-tile-count">${createQuizState.questions.length}</span> Tiles)</h4>
+                    </div>
+                    <span style="font-size: 0.85rem; font-family: var(--font-header); color: #546e7a;">1 Question = 1 Tile</span>
+                </div>
+                <div id="tile-grid-preview-container" style="display: grid; gap: 8px; margin-top: 6px; padding: 12px; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px;">
+                    <!-- Dynamically rendered tile grid preview -->
+                </div>
+            </div>
+            ` : ''}
+
             <div class="create-quiz-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--t-space-2);">
                 <!-- Left column for Quiz Basic Info & Settings -->
                 <div class="create-quiz-col-left" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
@@ -1213,6 +1229,11 @@ function renderGameBuilderStep(dynamicPage) {
 
             <!-- Bottom Actions -->
             <div class="create-quiz-bottom-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: var(--t-space-2); margin-top: var(--t-space-2);">
+                ${createQuizState.gameType === 'TILE_PUZZLE' ? `
+                <button type="button" class="cartoon-action-btn" id="create-quiz-preview-btn" style="padding: 12px 24px; font-size: 1rem; border-color: var(--border-dark); background: var(--color-blue); color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed);">
+                    Preview Game
+                </button>
+                ` : ''}
                 <button type="button" class="cartoon-action-btn" id="create-quiz-save-draft-btn" style="padding: 12px 24px; font-size: 1rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
                     Save as Draft
                 </button>
@@ -1368,8 +1389,43 @@ function renderGameBuilderStep(dynamicPage) {
         });
     };
 
-    // Initial render of questions
+    // Live Tile Grid Preview helper
+    const renderTileGridPreview = () => {
+        const previewContainer = document.getElementById('tile-grid-preview-container');
+        const countSpan = document.getElementById('preview-tile-count');
+        if (!previewContainer) return;
+
+        const count = createQuizState.questions.length;
+        if (countSpan) countSpan.textContent = count;
+
+        if (count === 0) {
+            previewContainer.style.gridTemplateColumns = '1fr';
+            previewContainer.innerHTML = `
+                <div style="text-align: center; font-family: var(--font-header); font-size: 0.95rem; color: #78909c; padding: 12px 0;">
+                    No tiles generated yet. Add questions below to build your puzzle grid!
+                </div>
+            `;
+            return;
+        }
+
+        let cols = 3;
+        if (count > 9) cols = 4;
+        else if (count <= 4) cols = 2;
+        previewContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+        previewContainer.innerHTML = createQuizState.questions.map((q, idx) => `
+            <div style="background: var(--surface-white); border: 2px solid var(--border-dark); border-radius: 8px; padding: 12px var(--t-space-1); text-align: center; box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header);">
+                <div style="font-size: 1.1rem; color: var(--border-dark);">Tile ${idx + 1}</div>
+                <div style="font-size: 0.75rem; color: #546e7a; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-top: 2px;">
+                    ${q.text.trim() ? escapeHTML(q.text.trim()) : `(Question ${idx + 1})`}
+                </div>
+            </div>
+        `).join('');
+    };
+
+    // Initial render of questions and grid preview
     renderQuestionsList();
+    renderTileGridPreview();
     renderIcons(document.getElementById('questions-card'));
 
     // Attach listeners
@@ -1401,6 +1457,7 @@ function renderGameBuilderStep(dynamicPage) {
                 marks: 5
             });
             renderQuestionsList();
+            renderTileGridPreview();
         });
     }
 
@@ -1448,9 +1505,13 @@ function renderGameBuilderStep(dynamicPage) {
                 if (idx !== -1) {
                     createQuizState.questions.splice(idx, 1);
                     renderQuestionsList();
+                    renderTileGridPreview();
                 }
             }
         });
+
+        // Also update grid preview on live input sync
+        container.addEventListener('input', renderTileGridPreview);
     }
 
     // Validation Routines
@@ -1551,6 +1612,112 @@ function renderGameBuilderStep(dynamicPage) {
             </div>
         `);
     };
+
+    // Teacher Preview Event
+    const previewBtn = document.getElementById('create-quiz-preview-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', () => {
+            syncQuestionsState();
+            const errors = validatePublish();
+            if (errors.length > 0) {
+                showValidationErrorModal(errors);
+                return;
+            }
+
+            // Open Teacher Game Preview Modal
+            const count = createQuizState.questions.length;
+            let cols = 3;
+            if (count > 9) cols = 4;
+            else if (count <= 4) cols = 2;
+
+            const gridTilesHtml = createQuizState.questions.map((q, idx) => `
+                <button type="button" class="teacher-preview-tile" data-q-index="${idx}" style="background: var(--color-cream); border: 2px solid var(--border-dark); border-radius: 12px; height: 75px; font-family: var(--font-header); font-size: 1.2rem; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); transition: transform 0.15s ease;">
+                    ?
+                </button>
+            `).join('');
+
+            openOrixaModal(`
+                <div class="orixa-modal-card" style="width: min(100%, 650px);">
+                    <header class="orixa-modal-header" style="background: var(--color-blue);">
+                        <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">Teacher Game Preview: ${escapeHTML(createQuizState.title || "Untitled Quiz")}</h3>
+                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                            <span data-icon="x"></span>
+                        </button>
+                    </header>
+                    <div class="orixa-modal-body" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+                        <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 12px; text-align: center; font-size: 0.95rem; font-family: var(--font-body);">
+                            <strong>Preview Mode:</strong> Click any tile below to preview how the question and answer options will appear to students.
+                        </div>
+
+                        <!-- Tile Grid -->
+                        <div id="teacher-preview-grid" style="display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 10px;">
+                            ${gridTilesHtml}
+                        </div>
+
+                        <!-- Question View Area in Preview -->
+                        <div id="teacher-preview-question-area" class="hidden" style="background: var(--surface-white); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
+                            <!-- Dynamic preview question content -->
+                        </div>
+                    </div>
+                    <footer class="orixa-modal-footer">
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                            Close Preview
+                        </button>
+                    </footer>
+                </div>
+            `);
+
+            // Attach preview tile click handlers
+            const previewOverlay = document.getElementById('orixa-modal-overlay');
+            if (previewOverlay) {
+                previewOverlay.querySelectorAll('.teacher-preview-tile').forEach(tileBtn => {
+                    tileBtn.addEventListener('click', () => {
+                        const qIndex = parseInt(tileBtn.dataset.qIndex, 10);
+                        const q = createQuizState.questions[qIndex];
+                        const qArea = document.getElementById('teacher-preview-question-area');
+                        if (!q || !qArea) return;
+
+                        let optionsHtml = '';
+                        if (q.type === 'Multiple Choice') {
+                            optionsHtml = q.options.map((opt, oIdx) => {
+                                const letter = String.fromCharCode(65 + oIdx);
+                                const isCorrect = q.correctAnswer === oIdx;
+                                return `
+                                    <div style="background: ${isCorrect ? '#e8f5e9' : 'var(--color-cream)'}; border: 2px solid ${isCorrect ? 'var(--color-green-dark)' : 'var(--border-dark)'}; border-radius: 10px; padding: 10px 14px; font-family: var(--font-body); font-weight: 700; color: var(--border-dark); display: flex; justify-content: space-between; align-items: center;">
+                                        <span><strong>${letter}.</strong> ${escapeHTML(opt)}</span>
+                                        ${isCorrect ? '<span style="color: var(--color-green-dark); font-family: var(--font-header); font-size: 0.85rem;">(Correct Answer)</span>' : ''}
+                                    </div>
+                                `;
+                            }).join('');
+                        } else {
+                            optionsHtml = ['True', 'False'].map(opt => {
+                                const isCorrect = q.correctAnswer === opt;
+                                return `
+                                    <div style="background: ${isCorrect ? '#e8f5e9' : 'var(--color-cream)'}; border: 2px solid ${isCorrect ? 'var(--color-green-dark)' : 'var(--border-dark)'}; border-radius: 10px; padding: 10px 14px; font-family: var(--font-body); font-weight: 700; color: var(--border-dark); display: flex; justify-content: space-between; align-items: center;">
+                                        <span>${opt}</span>
+                                        ${isCorrect ? '<span style="color: var(--color-green-dark); font-family: var(--font-header); font-size: 0.85rem;">(Correct Answer)</span>' : ''}
+                                    </div>
+                                `;
+                            }).join('');
+                        }
+
+                        qArea.classList.remove('hidden');
+                        qArea.innerHTML = `
+                            <div style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: 8px;">
+                                Question ${qIndex + 1} Preview:
+                            </div>
+                            <div style="font-family: var(--font-body); font-size: 1.05rem; font-weight: 700; color: var(--border-dark); margin-bottom: 12px; line-height: 1.4;">
+                                ${escapeHTML(q.text)}
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                ${optionsHtml}
+                            </div>
+                        `;
+                    });
+                });
+            }
+        });
+    }
 
     // Save as Draft Event
     const saveDraftBtn = document.getElementById('create-quiz-save-draft-btn');

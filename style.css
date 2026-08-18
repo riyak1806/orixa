@@ -213,6 +213,351 @@ body {
 }
 
 /* ==========================================================================
+   STUDENT TILE PUZZLE GAME INTERFACE STYLES
+   ========================================================================== */
+
+.tile-game-modal-card {
+    width: min(100%, 680px);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-type-badge {
+    background: var(--color-purple);
+    color: var(--border-dark);
+    font-family: var(--font-header);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border: 2px solid var(--border-dark);
+    border-radius: 9999px;
+    letter-spacing: 0.5px;
+}
+
+.tile-modal-body {
+    padding: var(--t-space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--t-space-2);
+    overflow-y: auto;
+    max-height: calc(92vh - 70px);
+}
+
+/* --- Game Intro Screen --- */
+.tile-intro-screen {
+    padding: var(--t-space-4) var(--t-space-2);
+    text-align: center;
+    background: var(--color-cream);
+    border: var(--border-comic-thin);
+    border-radius: 20px;
+    box-shadow: var(--shadow-chunky-pressed);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.tile-intro-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--t-space-2);
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.intro-quiz-title-wrapper {
+    overflow: hidden;
+}
+
+.intro-quiz-title {
+    font-family: var(--font-header);
+    font-size: 2.2rem;
+    color: var(--border-dark);
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 2px 2px 0 var(--color-yellow);
+}
+
+@keyframes title-entrance {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.tile-title-entrance {
+    animation: title-entrance 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.intro-game-tag {
+    font-family: var(--font-header);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    background: var(--color-yellow);
+    border: 2px solid var(--border-dark);
+    border-radius: 9999px;
+    padding: 4px 18px;
+    box-shadow: var(--shadow-chunky-pressed);
+    letter-spacing: 1px;
+}
+
+.intro-instructions {
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+    color: #546e7a;
+    line-height: 1.5;
+    font-weight: 600;
+    font-style: italic;
+    margin: 4px 0 12px 0;
+}
+
+.start-game-btn {
+    padding: 14px 40px;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    border-radius: 18px;
+}
+
+/* --- Tile Gameplay Screen --- */
+.tile-gameplay-screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--t-space-2);
+}
+
+.tile-gameplay-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--surface-white);
+    border: var(--border-comic-thin);
+    border-radius: 14px;
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.gameplay-quiz-title {
+    font-family: var(--font-header);
+    font-size: 1.2rem;
+    color: var(--border-dark);
+}
+
+.gameplay-progress-pill {
+    font-family: var(--font-header);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    background: var(--color-green);
+    border: 2px solid var(--border-dark);
+    border-radius: 9999px;
+    padding: 4px 14px;
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+/* Question Panel (ABOVE TILE GRID) */
+.tile-question-panel {
+    background: var(--color-cream);
+    border: var(--border-comic-thin);
+    border-radius: 18px;
+    padding: var(--t-space-2);
+    box-shadow: var(--shadow-chunky-pressed);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.question-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px dashed rgba(26, 26, 36, 0.15);
+    padding-bottom: 6px;
+}
+
+.question-badge {
+    font-family: var(--font-header);
+    font-size: 0.95rem;
+    color: var(--border-dark);
+    background: var(--color-blue);
+    border: 2px solid var(--border-dark);
+    border-radius: 8px;
+    padding: 2px 10px;
+}
+
+.question-status-tag {
+    font-family: var(--font-header);
+    font-size: 0.85rem;
+    color: #546e7a;
+}
+
+.question-text-display {
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    color: var(--border-dark);
+    line-height: 1.4;
+    margin: 4px 0;
+}
+
+.answer-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.student-answer-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface-white);
+    border: var(--border-comic-thin);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    cursor: pointer;
+    box-shadow: var(--shadow-chunky-pressed);
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    text-align: left;
+}
+
+.student-answer-option-btn:hover {
+    background: var(--color-yellow);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-chunky-small);
+}
+
+.student-answer-option-btn:active {
+    transform: translateY(1px);
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.option-letter {
+    font-family: var(--font-header);
+    font-size: 0.9rem;
+    background: var(--color-blue);
+    color: var(--border-dark);
+    border: 2px solid var(--border-dark);
+    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tile-cleared-notice {
+    grid-column: 1 / -1;
+    background: #e8f5e9;
+    border: 2px solid var(--color-green-dark);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: var(--font-header);
+    font-size: 0.95rem;
+    color: var(--color-green-dark);
+    text-align: center;
+}
+
+/* --- Tile Board Grid --- */
+.tile-board-wrapper {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+}
+
+.tile-board-grid {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--surface-white);
+    border: var(--border-comic);
+    border-radius: 20px;
+    padding: 12px;
+    box-shadow: var(--shadow-chunky);
+}
+
+/* 3D ORIXA Tile Design */
+.orixa-game-tile {
+    position: relative;
+    border: var(--border-comic-thin);
+    border-radius: 14px;
+    cursor: pointer;
+    user-select: none;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-header);
+    font-size: 1.4rem;
+    font-weight: 700;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, background-color 0.2s ease, opacity 0.3s ease;
+}
+
+.tile-inner-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* Tile States */
+.orixa-game-tile.is-unopened {
+    background: var(--color-yellow);
+    color: var(--border-dark);
+    box-shadow: 0 5px 0 var(--border-dark);
+}
+
+.orixa-game-tile.is-unopened:hover {
+    background: #ffeb3b;
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 0 var(--border-dark);
+}
+
+.orixa-game-tile.is-selected {
+    background: var(--color-blue);
+    color: var(--border-dark);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--border-dark);
+    outline: 3px solid var(--color-blue-dark);
+}
+
+.orixa-game-tile:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 var(--border-dark);
+}
+
+.orixa-game-tile.is-completed {
+    background: #c8e6c9;
+    color: var(--color-green-dark);
+    border-color: var(--color-green-dark);
+    box-shadow: 0 2px 0 var(--color-green-dark);
+    opacity: 0.65;
+    transform: scale(0.96);
+    pointer-events: none;
+}
+
+.tile-check-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.tile-number-label {
+    font-size: 1rem;
+}
+
+/* ==========================================================================
    MEDIA QUERIES (MOBILE & RESPONSIVE)
    ========================================================================== */
 
@@ -228,5 +573,23 @@ body {
     .cartoon-action-btn {
         padding: 14px 28px;
         font-size: 1.15rem;
+    }
+
+    .intro-quiz-title {
+        font-size: 1.6rem;
+    }
+
+    .answer-options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tile-board-grid {
+        gap: 6px;
+        padding: 8px;
+    }
+
+    .orixa-game-tile {
+        font-size: 1.1rem;
+        border-radius: 10px;
     }
 }

@@ -292,14 +292,14 @@
                         <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
                             <div class="quiz-mgmt-card-info-row">
                                 <span>Questions</span>
-                                <span style="font-family: var(--font-header);">10 Questions</span>
+                                <span style="font-family: var(--font-header);">9 Questions</span>
                             </div>
                             <div class="quiz-mgmt-card-info-row">
                                 <span>Difficulty</span>
                                 <span style="color: var(--color-green-dark); font-family: var(--font-header);">Easy</span>
                             </div>
                         </div>
-                        <button type="button" class="play-quest-btn" onclick="openQuestGame('Ancient Egypt Quest', 10, 'history')">
+                        <button type="button" class="play-quest-btn" onclick="openQuestGame('Ancient Egypt Quest', 9, 'history')">
                             <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                 <path d="M8 5v14l11-7z" fill="currentColor" />
                             </svg>
@@ -319,14 +319,14 @@
                         <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
                             <div class="quiz-mgmt-card-info-row">
                                 <span>Questions</span>
-                                <span style="font-family: var(--font-header);">8 Questions</span>
+                                <span style="font-family: var(--font-header);">4 Questions</span>
                             </div>
                             <div class="quiz-mgmt-card-info-row">
                                 <span>Difficulty</span>
                                 <span style="color: var(--color-orange-dark); font-family: var(--font-header);">Medium</span>
                             </div>
                         </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-yellow);" onclick="openQuestGame('Math Galaxy Challenge', 8, 'math')">
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-yellow);" onclick="openQuestGame('Math Galaxy Challenge', 4, 'math')">
                             <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                 <path d="M8 5v14l11-7z" fill="currentColor" />
                             </svg>
@@ -346,14 +346,14 @@
                         <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
                             <div class="quiz-mgmt-card-info-row">
                                 <span>Questions</span>
-                                <span style="font-family: var(--font-header);">12 Questions</span>
+                                <span style="font-family: var(--font-header);">16 Questions</span>
                             </div>
                             <div class="quiz-mgmt-card-info-row">
                                 <span>Difficulty</span>
                                 <span style="color: var(--color-red-dark); font-family: var(--font-header);">Hard</span>
                             </div>
                         </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-blue); color: white;" onclick="openQuestGame('Space Explorer Mission', 12, 'science')">
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-blue); color: white;" onclick="openQuestGame('Space Explorer Mission', 16, 'science')">
                             <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                 <path d="M8 5v14l11-7z" fill="currentColor" />
                             </svg>
@@ -420,48 +420,73 @@
         </div>
     </div>
 
-    <!-- Interactive Puzzle Reveal Modal Overlay -->
+    <!-- Tile Puzzle Game Modal Overlay -->
     <div id="quest-modal" class="orixa-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-quest-title">
-        <div class="orixa-modal-card">
+        <div class="orixa-modal-card tile-game-modal-card">
+            <!-- Header -->
             <header class="orixa-modal-header">
-                <h3 class="orixa-modal-title" id="modal-quest-title">Ancient Egypt Quest</h3>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="game-type-badge">TILE PUZZLE</span>
+                    <h3 class="orixa-modal-title" id="modal-quest-title">Ancient Egypt Quest</h3>
+                </div>
                 <button type="button" class="sidebar-toggle-btn" onclick="closeQuestModal()" aria-label="Close modal">
                     <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor" />
                     </svg>
                 </button>
             </header>
-            <div class="orixa-modal-body">
-                <p id="modal-quest-intro" style="margin: 0; font-family: var(--font-body);">Reveal the hidden puzzle by answering questions correctly!</p>
 
-                <!-- Simulated Puzzle Game Tile Grid -->
-                <div class="puzzle-grid-preview" id="puzzle-grid">
-                    <!-- Background placeholder matching cartoon-like aesthetic -->
-                    <div style="position: absolute; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-family: var(--font-header); font-size: 2rem; color: white; text-shadow: 2px 2px var(--border-dark); z-index: 1;">
-                        ⭐ SOLVED! ⭐
+            <!-- Modal Body Container -->
+            <div class="orixa-modal-body tile-modal-body">
+                <!-- 1. GAME INTRODUCTION SCREEN -->
+                <div id="tile-intro-screen" class="tile-intro-screen">
+                    <div class="tile-intro-content">
+                        <div class="intro-quiz-title-wrapper">
+                            <h2 id="intro-quiz-name" class="intro-quiz-title tile-title-entrance">Ancient Egypt Quest</h2>
+                        </div>
+                        <div class="intro-game-tag">TILE PUZZLE</div>
+                        <p class="intro-instructions">
+                            "Reveal every tile and answer each question correctly to complete the puzzle."
+                        </p>
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn start-game-btn" onclick="startTilePuzzleGame()">
+                            [ START GAME ]
+                        </button>
                     </div>
-                    <!-- 12 tiles simulating gameplay reveal -->
-                    <div class="puzzle-tile-mock" id="tile-1" onclick="revealTile('tile-1')">1</div>
-                    <div class="puzzle-tile-mock" id="tile-2" onclick="revealTile('tile-2')">2</div>
-                    <div class="puzzle-tile-mock" id="tile-3" onclick="revealTile('tile-3')">3</div>
-                    <div class="puzzle-tile-mock" id="tile-4" onclick="revealTile('tile-4')">4</div>
-                    <div class="puzzle-tile-mock" id="tile-5" onclick="revealTile('tile-5')">5</div>
-                    <div class="puzzle-tile-mock" id="tile-6" onclick="revealTile('tile-6')">6</div>
-                    <div class="puzzle-tile-mock" id="tile-7" onclick="revealTile('tile-7')">7</div>
-                    <div class="puzzle-tile-mock" id="tile-8" onclick="revealTile('tile-8')">8</div>
-                    <div class="puzzle-tile-mock" id="tile-9" onclick="revealTile('tile-9')">9</div>
-                    <div class="puzzle-tile-mock" id="tile-10" onclick="revealTile('tile-10')">10</div>
-                    <div class="puzzle-tile-mock" id="tile-11" onclick="revealTile('tile-11')">11</div>
-                    <div class="puzzle-tile-mock" id="tile-12" onclick="revealTile('tile-12')">12</div>
                 </div>
 
-                <p style="font-size: 0.85rem; color: #546e7a; font-family: var(--font-body); text-align: center; margin-top: 5px;">
-                    💡 Click on numbered tiles to simulate answering questions and revealing the board!
-                </p>
-            </div>
-            <div class="orixa-modal-footer">
-                <button type="button" class="quiz-mgmt-action-btn quiz-btn-view" style="max-width: 140px; height: 42px;" onclick="resetPuzzleTiles()">RESET BOARD</button>
-                <button type="button" class="quiz-mgmt-action-btn quiz-btn-delete" style="max-width: 120px; height: 42px;" onclick="closeQuestModal()">CLOSE</button>
+                <!-- 2. TILE PUZZLE BOARD SCREEN -->
+                <div id="tile-gameplay-screen" class="tile-gameplay-screen hidden">
+                    <!-- QUIZ TITLE / PROGRESS -->
+                    <div class="tile-gameplay-topbar">
+                        <span id="gameplay-quiz-title" class="gameplay-quiz-title">Ancient Egypt Quest</span>
+                        <div class="gameplay-progress-pill">
+                            <span id="tile-progress-text">0 / 9 Tiles Completed</span>
+                        </div>
+                    </div>
+
+                    <!-- QUESTION PANEL (MUST REMAIN ABOVE TILE GRID) -->
+                    <div id="tile-question-panel" class="tile-question-panel">
+                        <div id="question-panel-content">
+                            <div class="question-panel-header">
+                                <span class="question-badge" id="panel-question-badge">Question 1</span>
+                                <span class="question-status-tag" id="panel-question-status">Select a tile to reveal</span>
+                            </div>
+                            <p class="question-text-display" id="panel-question-text">
+                                Select any unopened tile from the board below to reveal its question.
+                            </p>
+                            <div class="answer-options-grid" id="panel-answer-options">
+                                <!-- Options populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TILE GRID (BELOW QUESTION PANEL) -->
+                    <div class="tile-board-wrapper">
+                        <div id="tile-board-grid" class="tile-board-grid">
+                            <!-- Tiles dynamically generated based on perfect square question count -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -941,6 +941,376 @@ function renderMatchVictoryScreen() {
     `;
 }
 
+/* ==========================================================================
+   GAME 3: FILL IN THE BLANKS ENGINE
+   ========================================================================== */
+
+let fillBlanksGameState = {
+    questName: "",
+    category: "",
+    questions: [], // { statement, blankAnswer, options, correctAnswer }
+    currentIndex: 0,
+    incorrectAttempts: 0,
+    startTime: 0,
+    selectedOption: null
+};
+
+function openFillBlanksGame(questName, category, customQuestions = null) {
+    const defaultQuestions = [
+        {
+            statement: "The capital of France is Paris.",
+            blankAnswer: "Paris",
+            options: ["Paris", "London", "Berlin", "Madrid"],
+            correctAnswer: 0
+        },
+        {
+            statement: "The largest planet is Jupiter.",
+            blankAnswer: "Jupiter",
+            options: ["Earth", "Jupiter", "Saturn", "Mars"],
+            correctAnswer: 1
+        },
+        {
+            statement: "Water freezes at 0 degrees Celsius.",
+            blankAnswer: "0",
+            options: ["100", "50", "0", "-10"],
+            correctAnswer: 2
+        }
+    ];
+
+    const questionsSource = (customQuestions && customQuestions.length > 0) ? customQuestions : defaultQuestions;
+
+    // Map & prepare questions with shuffled options while preserving correct answer logic
+    const preparedQuestions = questionsSource.map(q => {
+        const stmt = q.statement || q.text || "";
+        const blank = q.blankAnswer || "";
+        let rawOpts = (q.options && q.options.length > 0) ? [...q.options] : [];
+        if (rawOpts.length === 0 && blank) {
+            rawOpts = [blank, "Option A", "Option B", "Option C"];
+        }
+
+        const correctText = (q.correctAnswer !== undefined && q.correctAnswer !== null && rawOpts[q.correctAnswer])
+            ? rawOpts[q.correctAnswer]
+            : (blank || rawOpts[0]);
+
+        // Fisher-Yates shuffle options
+        const shuffledOpts = [...rawOpts];
+        for (let i = shuffledOpts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledOpts[i], shuffledOpts[j]] = [shuffledOpts[j], shuffledOpts[i]];
+        }
+
+        return {
+            statement: stmt,
+            blankAnswer: blank,
+            options: shuffledOpts,
+            correctAnswerText: correctText
+        };
+    });
+
+    fillBlanksGameState = {
+        questName: questName,
+        category: category,
+        questions: preparedQuestions,
+        currentIndex: 0,
+        incorrectAttempts: 0,
+        startTime: Date.now(),
+        selectedOption: null
+    };
+
+    const modal = document.getElementById('quest-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+
+    renderFillBlanksEntrance();
+}
+
+function renderFillBlanksEntrance() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="tile-entrance-body">
+            <div class="tile-entrance-badge" style="background-color: var(--color-green); color: var(--border-dark);">
+                FILL IN THE BLANKS QUEST
+            </div>
+            <h2 class="tile-entrance-title">${escapeHTML(fillBlanksGameState.questName)}</h2>
+            <p class="tile-entrance-desc">
+                Drag the correct answer option from the answer box and place it into the blank in each statement to complete all <strong>${fillBlanksGameState.questions.length} questions</strong>!
+            </p>
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startFillBlanksGame()" style="padding: 14px 36px; font-size: 1.15rem;">
+                START GAME
+            </button>
+        </div>
+    `;
+}
+
+function startFillBlanksGame() {
+    renderFillBlanksGameBoard();
+}
+
+let activeFitbDrag = null;
+
+function renderFillBlanksGameBoard() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    const currentQ = fillBlanksGameState.questions[fillBlanksGameState.currentIndex];
+    const totalQ = fillBlanksGameState.questions.length;
+    const currentNum = fillBlanksGameState.currentIndex + 1;
+
+    // Build current statement with drop target
+    const statement = currentQ.statement;
+    const blankWord = currentQ.blankAnswer;
+
+    let sentenceHtml = "";
+    if (blankWord && statement.includes(blankWord)) {
+        const parts = statement.split(blankWord);
+        sentenceHtml = `${escapeHTML(parts[0])}<span class="fitb-drop-target" id="fitb-drop-target" data-blank-target="true">______</span>${escapeHTML(parts.slice(1).join(blankWord))}`;
+    } else {
+        sentenceHtml = `${escapeHTML(statement)} <span class="fitb-drop-target" id="fitb-drop-target" data-blank-target="true">______</span>`;
+    }
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="fitb-game-container">
+            <div class="fitb-progress-bar">
+                <span>QUESTION ${currentNum} OF ${totalQ}</span>
+                <span>✨ PROGRESS: ${Math.round(((currentNum - 1) / totalQ) * 100)}%</span>
+            </div>
+
+            <div class="fitb-sentence-box">
+                ${sentenceHtml}
+            </div>
+
+            <div class="fitb-options-box" id="fitb-options-box">
+                ${currentQ.options.map((optText, idx) => `
+                    <div class="fitb-option-card" data-option-text="${escapeHTML(optText)}" data-option-idx="${idx}" draggable="false">
+                        ${escapeHTML(optText)}
+                    </div>
+                `).join('')}
+            </div>
+
+            <div style="font-family: var(--font-header); font-size: 0.95rem; color: #546e7a; text-align: center; margin-top: 4px;">
+                💡 Drag an option into the blank, or tap an option and tap the blank!
+            </div>
+        </div>
+    `;
+
+    setupFitbInteractions();
+}
+
+function setupFitbInteractions() {
+    const container = document.querySelector('.fitb-game-container');
+    if (!container) return;
+
+    const target = document.getElementById('fitb-drop-target');
+    const optionCards = container.querySelectorAll('.fitb-option-card');
+
+    optionCards.forEach(card => {
+        const optionText = card.dataset.optionText;
+
+        // Pointer Dragging (Mouse & Touch)
+        card.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            const rect = card.getBoundingClientRect();
+            const offsetX = e.clientX - rect.left;
+            const offsetY = e.clientY - rect.top;
+
+            card.classList.add('is-dragging');
+            if (target) target.classList.add('is-target-active');
+
+            activeFitbDrag = {
+                card: card,
+                optionText: optionText,
+                initialParent: card.parentNode,
+                initialNextSibling: card.nextSibling,
+                offsetX: offsetX,
+                offsetY: offsetY
+            };
+
+            card.style.position = 'fixed';
+            card.style.left = `${e.clientX - offsetX}px`;
+            card.style.top = `${e.clientY - offsetY}px`;
+            card.setPointerCapture(e.pointerId);
+        });
+
+        card.addEventListener('pointermove', (e) => {
+            if (!activeFitbDrag || activeFitbDrag.card !== card) return;
+            card.style.left = `${e.clientX - activeFitbDrag.offsetX}px`;
+            card.style.top = `${e.clientY - activeFitbDrag.offsetY}px`;
+        });
+
+        const handlePointerUp = (e) => {
+            if (!activeFitbDrag || activeFitbDrag.card !== card) return;
+
+            card.style.display = 'none';
+            const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+            card.style.display = '';
+
+            card.classList.remove('is-dragging');
+            if (target) target.classList.remove('is-target-active');
+
+            card.style.position = '';
+            card.style.left = '';
+            card.style.top = '';
+
+            const droppedOnTarget = elemBelow ? elemBelow.closest('#fitb-drop-target') : null;
+
+            activeFitbDrag = null;
+
+            if (droppedOnTarget) {
+                attemptFitbAnswer(optionText, card);
+            } else {
+                // Return option to box
+                const optionsBox = document.getElementById('fitb-options-box');
+                if (optionsBox && card.parentNode !== optionsBox) {
+                    optionsBox.appendChild(card);
+                }
+            }
+        };
+
+        card.addEventListener('pointerup', handlePointerUp);
+        card.addEventListener('pointercancel', handlePointerUp);
+
+        // Tap Selection Fallback
+        card.addEventListener('click', () => {
+            optionCards.forEach(c => c.classList.remove('is-selected'));
+            card.classList.add('is-selected');
+            fillBlanksGameState.selectedOption = { text: optionText, card: card };
+        });
+    });
+
+    if (target) {
+        target.addEventListener('click', () => {
+            if (fillBlanksGameState.selectedOption) {
+                const { text, card } = fillBlanksGameState.selectedOption;
+                attemptFitbAnswer(text, card);
+            }
+        });
+    }
+}
+
+function attemptFitbAnswer(optionText, card) {
+    const currentQ = fillBlanksGameState.questions[fillBlanksGameState.currentIndex];
+    const target = document.getElementById('fitb-drop-target');
+    if (!target) return;
+
+    const isCorrect = (optionText === currentQ.correctAnswerText) ||
+                      (currentQ.blankAnswer && optionText.toLowerCase() === currentQ.blankAnswer.toLowerCase());
+
+    fillBlanksGameState.selectedOption = null;
+
+    if (isCorrect) {
+        // Correct feedback
+        target.textContent = optionText;
+        target.classList.remove('is-incorrect', 'is-target-active');
+        target.classList.add('is-correct');
+
+        if (card) {
+            card.style.visibility = 'hidden';
+        }
+
+        // Transition to next question or victory screen
+        setTimeout(() => {
+            fillBlanksGameState.currentIndex++;
+            if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
+                renderFitbVictoryScreen();
+            } else {
+                renderFillBlanksGameBoard();
+            }
+        }, 700);
+
+    } else {
+        // Incorrect feedback
+        fillBlanksGameState.incorrectAttempts++;
+        target.textContent = optionText;
+        target.classList.remove('is-target-active');
+        target.classList.add('is-incorrect');
+
+        // Reset after shake animation
+        setTimeout(() => {
+            target.textContent = "______";
+            target.classList.remove('is-incorrect');
+            const optionsBox = document.getElementById('fitb-options-box');
+            if (optionsBox && card && card.parentNode !== optionsBox) {
+                optionsBox.appendChild(card);
+            }
+            if (card) {
+                card.classList.remove('is-selected', 'is-dragging');
+            }
+        }, 600);
+    }
+}
+
+function renderFitbVictoryScreen() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    const elapsedSeconds = Math.max(1, Math.round((Date.now() - fillBlanksGameState.startTime) / 1000));
+    const totalQ = fillBlanksGameState.questions.length;
+    const accuracy = Math.round((totalQ / (totalQ + fillBlanksGameState.incorrectAttempts)) * 100);
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="tile-entrance-body" style="gap: 16px;">
+            <div style="font-size: 2.5rem; letter-spacing: 6px; animation: tile-entrance-pop 0.6s ease;" aria-label="3 Stars">
+                ⭐ ⭐ ⭐
+            </div>
+
+            <h2 class="tile-entrance-title" style="color: var(--color-purple-dark);">QUIZ COMPLETE!</h2>
+            <p style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a; margin-top: -8px;">
+                You solved all Fill in the Blanks statements!
+            </p>
+
+            <!-- Results Analytics -->
+            <div style="width: 100%; max-width: 380px; background: #ffffff; border: 3px solid var(--border-dark); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-chunky-pressed);">
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
+                    <span>Total Questions:</span>
+                    <strong>${totalQ} / ${totalQ}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-green-dark);">
+                    <span>Correct Answers:</span>
+                    <strong>${totalQ}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-red-dark);">
+                    <span>Incorrect Attempts:</span>
+                    <strong>${fillBlanksGameState.incorrectAttempts}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-purple-dark);">
+                    <span>Accuracy:</span>
+                    <strong>${accuracy}%</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
+                    <span>Time Taken:</span>
+                    <strong>${elapsedSeconds}s</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
+                    <span>Stars Earned:</span>
+                    <strong>⭐⭐⭐</strong>
+                </div>
+            </div>
+
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeQuestModal()" style="padding: 12px 40px; font-size: 1.15rem; margin-top: 8px;">
+                DONE
+            </button>
+        </div>
+    `;
+}
+
 // Close on outside clicks or escape key
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {

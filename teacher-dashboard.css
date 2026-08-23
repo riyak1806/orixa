@@ -1603,6 +1603,51 @@
     box-shadow: none;
 }
 
+/* Fill in the Blanks Builder Styles */
+.fitb-token {
+    display: inline-block;
+    padding: 3px 8px;
+    margin: 2px;
+    background: #ffffff;
+    border: 2px solid var(--border-dark);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--border-dark);
+    transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.fitb-token:hover {
+    transform: translateY(-2px);
+    background: var(--color-yellow-light, #fff9c4);
+}
+
+.fitb-token.is-selected {
+    background: var(--color-yellow);
+    border-color: var(--border-dark);
+    color: var(--border-dark);
+    font-weight: 800;
+}
+
+.fitb-preview-chip {
+    display: inline-block;
+    padding: 6px 14px;
+    background: #ffffff;
+    border: 2px solid var(--border-dark);
+    border-radius: 12px;
+    font-family: var(--font-header);
+    font-size: 0.9rem;
+    color: var(--border-dark);
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.fitb-preview-chip.is-correct {
+    background: var(--color-yellow);
+    font-weight: 700;
+}
+
 @media (max-width: 900px) {
     .create-quiz-grid {
         grid-template-columns: 1fr;

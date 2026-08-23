@@ -498,6 +498,449 @@ function escapeHTML(str) {
     );
 }
 
+/* ==========================================================================
+   GAME 2: MATCH THE FOLLOWING ENGINE
+   ========================================================================== */
+
+let matchGameState = {
+    questName: "",
+    category: "",
+    pairs: [], // Original pairs { id, text, answer }
+    questions: [], // Left column { id, text }
+    answers: [], // Right column { id, answer } (shuffled)
+    matches: new Map(), // q.id -> a.id
+    selectedQuestionId: null, // For tap selection
+    incorrectAttempts: 0,
+    startTime: 0
+};
+
+let activeMatchDrag = null;
+
+function openMatchGame(questName, category) {
+    const pairs = [
+        { id: 'm1', text: "Capital of France?", answer: "Paris" },
+        { id: 'm2', text: "2 + 2?", answer: "4" },
+        { id: 'm3', text: "Largest planet?", answer: "Jupiter" },
+        { id: 'm4', text: "Red Planet?", answer: "Mars" }
+    ];
+
+    // Left questions order
+    const questions = pairs.map(p => ({ id: p.id, text: p.text }));
+
+    // Right answers shuffled (Fisher-Yates)
+    const answers = pairs.map(p => ({ id: p.id, answer: p.answer }));
+    for (let i = answers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [answers[i], answers[j]] = [answers[j], answers[i]];
+    }
+
+    matchGameState = {
+        questName: questName,
+        category: category,
+        pairs: pairs,
+        questions: questions,
+        answers: answers,
+        matches: new Map(),
+        selectedQuestionId: null,
+        incorrectAttempts: 0,
+        startTime: Date.now()
+    };
+
+    const modal = document.getElementById('quest-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+
+    renderMatchEntrance();
+}
+
+function renderMatchEntrance() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="tile-entrance-screen">
+            <div class="tile-entrance-badge" style="background: var(--color-purple); color: white;">MATCH THE FOLLOWING</div>
+            <h2 class="tile-entrance-title">${escapeHTML(matchGameState.questName)}</h2>
+            <p class="tile-entrance-desc">
+                Connect each question on the left to its correct answer on the right by dragging from the question to the answer card. Match all ${matchGameState.pairs.length} pairs correctly to win!
+            </p>
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem;">
+                🎮 START MATCHING
+            </button>
+        </div>
+    `;
+}
+
+function startMatchGame() {
+    renderMatchGameBoard();
+}
+
+function renderMatchGameBoard() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    const matchedCount = matchGameState.matches.size;
+    const totalPairs = matchGameState.pairs.length;
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="match-game-container" id="match-game-container">
+            <div class="tile-progress-bar-container">
+                <span>🔗 PAIRS MATCHED: ${matchedCount} / ${totalPairs}</span>
+                <span style="color: var(--color-purple-dark);">✨ MATCHING GAME</span>
+            </div>
+
+            <svg class="match-svg-overlay" id="match-svg-overlay"></svg>
+
+            <div class="match-columns-grid">
+                <div class="match-column">
+                    <h4 class="match-column-title">Questions / Prompts</h4>
+                    ${matchGameState.questions.map(q => {
+                        const isMatched = matchGameState.matches.has(q.id);
+                        const isSelected = matchGameState.selectedQuestionId === q.id;
+                        return `
+                            <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
+                                 data-q-id="${q.id}"
+                                 id="q-card-${q.id}">
+                                <span>${escapeHTML(q.text)}</span>
+                                <span class="match-card-dot" id="q-dot-${q.id}"></span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <div class="match-column">
+                    <h4 class="match-column-title">Possible Answers</h4>
+                    ${matchGameState.answers.map(a => {
+                        const isMatched = Array.from(matchGameState.matches.values()).includes(a.id);
+                        return `
+                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''}"
+                                 data-a-id="${a.id}"
+                                 id="a-card-${a.id}">
+                                <span class="match-card-dot" id="a-dot-${a.id}"></span>
+                                <span>${escapeHTML(a.answer)}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <p style="font-family: var(--font-body); font-size: 0.88rem; color: #546e7a; margin: 4px 0 0 0; text-align: center;">
+                💡 Drag from a question to its answer, or tap a question and then tap its matching answer!
+            </p>
+        </div>
+    `;
+
+    setupMatchInteractions();
+    updateMatchConnectionLines();
+}
+
+function setupMatchInteractions() {
+    const container = document.getElementById('match-game-container');
+    if (!container) return;
+
+    // Pointer events on question cards
+    const qCards = container.querySelectorAll('.match-question-card');
+    qCards.forEach(card => {
+        const qId = card.dataset.qId;
+
+        card.addEventListener('pointerdown', (e) => {
+            if (matchGameState.matches.has(qId)) return;
+
+            // Start drag
+            activeMatchDrag = {
+                qId: qId,
+                pointerId: e.pointerId
+            };
+
+            matchGameState.selectedQuestionId = qId;
+            card.classList.add('is-selected');
+
+            if (card.setPointerCapture) {
+                try { card.setPointerCapture(e.pointerId); } catch(err) {}
+            }
+
+            drawDragLine(e.clientX, e.clientY);
+        });
+
+        card.addEventListener('pointermove', (e) => {
+            if (!activeMatchDrag || activeMatchDrag.qId !== qId) return;
+
+            drawDragLine(e.clientX, e.clientY);
+
+            // Highlight answer target under pointer
+            const elem = document.elementFromPoint(e.clientX, e.clientY);
+            const aCard = elem ? elem.closest('.match-answer-card') : null;
+
+            container.querySelectorAll('.match-answer-card').forEach(ac => {
+                if (aCard && ac === aCard && !Array.from(matchGameState.matches.values()).includes(ac.dataset.aId)) {
+                    ac.classList.add('is-hovered');
+                } else {
+                    ac.classList.remove('is-hovered');
+                }
+            });
+        });
+
+        const handlePointerEnd = (e) => {
+            if (!activeMatchDrag || activeMatchDrag.qId !== qId) return;
+
+            const elem = document.elementFromPoint(e.clientX, e.clientY);
+            const aCard = elem ? elem.closest('.match-answer-card') : null;
+
+            if (card.releasePointerCapture) {
+                try { card.releasePointerCapture(e.pointerId); } catch(err) {}
+            }
+
+            activeMatchDrag = null;
+            card.classList.remove('is-selected');
+            container.querySelectorAll('.match-answer-card').forEach(ac => ac.classList.remove('is-hovered'));
+
+            removeTempDragLine();
+
+            if (aCard) {
+                const aId = aCard.dataset.aId;
+                attemptMatch(qId, aId);
+            }
+        };
+
+        card.addEventListener('pointerup', handlePointerEnd);
+        card.addEventListener('pointercancel', handlePointerEnd);
+
+    });
+
+    // Tap selection on answer cards
+    const aCards = container.querySelectorAll('.match-answer-card');
+    aCards.forEach(card => {
+        const aId = card.dataset.aId;
+        card.addEventListener('click', () => {
+            if (Array.from(matchGameState.matches.values()).includes(aId)) return;
+            if (matchGameState.selectedQuestionId) {
+                const qId = matchGameState.selectedQuestionId;
+                attemptMatch(qId, aId);
+            }
+        });
+    });
+
+    // Window resize handler for SVG lines
+    window.addEventListener('resize', updateMatchConnectionLines);
+}
+
+function drawDragLine(pointerX, pointerY) {
+    if (!activeMatchDrag) return;
+    const container = document.getElementById('match-game-container');
+    const svg = document.getElementById('match-svg-overlay');
+    if (!container || !svg) return;
+
+    const qDot = document.getElementById(`q-dot-${activeMatchDrag.qId}`);
+    if (!qDot) return;
+
+    const cRect = container.getBoundingClientRect();
+    const qRect = qDot.getBoundingClientRect();
+
+    const startX = qRect.left + qRect.width / 2 - cRect.left;
+    const startY = qRect.top + qRect.height / 2 - cRect.top;
+
+    const endX = pointerX - cRect.left;
+    const endY = pointerY - cRect.top;
+
+    let tempLine = document.getElementById('temp-drag-line');
+    if (!tempLine) {
+        tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        tempLine.setAttribute('id', 'temp-drag-line');
+        tempLine.setAttribute('class', 'match-connection-line');
+        tempLine.setAttribute('stroke', 'var(--color-yellow)');
+        tempLine.setAttribute('stroke-width', '4');
+        tempLine.setAttribute('stroke-dasharray', '6,6');
+        svg.appendChild(tempLine);
+    }
+
+    tempLine.setAttribute('x1', startX);
+    tempLine.setAttribute('y1', startY);
+    tempLine.setAttribute('x2', endX);
+    tempLine.setAttribute('y2', endY);
+}
+
+function removeTempDragLine() {
+    const tempLine = document.getElementById('temp-drag-line');
+    if (tempLine) tempLine.remove();
+}
+
+function attemptMatch(qId, aId) {
+    if (matchGameState.matches.has(qId)) return;
+    if (Array.from(matchGameState.matches.values()).includes(aId)) return;
+
+    if (qId === aId) {
+        // CORRECT MATCH
+        matchGameState.matches.set(qId, aId);
+        matchGameState.selectedQuestionId = null;
+
+        renderMatchGameBoard();
+
+        // Check if all matched
+        if (matchGameState.matches.size === matchGameState.pairs.length) {
+            setTimeout(renderMatchVictoryScreen, 600);
+        }
+    } else {
+        // INCORRECT MATCH
+        matchGameState.incorrectAttempts++;
+        matchGameState.selectedQuestionId = null;
+
+        // Visual feedback
+        const qCard = document.getElementById(`q-card-${qId}`);
+        const aCard = document.getElementById(`a-card-${aId}`);
+
+        if (qCard) qCard.classList.add('is-wrong');
+        if (aCard) aCard.classList.add('is-wrong');
+
+        // Draw temporary red error line
+        drawErrorLine(qId, aId);
+
+        setTimeout(() => {
+            if (qCard) qCard.classList.remove('is-wrong');
+            if (aCard) aCard.classList.remove('is-wrong');
+            removeErrorLine();
+        }, 600);
+    }
+}
+
+function drawErrorLine(qId, aId) {
+    const container = document.getElementById('match-game-container');
+    const svg = document.getElementById('match-svg-overlay');
+    if (!container || !svg) return;
+
+    const qDot = document.getElementById(`q-dot-${qId}`);
+    const aDot = document.getElementById(`a-dot-${aId}`);
+    if (!qDot || !aDot) return;
+
+    const cRect = container.getBoundingClientRect();
+    const qRect = qDot.getBoundingClientRect();
+    const aRect = aDot.getBoundingClientRect();
+
+    const startX = qRect.left + qRect.width / 2 - cRect.left;
+    const startY = qRect.top + qRect.height / 2 - cRect.top;
+
+    const endX = aRect.left + aRect.width / 2 - cRect.left;
+    const endY = aRect.top + aRect.height / 2 - cRect.top;
+
+    let errLine = document.getElementById('temp-error-line');
+    if (!errLine) {
+        errLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        errLine.setAttribute('id', 'temp-error-line');
+        errLine.setAttribute('class', 'match-connection-line');
+        errLine.setAttribute('stroke', 'var(--color-red)');
+        errLine.setAttribute('stroke-width', '4');
+        svg.appendChild(errLine);
+    }
+
+    errLine.setAttribute('x1', startX);
+    errLine.setAttribute('y1', startY);
+    errLine.setAttribute('x2', endX);
+    errLine.setAttribute('y2', endY);
+}
+
+function removeErrorLine() {
+    const errLine = document.getElementById('temp-error-line');
+    if (errLine) errLine.remove();
+}
+
+function updateMatchConnectionLines() {
+    const container = document.getElementById('match-game-container');
+    const svg = document.getElementById('match-svg-overlay');
+    if (!container || !svg) return;
+
+    // Clear existing permanent lines
+    svg.querySelectorAll('.match-permanent-line').forEach(el => el.remove());
+
+    const cRect = container.getBoundingClientRect();
+
+    matchGameState.matches.forEach((aId, qId) => {
+        const qDot = document.getElementById(`q-dot-${qId}`);
+        const aDot = document.getElementById(`a-dot-${aId}`);
+        if (!qDot || !aDot) return;
+
+        const qRect = qDot.getBoundingClientRect();
+        const aRect = aDot.getBoundingClientRect();
+
+        const startX = qRect.left + qRect.width / 2 - cRect.left;
+        const startY = qRect.top + qRect.height / 2 - cRect.top;
+
+        const endX = aRect.left + aRect.width / 2 - cRect.left;
+        const endY = aRect.top + aRect.height / 2 - cRect.top;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('class', 'match-connection-line match-permanent-line');
+        line.setAttribute('x1', startX);
+        line.setAttribute('y1', startY);
+        line.setAttribute('x2', endX);
+        line.setAttribute('y2', endY);
+        line.setAttribute('stroke', 'var(--color-green)');
+        line.setAttribute('stroke-width', '4');
+
+        svg.appendChild(line);
+    });
+}
+
+function renderMatchVictoryScreen() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    const elapsedSeconds = Math.max(1, Math.round((Date.now() - matchGameState.startTime) / 1000));
+    const totalPairs = matchGameState.pairs.length;
+    const accuracy = Math.round((totalPairs / (totalPairs + matchGameState.incorrectAttempts)) * 100);
+    const score = Math.max(50, 150 - (matchGameState.incorrectAttempts * 15));
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="tile-victory-screen">
+            <div class="victory-stars-row">
+                <span class="victory-star">⭐</span>
+                <span class="victory-star">⭐</span>
+                <span class="victory-star">⭐</span>
+            </div>
+
+            <h2 class="victory-title">AMAZING JOB!</h2>
+            <p class="victory-subtitle">You connected all pairs correctly!</p>
+
+            <div class="victory-stats-card">
+                <div class="victory-stat-item">
+                    <span class="victory-stat-label">SCORE</span>
+                    <span class="victory-stat-value" style="color: var(--color-purple-dark);">${score} XP</span>
+                </div>
+                <div class="victory-stat-item">
+                    <span class="victory-stat-label">ACCURACY</span>
+                    <span class="victory-stat-value" style="color: var(--color-green-dark);">${accuracy}%</span>
+                </div>
+                <div class="victory-stat-item">
+                    <span class="victory-stat-label">MATCHES</span>
+                    <span class="victory-stat-value" style="color: var(--color-blue-dark);">${totalPairs} / ${totalPairs}</span>
+                </div>
+                <div class="victory-stat-item">
+                    <span class="victory-stat-label">TIME</span>
+                    <span class="victory-stat-value" style="color: var(--color-orange-dark);">${elapsedSeconds}s</span>
+                </div>
+            </div>
+
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeQuestModal()" style="padding: 14px 42px; font-size: 1.15rem; margin-top: 8px;">
+                DONE
+            </button>
+        </div>
+    `;
+}
+
 // Close on outside clicks or escape key
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {

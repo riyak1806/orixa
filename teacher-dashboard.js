@@ -962,7 +962,7 @@ const GAME_OPTIONS = [
         name: 'Match the Following',
         icon: 'matchFollowing',
         description: 'Students drag questions and connect them with their correct answers.',
-        howItWorks: 'Students drag each question to its correct answer. Match all questions correctly to complete the quiz.'
+        howItWorks: 'Students will connect each question to its correct answer by dragging from the question to the matching answer. All pairs must be matched correctly to complete the game.'
     },
     {
         type: 'FILL_BLANKS',
@@ -1260,7 +1260,7 @@ function renderGameBuilderStep(dynamicPage) {
                         </div>
 
                         <button type="button" class="cartoon-action-btn primary-yellow-btn" id="create-quiz-add-question-btn" style="padding: 10px 20px; font-size: 1rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
-                            <span data-icon="plus"></span> Add Question
+                            <span data-icon="plus"></span> ${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'Add Matching Pair' : 'Add Question'}
                         </button>
                     </div>
                 </div>
@@ -1322,9 +1322,41 @@ function renderGameBuilderStep(dynamicPage) {
         if (createQuizState.questions.length === 0) {
             questionsListContainer.innerHTML = `
                 <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-3); text-align: center; background: var(--color-cream); margin-bottom: var(--t-space-2);">
-                    <span style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a;">No questions added yet. Click "+ Add Question" to start building!</span>
+                    <span style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a;">${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'No matching pairs added yet. Click "+ Add Matching Pair" to start building!' : 'No questions added yet. Click "+ Add Question" to start building!'}</span>
                 </div>
             `;
+            return;
+        }
+
+        if (createQuizState.gameType === 'MATCH_FOLLOWING') {
+            questionsListContainer.innerHTML = createQuizState.questions.map((q, index) => {
+                const pairNumber = index + 1;
+                return `
+                    <div class="question-item-card" data-question-id="${q.id}" style="border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); background: var(--color-cream); margin-bottom: var(--t-space-1); display: flex; flex-direction: column; gap: var(--t-space-1); position: relative; box-shadow: var(--shadow-chunky-pressed);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin-bottom: 4px;">
+                            <span style="font-family: var(--font-header); font-size: 1.15rem; color: var(--border-dark); font-weight: 700;">Matching Pair ${pairNumber}</span>
+                            <button type="button" class="question-delete-btn" data-question-id="${q.id}" style="background: var(--color-red); border: 2px solid var(--border-dark); border-radius: 8px; padding: 4px 12px; font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); transition: transform 0.1s ease;">
+                                Delete
+                            </button>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--t-space-2);">
+                            <div class="form-field">
+                                <label class="field-label">QUESTION / PROMPT *</label>
+                                <div class="input-shell">
+                                    <input type="text" class="cartoon-input match-question-input" data-question-id="${q.id}" placeholder="e.g. Capital of France?" value="${escapeHTML(q.text || '')}" style="height: 44px; font-size: 0.95rem;">
+                                </div>
+                            </div>
+                            <div class="form-field">
+                                <label class="field-label">CORRECT ANSWER *</label>
+                                <div class="input-shell">
+                                    <input type="text" class="cartoon-input match-answer-input" data-question-id="${q.id}" placeholder="e.g. Paris" value="${escapeHTML(q.answer || '')}" style="height: 44px; font-size: 0.95rem;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
             return;
         }
 
@@ -1436,27 +1468,43 @@ function renderGameBuilderStep(dynamicPage) {
         if (shuffleAEl) createQuizState.settings.shuffleAnswers = shuffleAEl.checked;
 
         // Sync Question inputs
-        const questionTextEls = dynamicPage.querySelectorAll('.question-text-input');
-        questionTextEls.forEach(el => {
-            const qId = el.dataset.questionId;
-            const q = createQuizState.questions.find(item => item.id === qId);
-            if (q) q.text = el.value;
-        });
+        if (createQuizState.gameType === 'MATCH_FOLLOWING') {
+            const matchQEls = dynamicPage.querySelectorAll('.match-question-input');
+            matchQEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) q.text = el.value;
+            });
 
-        const questionMarksEls = dynamicPage.querySelectorAll('.question-marks-input');
-        questionMarksEls.forEach(el => {
-            const qId = el.dataset.questionId;
-            const q = createQuizState.questions.find(item => item.id === qId);
-            if (q) q.marks = parseInt(el.value, 10) || 5;
-        });
+            const matchAEls = dynamicPage.querySelectorAll('.match-answer-input');
+            matchAEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) q.answer = el.value;
+            });
+        } else {
+            const questionTextEls = dynamicPage.querySelectorAll('.question-text-input');
+            questionTextEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) q.text = el.value;
+            });
 
-        const optionInputEls = dynamicPage.querySelectorAll('.question-option-input');
-        optionInputEls.forEach(el => {
-            const qId = el.dataset.questionId;
-            const optIndex = parseInt(el.dataset.optionIndex, 10);
-            const q = createQuizState.questions.find(item => item.id === qId);
-            if (q) q.options[optIndex] = el.value;
-        });
+            const questionMarksEls = dynamicPage.querySelectorAll('.question-marks-input');
+            questionMarksEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) q.marks = parseInt(el.value, 10) || 5;
+            });
+
+            const optionInputEls = dynamicPage.querySelectorAll('.question-option-input');
+            optionInputEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const optIndex = parseInt(el.dataset.optionIndex, 10);
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) q.options[optIndex] = el.value;
+            });
+        }
     };
 
     // Initial render of questions
@@ -1483,14 +1531,23 @@ function renderGameBuilderStep(dynamicPage) {
     if (addQuestionBtn) {
         addQuestionBtn.addEventListener('click', () => {
             syncQuestionsState();
-            createQuizState.questions.push({
-                id: Date.now() + '-' + Math.floor(Math.random() * 1000),
-                text: '',
-                type: 'Multiple Choice',
-                options: ['', '', '', ''],
-                correctAnswer: null,
-                marks: 5
-            });
+            if (createQuizState.gameType === 'MATCH_FOLLOWING') {
+                createQuizState.questions.push({
+                    id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                    text: '',
+                    answer: '',
+                    marks: 1
+                });
+            } else {
+                createQuizState.questions.push({
+                    id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                    text: '',
+                    type: 'Multiple Choice',
+                    options: ['', '', '', ''],
+                    correctAnswer: null,
+                    marks: 5
+                });
+            }
             renderQuestionsList();
         });
     }
@@ -1583,45 +1640,70 @@ function renderGameBuilderStep(dynamicPage) {
         const errors = validateDraft();
 
         if (createQuizState.questions.length === 0) {
-            errors.push("The quiz must have at least one question.");
+            errors.push(createQuizState.gameType === 'MATCH_FOLLOWING' ? "The quiz must have at least one matching pair." : "The quiz must have at least one question.");
         }
 
-        createQuizState.questions.forEach((q, index) => {
-            const num = index + 1;
-            const qCard = dynamicPage.querySelector(`[data-question-id="${q.id}"]`);
+        if (createQuizState.gameType === 'MATCH_FOLLOWING') {
+            createQuizState.questions.forEach((q, index) => {
+                const num = index + 1;
+                const qCard = dynamicPage.querySelector(`[data-question-id="${q.id}"]`);
 
-            if (!q.text.trim()) {
-                errors.push(`Question ${num}: Question text cannot be blank.`);
-                if (qCard) {
-                    qCard.querySelector('.question-text-input').classList.add('input-invalid');
+                if (!q.text || !q.text.trim()) {
+                    errors.push(`Pair ${num}: Question/Prompt cannot be blank.`);
+                    if (qCard) {
+                        const input = qCard.querySelector('.match-question-input');
+                        if (input) input.classList.add('input-invalid');
+                    }
                 }
-            }
 
-            if (q.type === 'Multiple Choice') {
-                q.options.forEach((opt, optIdx) => {
-                    if (!opt.trim()) {
-                        errors.push(`Question ${num}: Option ${String.fromCharCode(65 + optIdx)} cannot be blank.`);
+                if (!q.answer || !q.answer.trim()) {
+                    errors.push(`Pair ${num}: Correct Answer cannot be blank.`);
+                    if (qCard) {
+                        const input = qCard.querySelector('.match-answer-input');
+                        if (input) input.classList.add('input-invalid');
+                    }
+                }
+            });
+        } else {
+            createQuizState.questions.forEach((q, index) => {
+                const num = index + 1;
+                const qCard = dynamicPage.querySelector(`[data-question-id="${q.id}"]`);
+
+                if (!q.text.trim()) {
+                    errors.push(`Question ${num}: Question text cannot be blank.`);
+                    if (qCard) {
+                        const input = qCard.querySelector('.question-text-input');
+                        if (input) input.classList.add('input-invalid');
+                    }
+                }
+
+                if (q.type === 'Multiple Choice') {
+                    q.options.forEach((opt, optIdx) => {
+                        if (!opt.trim()) {
+                            errors.push(`Question ${num}: Option ${String.fromCharCode(65 + optIdx)} cannot be blank.`);
+                            if (qCard) {
+                                const inputs = qCard.querySelectorAll('.question-option-input');
+                                if (inputs && inputs[optIdx]) inputs[optIdx].classList.add('input-invalid');
+                            }
+                        }
+                    });
+
+                    if (q.correctAnswer === null || q.correctAnswer === undefined) {
+                        errors.push(`Question ${num}: Please select a correct answer.`);
                         if (qCard) {
-                            qCard.querySelectorAll('.question-option-input')[optIdx].classList.add('input-invalid');
+                            qCard.classList.add('input-invalid');
                         }
                     }
-                });
-
-                if (q.correctAnswer === null || q.correctAnswer === undefined) {
-                    errors.push(`Question ${num}: Please select a correct answer.`);
-                    if (qCard) {
-                        qCard.classList.add('input-invalid');
+                } else {
+                    if (q.correctAnswer !== 'True' && q.correctAnswer !== 'False') {
+                        errors.push(`Question ${num}: Please select True or False.`);
+                        if (qCard) {
+                            qCard.classList.add('input-invalid');
+                        }
                     }
                 }
-            } else {
-                if (q.correctAnswer !== 'True' && q.correctAnswer !== 'False') {
-                    errors.push(`Question ${num}: Please select True or False.`);
-                    if (qCard) {
-                        qCard.classList.add('input-invalid');
-                    }
-                }
-            }
-        });
+            });
+        }
 
         return errors;
     };

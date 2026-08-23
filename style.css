@@ -367,6 +367,134 @@ body {
     }
 }
 
+/* Fill in the Blanks Student Game Styles */
+.fitb-game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 20px 10px;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    user-select: none;
+}
+
+.fitb-progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    color: var(--border-dark);
+}
+
+.fitb-sentence-box {
+    width: 100%;
+    padding: 28px 24px;
+    background: #ffffff;
+    border: 3px solid var(--border-dark);
+    border-radius: 20px;
+    box-shadow: var(--shadow-chunky-pressed);
+    font-family: var(--font-header);
+    font-size: 1.4rem;
+    line-height: 2.2rem;
+    color: var(--border-dark);
+    text-align: center;
+    word-break: break-word;
+}
+
+.fitb-drop-target {
+    display: inline-block;
+    min-width: 120px;
+    padding: 4px 16px;
+    margin: 0 8px;
+    background: var(--color-cream, #fffbe6);
+    border: 3px dashed var(--border-dark);
+    border-radius: 14px;
+    font-family: var(--font-header);
+    font-size: 1.3rem;
+    color: var(--border-dark);
+    text-align: center;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+}
+
+.fitb-drop-target.is-target-active {
+    background: var(--color-yellow-light, #fff9c4);
+    border-style: solid;
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(255, 213, 79, 0.8);
+}
+
+.fitb-drop-target.is-correct {
+    background: var(--color-green);
+    border-style: solid;
+    color: var(--border-dark);
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.fitb-drop-target.is-incorrect {
+    background: var(--color-red);
+    border-style: solid;
+    color: #ffffff;
+    animation: fitb-shake 0.4s ease-in-out;
+}
+
+.fitb-options-box {
+    width: 100%;
+    padding: 20px;
+    background: var(--color-cream, #fffbe6);
+    border: 3px solid var(--border-dark);
+    border-radius: 20px;
+    box-shadow: var(--shadow-chunky-pressed);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    min-height: 100px;
+}
+
+.fitb-option-card {
+    padding: 12px 24px;
+    background: #ffffff;
+    border: 3px solid var(--border-dark);
+    border-radius: 14px;
+    font-family: var(--font-header);
+    font-size: 1.15rem;
+    color: var(--border-dark);
+    cursor: grab;
+    box-shadow: var(--shadow-chunky-pressed);
+    transition: transform 0.15 ease, box-shadow 0.15 ease, background 0.15 ease;
+    touch-action: none;
+}
+
+.fitb-option-card:hover {
+    transform: translateY(-3px);
+    background: var(--color-yellow-light, #fff9c4);
+}
+
+.fitb-option-card:active, .fitb-option-card.is-dragging {
+    cursor: grabbing;
+    transform: scale(1.08) rotate(-2deg);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+    opacity: 0.9;
+    z-index: 1000;
+}
+
+.fitb-option-card.is-selected {
+    background: var(--color-yellow);
+    transform: translateY(-4px);
+    box-shadow: 0 0 10px var(--border-dark);
+}
+
+@keyframes fitb-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
 @media (max-width: 480px) {
     body {
         padding: 10px;

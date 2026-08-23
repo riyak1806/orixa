@@ -1153,6 +1153,11 @@ function renderGameBuilderStep(dynamicPage) {
                         <span style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a; margin-left: 4px;">
                             ${createQuizState.gameType === 'TILE_PUZZLE' ? 'Students see a grid of tiles. Each tile contains one question. Selecting a tile reveals its question. Students answer each question to clear the tile and complete the puzzle.' : escapeHTML(selectedOption.howItWorks)}
                         </span>
+                        ${createQuizState.gameType === 'FILL_BLANKS' ? `
+                            <div style="margin-top: 6px; font-size: 0.9rem; color: var(--border-dark); font-weight: 500;">
+                                <strong>Steps:</strong> 1. Write the complete statement. &nbsp;|&nbsp; 2. Highlight/Select the word/phrase to hide as the blank. &nbsp;|&nbsp; 3. Add answer choices. &nbsp;|&nbsp; 4. Select the correct answer. &nbsp;|&nbsp; 5. Publish the quiz.
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -1260,7 +1265,7 @@ function renderGameBuilderStep(dynamicPage) {
                         </div>
 
                         <button type="button" class="cartoon-action-btn primary-yellow-btn" id="create-quiz-add-question-btn" style="padding: 10px 20px; font-size: 1rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
-                            <span data-icon="plus"></span> ${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'Add Matching Pair' : 'Add Question'}
+                            <span data-icon="plus"></span> ${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'Add Matching Pair' : createQuizState.gameType === 'FILL_BLANKS' ? 'Add Blank Statement' : 'Add Question'}
                         </button>
                     </div>
                 </div>
@@ -1352,6 +1357,110 @@ function renderGameBuilderStep(dynamicPage) {
                                 <div class="input-shell">
                                     <input type="text" class="cartoon-input match-answer-input" data-question-id="${q.id}" placeholder="e.g. Paris" value="${escapeHTML(q.answer || '')}" style="height: 44px; font-size: 0.95rem;">
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            return;
+        }
+
+        if (createQuizState.gameType === 'FILL_BLANKS') {
+            questionsListContainer.innerHTML = createQuizState.questions.map((q, index) => {
+                const questionNumber = index + 1;
+                const statement = q.statement || q.text || '';
+                const blankAnswer = q.blankAnswer || '';
+                const options = q.options || ['', '', '', ''];
+                const correctAnswer = q.correctAnswer !== undefined && q.correctAnswer !== null ? q.correctAnswer : 0;
+
+                // Split statement into clickable word tokens
+                const words = statement.trim() ? statement.trim().split(/\s+/) : [];
+
+                // Teacher preview statement text
+                let previewStatement = statement;
+                if (blankAnswer && statement.includes(blankAnswer)) {
+                    previewStatement = statement.replace(blankAnswer, '______');
+                } else if (statement.trim()) {
+                    previewStatement = statement + ' (No blank selected)';
+                } else {
+                    previewStatement = '______';
+                }
+
+                return `
+                    <div class="question-item-card" data-question-id="${q.id}" style="border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); background: var(--color-cream); margin-bottom: var(--t-space-1); display: flex; flex-direction: column; gap: var(--t-space-1); position: relative; box-shadow: var(--shadow-chunky-pressed);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin-bottom: 4px;">
+                            <span style="font-family: var(--font-header); font-size: 1.15rem; color: var(--border-dark); font-weight: 700;">Statement ${questionNumber}</span>
+                            <button type="button" class="question-delete-btn" data-question-id="${q.id}" style="background: var(--color-red); border: 2px solid var(--border-dark); border-radius: 8px; padding: 4px 12px; font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); transition: transform 0.1s ease;">
+                                Delete
+                            </button>
+                        </div>
+
+                        <!-- Complete Statement Input -->
+                        <div class="form-field">
+                            <label class="field-label">COMPLETE STATEMENT *</label>
+                            <div class="input-shell">
+                                <input type="text" class="cartoon-input fitb-statement-input" data-question-id="${q.id}" placeholder="e.g. The capital of France is Paris." value="${escapeHTML(statement)}" style="height: 44px; font-size: 0.95rem;">
+                            </div>
+                        </div>
+
+                        <!-- Word/Phrase Blank Selector -->
+                        <div class="form-field" style="margin-top: 4px;">
+                            <label class="field-label">SELECT WORD/PHRASE TO HIDE AS BLANK *</label>
+                            <div class="fitb-token-container" data-question-id="${q.id}" style="min-height: 44px; padding: 8px; background: #ffffff; border: 2px solid var(--border-dark); border-radius: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                                ${words.length > 0 ? words.map(w => {
+                                    const cleanW = w.replace(/^[^\w]+|[^\w]+$/g, '');
+                                    const isSel = blankAnswer && (cleanW.toLowerCase() === blankAnswer.toLowerCase() || w === blankAnswer);
+                                    return `
+                                        <button type="button" class="fitb-token ${isSel ? 'is-selected' : ''}" data-question-id="${q.id}" data-word="${escapeHTML(cleanW || w)}">
+                                            ${escapeHTML(w)}
+                                        </button>
+                                    `;
+                                }).join('') : '<span style="font-size: 0.85rem; color: #78909c;">Type a statement above to select a blank word...</span>'}
+                            </div>
+                            ${blankAnswer ? `
+                                <div style="margin-top: 4px; font-size: 0.85rem; font-weight: 700; color: var(--color-purple-dark);">
+                                    Selected Blank Word/Phrase: <span style="background: var(--color-yellow); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border-dark);">${escapeHTML(blankAnswer)}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Answer Options Manager -->
+                        <div style="display: flex; flex-direction: column; gap: var(--t-space-1); margin-top: 4px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <label class="field-label" style="margin: 0;">ANSWER OPTIONS (SELECT CORRECT ONE) *</label>
+                                <button type="button" class="fitb-add-option-btn" data-question-id="${q.id}" style="background: var(--color-yellow); border: 2px solid var(--border-dark); border-radius: 6px; padding: 2px 8px; font-family: var(--font-header); font-size: 0.75rem; font-weight: 700; cursor: pointer;">+ Add Option</button>
+                            </div>
+                            ${options.map((opt, optIdx) => {
+                                const isChecked = correctAnswer === optIdx;
+                                return `
+                                    <div style="display: flex; align-items: center; gap: var(--t-space-1);">
+                                        <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                                            <input type="radio" name="fitb-correct-${q.id}" class="fitb-correct-radio" data-question-id="${q.id}" data-option-index="${optIdx}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--color-green); cursor: pointer;">
+                                        </label>
+                                        <input type="text" class="cartoon-input fitb-option-input" data-question-id="${q.id}" data-option-index="${optIdx}" placeholder="Option ${optIdx + 1}" value="${escapeHTML(opt)}" style="height: 40px; font-size: 0.9rem;">
+                                        ${options.length > 2 ? `
+                                            <button type="button" class="fitb-delete-option-btn" data-question-id="${q.id}" data-option-index="${optIdx}" style="background: var(--color-red); border: 2px solid var(--border-dark); border-radius: 6px; padding: 4px 8px; font-family: var(--font-header); font-size: 0.75rem; color: var(--border-dark); font-weight: 700; cursor: pointer;">✕</button>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <!-- Teacher Live Preview -->
+                        <div style="margin-top: 8px; padding: 12px; background: #ffffff; border: 2px solid var(--border-dark); border-radius: 12px; box-shadow: var(--shadow-chunky-pressed);">
+                            <div style="font-family: var(--font-header); font-size: 0.8rem; text-transform: uppercase; color: #78909c; margin-bottom: 6px;">
+                                👁️ Student Preview
+                            </div>
+                            <div style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 8px;">
+                                ${escapeHTML(previewStatement)}
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                                <span style="font-family: var(--font-header); font-size: 0.8rem; color: #546e7a;">Options:</span>
+                                ${options.filter(o => o.trim()).map((o, idx) => `
+                                    <span class="fitb-preview-chip ${correctAnswer === idx ? 'is-correct' : ''}">
+                                        ${escapeHTML(o)}
+                                    </span>
+                                `).join('')}
                             </div>
                         </div>
                     </div>
@@ -1482,6 +1591,26 @@ function renderGameBuilderStep(dynamicPage) {
                 const q = createQuizState.questions.find(item => item.id === qId);
                 if (q) q.answer = el.value;
             });
+        } else if (createQuizState.gameType === 'FILL_BLANKS') {
+            const stmtEls = dynamicPage.querySelectorAll('.fitb-statement-input');
+            stmtEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) {
+                    q.statement = el.value;
+                    q.text = el.value;
+                }
+            });
+
+            const fitbOptEls = dynamicPage.querySelectorAll('.fitb-option-input');
+            fitbOptEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const optIdx = parseInt(el.dataset.optionIndex, 10);
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q && q.options) {
+                    q.options[optIdx] = el.value;
+                }
+            });
         } else {
             const questionTextEls = dynamicPage.querySelectorAll('.question-text-input');
             questionTextEls.forEach(el => {
@@ -1538,6 +1667,16 @@ function renderGameBuilderStep(dynamicPage) {
                     answer: '',
                     marks: 1
                 });
+            } else if (createQuizState.gameType === 'FILL_BLANKS') {
+                createQuizState.questions.push({
+                    id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                    statement: '',
+                    text: '',
+                    blankAnswer: '',
+                    options: ['', '', '', ''],
+                    correctAnswer: 0,
+                    marks: 5
+                });
             } else {
                 createQuizState.questions.push({
                     id: Date.now() + '-' + Math.floor(Math.random() * 1000),
@@ -1554,7 +1693,16 @@ function renderGameBuilderStep(dynamicPage) {
 
     const container = dynamicPage.querySelector('.create-quiz-container');
     if (container) {
-        container.addEventListener('input', syncQuestionsState);
+        container.addEventListener('input', (e) => {
+            syncQuestionsState();
+            if (createQuizState.gameType === 'FILL_BLANKS') {
+                // If statement input changed, re-render tokens and preview dynamically
+                if (e.target.classList.contains('fitb-statement-input') || e.target.classList.contains('fitb-option-input')) {
+                    renderQuestionsList();
+                }
+            }
+        });
+
         container.addEventListener('change', (e) => {
             syncQuestionsState();
 
@@ -1564,6 +1712,14 @@ function renderGameBuilderStep(dynamicPage) {
                 const optIndex = parseInt(e.target.dataset.optionIndex, 10);
                 const q = createQuizState.questions.find(item => item.id === qId);
                 if (q) q.correctAnswer = optIndex;
+            } else if (e.target.classList.contains('fitb-correct-radio')) {
+                const qId = e.target.dataset.questionId;
+                const optIndex = parseInt(e.target.dataset.optionIndex, 10);
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) {
+                    q.correctAnswer = optIndex;
+                    renderQuestionsList();
+                }
             } else if (e.target.classList.contains('correct-answer-radio-tf')) {
                 const qId = e.target.dataset.questionId;
                 const val = e.target.dataset.value;
@@ -1586,8 +1742,54 @@ function renderGameBuilderStep(dynamicPage) {
             }
         });
 
-        // Intercept delete clicks
+        // Intercept clicks for FITB token selection, add/delete option, delete question
         container.addEventListener('click', (e) => {
+            const fitbToken = e.target.closest('.fitb-token');
+            if (fitbToken) {
+                syncQuestionsState();
+                const qId = fitbToken.dataset.questionId;
+                const word = fitbToken.dataset.word;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) {
+                    q.blankAnswer = word;
+                    // Auto-fill selected word into correct answer option if needed
+                    const currOptIdx = q.correctAnswer !== undefined && q.correctAnswer !== null ? q.correctAnswer : 0;
+                    if (!q.options[currOptIdx] || q.options[currOptIdx].trim() === '') {
+                        q.options[currOptIdx] = word;
+                    }
+                    renderQuestionsList();
+                }
+                return;
+            }
+
+            const addOptBtn = e.target.closest('.fitb-add-option-btn');
+            if (addOptBtn) {
+                syncQuestionsState();
+                const qId = addOptBtn.dataset.questionId;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) {
+                    q.options.push('');
+                    renderQuestionsList();
+                }
+                return;
+            }
+
+            const delOptBtn = e.target.closest('.fitb-delete-option-btn');
+            if (delOptBtn) {
+                syncQuestionsState();
+                const qId = delOptBtn.dataset.questionId;
+                const optIdx = parseInt(delOptBtn.dataset.optionIndex, 10);
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q && q.options.length > 2) {
+                    q.options.splice(optIdx, 1);
+                    if (q.correctAnswer >= q.options.length) {
+                        q.correctAnswer = 0;
+                    }
+                    renderQuestionsList();
+                }
+                return;
+            }
+
             const deleteBtn = e.target.closest('.question-delete-btn');
             if (deleteBtn) {
                 syncQuestionsState();
@@ -1662,6 +1864,39 @@ function renderGameBuilderStep(dynamicPage) {
                         const input = qCard.querySelector('.match-answer-input');
                         if (input) input.classList.add('input-invalid');
                     }
+                }
+            });
+        } else if (createQuizState.gameType === 'FILL_BLANKS') {
+            createQuizState.questions.forEach((q, index) => {
+                const num = index + 1;
+                const qCard = dynamicPage.querySelector(`[data-question-id="${q.id}"]`);
+                const stmt = (q.statement || q.text || '').trim();
+
+                if (!stmt) {
+                    errors.push(`Statement ${num}: Statement text cannot be blank.`);
+                    if (qCard) {
+                        const input = qCard.querySelector('.fitb-statement-input');
+                        if (input) input.classList.add('input-invalid');
+                    }
+                }
+
+                if (!q.blankAnswer || !q.blankAnswer.trim()) {
+                    errors.push(`Statement ${num}: A word or phrase must be selected for the blank.`);
+                    if (qCard) {
+                        const tokenBox = qCard.querySelector('.fitb-token-container');
+                        if (tokenBox) tokenBox.classList.add('input-invalid');
+                    }
+                }
+
+                const options = (q.options || []).filter(o => o && o.trim() !== '');
+                if (options.length === 0) {
+                    errors.push(`Statement ${num}: There must be answer options.`);
+                    if (qCard) qCard.classList.add('input-invalid');
+                }
+
+                if (q.correctAnswer === null || q.correctAnswer === undefined || !q.options[q.correctAnswer] || !q.options[q.correctAnswer].trim()) {
+                    errors.push(`Statement ${num}: The correct answer must exist and be one of the available options.`);
+                    if (qCard) qCard.classList.add('input-invalid');
                 }
             });
         } else {

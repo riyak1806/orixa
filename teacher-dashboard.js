@@ -976,7 +976,7 @@ const GAME_OPTIONS = [
         name: 'True or False',
         icon: 'trueFalse',
         description: 'Students decide whether each statement is true or false.',
-        howItWorks: 'Students read each statement and choose whether it is True or False.'
+        howItWorks: 'Students will read each statement and decide whether it is TRUE or FALSE. They must answer every statement correctly to complete the game.'
     }
 ];
 
@@ -1265,7 +1265,7 @@ function renderGameBuilderStep(dynamicPage) {
                         </div>
 
                         <button type="button" class="cartoon-action-btn primary-yellow-btn" id="create-quiz-add-question-btn" style="padding: 10px 20px; font-size: 1rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
-                            <span data-icon="plus"></span> ${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'Add Matching Pair' : createQuizState.gameType === 'FILL_BLANKS' ? 'Add Blank Statement' : 'Add Question'}
+                            <span data-icon="plus"></span> ${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'Add Matching Pair' : createQuizState.gameType === 'FILL_BLANKS' ? 'Add Blank Statement' : createQuizState.gameType === 'TRUE_FALSE' ? 'Add Statement' : 'Add Question'}
                         </button>
                     </div>
                 </div>
@@ -1327,7 +1327,7 @@ function renderGameBuilderStep(dynamicPage) {
         if (createQuizState.questions.length === 0) {
             questionsListContainer.innerHTML = `
                 <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-3); text-align: center; background: var(--color-cream); margin-bottom: var(--t-space-2);">
-                    <span style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a;">${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'No matching pairs added yet. Click "+ Add Matching Pair" to start building!' : 'No questions added yet. Click "+ Add Question" to start building!'}</span>
+                    <span style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a;">${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'No matching pairs added yet. Click "+ Add Matching Pair" to start building!' : createQuizState.gameType === 'TRUE_FALSE' ? 'No statements added yet. Click "+ Add Statement" to start building!' : 'No questions added yet. Click "+ Add Question" to start building!'}</span>
                 </div>
             `;
             return;
@@ -1357,6 +1357,66 @@ function renderGameBuilderStep(dynamicPage) {
                                 <div class="input-shell">
                                     <input type="text" class="cartoon-input match-answer-input" data-question-id="${q.id}" placeholder="e.g. Paris" value="${escapeHTML(q.answer || '')}" style="height: 44px; font-size: 0.95rem;">
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            return;
+        }
+
+        if (createQuizState.gameType === 'TRUE_FALSE') {
+            questionsListContainer.innerHTML = createQuizState.questions.map((q, index) => {
+                const statementNum = index + 1;
+                const statement = q.statement || q.text || '';
+                const isTrue = q.correctAnswer === 'TRUE' || q.correctAnswer === true;
+                const isFalse = q.correctAnswer === 'FALSE' || q.correctAnswer === false;
+
+                return `
+                    <div class="question-item-card" data-question-id="${q.id}" style="border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); background: var(--color-cream); margin-bottom: var(--t-space-1); display: flex; flex-direction: column; gap: var(--t-space-1); position: relative; box-shadow: var(--shadow-chunky-pressed);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px; margin-bottom: 4px;">
+                            <span style="font-family: var(--font-header); font-size: 1.15rem; color: var(--border-dark); font-weight: 700;">Statement ${statementNum}</span>
+                            <button type="button" class="question-delete-btn" data-question-id="${q.id}" style="background: var(--color-red); border: 2px solid var(--border-dark); border-radius: 8px; padding: 4px 12px; font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); transition: transform 0.1s ease;">
+                                Delete
+                            </button>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label">STATEMENT TEXT *</label>
+                            <div class="input-shell">
+                                <textarea class="cartoon-input tf-statement-input" data-question-id="${q.id}" placeholder="e.g. Water freezes at 0°C." style="height: auto; min-height: 60px; padding: 8px 12px; resize: vertical; line-height: 1.4; font-size: 0.95rem;">${escapeHTML(statement)}</textarea>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: var(--t-space-1); margin-top: 4px;">
+                            <label class="field-label">CORRECT ANSWER *</label>
+                            <div style="display: flex; gap: var(--t-space-3); align-items: center;">
+                                <label style="display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark); cursor: pointer;">
+                                    <input type="radio" name="tf-correct-${q.id}" class="tf-correct-radio" data-question-id="${q.id}" data-value="TRUE" ${isTrue ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--color-green); cursor: pointer;">
+                                    TRUE
+                                </label>
+                                <label style="display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark); cursor: pointer;">
+                                    <input type="radio" name="tf-correct-${q.id}" class="tf-correct-radio" data-question-id="${q.id}" data-value="FALSE" ${isFalse ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--color-red); cursor: pointer;">
+                                    FALSE
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Teacher Live Preview -->
+                        <div style="margin-top: 8px; padding: 12px; background: #ffffff; border: 2px solid var(--border-dark); border-radius: 12px; box-shadow: var(--shadow-chunky-pressed);">
+                            <div style="font-family: var(--font-header); font-size: 0.8rem; text-transform: uppercase; color: #78909c; margin-bottom: 6px;">
+                                👁️ Student Preview
+                            </div>
+                            <div style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 12px; text-align: center; min-height: 24px;">
+                                ${statement.trim() ? escapeHTML(statement) : '<span style="color: #b0bec5; font-style: italic;">Enter statement text above...</span>'}
+                            </div>
+                            <div style="display: flex; justify-content: center; gap: 16px;">
+                                <span style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; padding: 6px 20px; border: 2px solid var(--border-dark); border-radius: 10px; background: ${isTrue ? 'var(--color-green)' : '#f5f5f5'}; color: var(--border-dark);">
+                                    TRUE ${isTrue ? '✓' : ''}
+                                </span>
+                                <span style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; padding: 6px 20px; border: 2px solid var(--border-dark); border-radius: 10px; background: ${isFalse ? 'var(--color-red)' : '#f5f5f5'}; color: var(--border-dark);">
+                                    FALSE ${isFalse ? '✓' : ''}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1611,6 +1671,16 @@ function renderGameBuilderStep(dynamicPage) {
                     q.options[optIdx] = el.value;
                 }
             });
+        } else if (createQuizState.gameType === 'TRUE_FALSE') {
+            const tfStmtEls = dynamicPage.querySelectorAll('.tf-statement-input');
+            tfStmtEls.forEach(el => {
+                const qId = el.dataset.questionId;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) {
+                    q.statement = el.value;
+                    q.text = el.value;
+                }
+            });
         } else {
             const questionTextEls = dynamicPage.querySelectorAll('.question-text-input');
             questionTextEls.forEach(el => {
@@ -1677,6 +1747,14 @@ function renderGameBuilderStep(dynamicPage) {
                     correctAnswer: 0,
                     marks: 5
                 });
+            } else if (createQuizState.gameType === 'TRUE_FALSE') {
+                createQuizState.questions.push({
+                    id: Date.now() + '-' + Math.floor(Math.random() * 1000),
+                    statement: '',
+                    text: '',
+                    correctAnswer: null,
+                    marks: 5
+                });
             } else {
                 createQuizState.questions.push({
                     id: Date.now() + '-' + Math.floor(Math.random() * 1000),
@@ -1698,6 +1776,10 @@ function renderGameBuilderStep(dynamicPage) {
             if (createQuizState.gameType === 'FILL_BLANKS') {
                 // If statement input changed, re-render tokens and preview dynamically
                 if (e.target.classList.contains('fitb-statement-input') || e.target.classList.contains('fitb-option-input')) {
+                    renderQuestionsList();
+                }
+            } else if (createQuizState.gameType === 'TRUE_FALSE') {
+                if (e.target.classList.contains('tf-statement-input')) {
                     renderQuestionsList();
                 }
             }
@@ -1725,6 +1807,14 @@ function renderGameBuilderStep(dynamicPage) {
                 const val = e.target.dataset.value;
                 const q = createQuizState.questions.find(item => item.id === qId);
                 if (q) q.correctAnswer = val;
+            } else if (e.target.classList.contains('tf-correct-radio')) {
+                const qId = e.target.dataset.questionId;
+                const val = e.target.dataset.value;
+                const q = createQuizState.questions.find(item => item.id === qId);
+                if (q) {
+                    q.correctAnswer = val;
+                    renderQuestionsList();
+                }
             } else if (e.target.classList.contains('question-type-select')) {
                 const qId = e.target.dataset.questionId;
                 const type = e.target.value;
@@ -1842,7 +1932,7 @@ function renderGameBuilderStep(dynamicPage) {
         const errors = validateDraft();
 
         if (createQuizState.questions.length === 0) {
-            errors.push(createQuizState.gameType === 'MATCH_FOLLOWING' ? "The quiz must have at least one matching pair." : "The quiz must have at least one question.");
+            errors.push(createQuizState.gameType === 'MATCH_FOLLOWING' ? "The quiz must have at least one matching pair." : createQuizState.gameType === 'TRUE_FALSE' ? "The quiz must have at least one statement." : "The quiz must have at least one question.");
         }
 
         if (createQuizState.gameType === 'MATCH_FOLLOWING') {
@@ -1896,6 +1986,25 @@ function renderGameBuilderStep(dynamicPage) {
 
                 if (q.correctAnswer === null || q.correctAnswer === undefined || !q.options[q.correctAnswer] || !q.options[q.correctAnswer].trim()) {
                     errors.push(`Statement ${num}: The correct answer must exist and be one of the available options.`);
+                    if (qCard) qCard.classList.add('input-invalid');
+                }
+            });
+        } else if (createQuizState.gameType === 'TRUE_FALSE') {
+            createQuizState.questions.forEach((q, index) => {
+                const num = index + 1;
+                const qCard = dynamicPage.querySelector(`[data-question-id="${q.id}"]`);
+                const stmt = (q.statement || q.text || '').trim();
+
+                if (!stmt) {
+                    errors.push(`Statement ${num}: Statement text cannot be blank.`);
+                    if (qCard) {
+                        const input = qCard.querySelector('.tf-statement-input');
+                        if (input) input.classList.add('input-invalid');
+                    }
+                }
+
+                if (q.correctAnswer !== 'TRUE' && q.correctAnswer !== 'FALSE' && q.correctAnswer !== true && q.correctAnswer !== false) {
+                    errors.push(`Statement ${num}: Please select TRUE or FALSE as the correct answer.`);
                     if (qCard) qCard.classList.add('input-invalid');
                 }
             });

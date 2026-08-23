@@ -1311,6 +1311,274 @@ function renderFitbVictoryScreen() {
     `;
 }
 
+/* ==========================================================================
+   GAME 4: TRUE OR FALSE ENGINE
+   ========================================================================== */
+
+let trueFalseGameState = {
+    questName: "",
+    category: "",
+    questions: [], // { statement, correctAnswer: true/false }
+    currentIndex: 0,
+    correctAnswersCount: 0,
+    incorrectAttemptsCount: 0,
+    startTime: 0,
+    isProcessing: false
+};
+
+function openTrueFalseGame(questName, category, customQuestions = null) {
+    const defaultQuestions = [
+        {
+            statement: "Water freezes at 0°C at standard atmospheric pressure.",
+            correctAnswer: true
+        },
+        {
+            statement: "The Sun revolves around the Earth.",
+            correctAnswer: false
+        },
+        {
+            statement: "Jupiter is the largest planet in our solar system.",
+            correctAnswer: true
+        }
+    ];
+
+    const rawSource = (customQuestions && customQuestions.length > 0) ? customQuestions : defaultQuestions;
+
+    const preparedQuestions = rawSource.map(q => {
+        const stmt = q.statement || q.text || "";
+        let boolAnswer = false;
+        if (typeof q.correctAnswer === 'boolean') {
+            boolAnswer = q.correctAnswer;
+        } else if (typeof q.correctAnswer === 'string') {
+            boolAnswer = q.correctAnswer.toUpperCase() === 'TRUE';
+        }
+        return {
+            statement: stmt,
+            correctAnswer: boolAnswer
+        };
+    });
+
+    trueFalseGameState = {
+        questName: questName,
+        category: category,
+        questions: preparedQuestions,
+        currentIndex: 0,
+        correctAnswersCount: 0,
+        incorrectAttemptsCount: 0,
+        startTime: Date.now(),
+        isProcessing: false
+    };
+
+    const modal = document.getElementById('quest-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+
+    renderTrueFalseEntrance();
+}
+
+function renderTrueFalseEntrance() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="tile-entrance-screen">
+            <div class="tile-entrance-badge" style="background-color: var(--color-yellow); color: var(--border-dark);">
+                TRUE OR FALSE QUEST
+            </div>
+            <h2 class="tile-entrance-title">${escapeHTML(trueFalseGameState.questName)}</h2>
+            <p class="tile-entrance-desc">
+                Read each statement carefully and decide whether it is <strong>TRUE</strong> or <strong>FALSE</strong>. Answer all <strong>${trueFalseGameState.questions.length} statements</strong> to complete the game!
+            </p>
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startTrueFalseGame()" style="padding: 14px 36px; font-size: 1.15rem;">
+                🎮 START GAME
+            </button>
+        </div>
+    `;
+}
+
+function startTrueFalseGame() {
+    renderTrueFalseGameBoard();
+}
+
+function renderTrueFalseGameBoard() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    const currentQ = trueFalseGameState.questions[trueFalseGameState.currentIndex];
+    const totalQ = trueFalseGameState.questions.length;
+    const currentNum = trueFalseGameState.currentIndex + 1;
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="tf-game-container">
+            <div class="tf-progress-bar">
+                <span>QUESTION ${currentNum} OF ${totalQ}</span>
+                <span>✨ PROGRESS: ${Math.round(((currentNum - 1) / totalQ) * 100)}%</span>
+            </div>
+
+            <div class="tf-statement-card" id="tf-statement-card">
+                <p class="tf-statement-text">${escapeHTML(currentQ.statement)}</p>
+            </div>
+
+            <div id="tf-feedback-banner" style="min-height: 28px; text-align: center; font-family: var(--font-header); font-size: 1.1rem; font-weight: 700;"></div>
+
+            <div class="tf-buttons-row">
+                <button type="button" class="tf-choice-btn btn-true" id="btn-true" onclick="evaluateTrueFalseChoice(true)">
+                    ✓ TRUE
+                </button>
+                <button type="button" class="tf-choice-btn btn-false" id="btn-false" onclick="evaluateTrueFalseChoice(false)">
+                    ✕ FALSE
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function evaluateTrueFalseChoice(selectedBool) {
+    if (trueFalseGameState.isProcessing) return;
+    trueFalseGameState.isProcessing = true;
+
+    const currentQ = trueFalseGameState.questions[trueFalseGameState.currentIndex];
+    const cardEl = document.getElementById('tf-statement-card');
+    const feedbackEl = document.getElementById('tf-feedback-banner');
+    const btnTrue = document.getElementById('btn-true');
+    const btnFalse = document.getElementById('btn-false');
+
+    if (btnTrue) btnTrue.disabled = true;
+    if (btnFalse) btnFalse.disabled = true;
+
+    const isCorrect = selectedBool === currentQ.correctAnswer;
+
+    if (isCorrect) {
+        trueFalseGameState.correctAnswersCount++;
+
+        if (cardEl) cardEl.classList.add('is-correct');
+        if (selectedBool) {
+            if (btnTrue) btnTrue.classList.add('selected-correct');
+        } else {
+            if (btnFalse) btnFalse.classList.add('selected-correct');
+        }
+
+        if (feedbackEl) {
+            feedbackEl.style.color = "var(--color-green-dark)";
+            feedbackEl.textContent = "✓ Correct!";
+        }
+
+        setTimeout(() => {
+            trueFalseGameState.isProcessing = false;
+            trueFalseGameState.currentIndex++;
+            if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
+                renderTrueFalseVictoryScreen();
+            } else {
+                renderTrueFalseGameBoard();
+            }
+        }, 700);
+
+    } else {
+        trueFalseGameState.incorrectAttemptsCount++;
+
+        if (cardEl) {
+            cardEl.classList.add('is-incorrect');
+        }
+        if (selectedBool) {
+            if (btnTrue) btnTrue.classList.add('selected-incorrect');
+        } else {
+            if (btnFalse) btnFalse.classList.add('selected-incorrect');
+        }
+
+        if (feedbackEl) {
+            feedbackEl.style.color = "var(--color-red-dark)";
+            feedbackEl.textContent = "✕ Incorrect! Try again.";
+        }
+
+        setTimeout(() => {
+            if (cardEl) cardEl.classList.remove('is-incorrect');
+            if (btnTrue) {
+                btnTrue.classList.remove('selected-incorrect');
+                btnTrue.disabled = false;
+            }
+            if (btnFalse) {
+                btnFalse.classList.remove('selected-incorrect');
+                btnFalse.disabled = false;
+            }
+            if (feedbackEl) feedbackEl.textContent = "";
+            trueFalseGameState.isProcessing = false;
+        }, 800);
+    }
+}
+
+function renderTrueFalseVictoryScreen() {
+    const windowEl = document.getElementById('tile-game-window');
+    if (!windowEl) return;
+
+    addCompletedQuiz();
+    addXPPoints(100);
+
+    const elapsedSeconds = Math.max(1, Math.round((Date.now() - trueFalseGameState.startTime) / 1000));
+    const totalQ = trueFalseGameState.questions.length;
+    const accuracy = Math.round((totalQ / (totalQ + trueFalseGameState.incorrectAttemptsCount)) * 100);
+
+    windowEl.innerHTML = `
+        <header class="tile-game-header">
+            <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+        </header>
+
+        <div class="tile-entrance-screen" style="gap: 16px;">
+            <div style="font-size: 2.5rem; letter-spacing: 6px; animation: tile-entrance-pop 0.6s ease;" aria-label="3 Stars">
+                ⭐ ⭐ ⭐
+            </div>
+
+            <h2 class="tile-entrance-title" style="color: var(--color-purple-dark);">QUIZ COMPLETE!</h2>
+            <p style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a; margin-top: -8px;">
+                You answered all True or False statements!
+            </p>
+
+            <!-- Results Analytics -->
+            <div style="width: 100%; max-width: 380px; background: #ffffff; border: 3px solid var(--border-dark); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-chunky-pressed);">
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
+                    <span>Total Questions:</span>
+                    <strong>${totalQ} / ${totalQ}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-green-dark);">
+                    <span>Correct Answers:</span>
+                    <strong>${trueFalseGameState.correctAnswersCount}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-red-dark);">
+                    <span>Incorrect Attempts:</span>
+                    <strong>${trueFalseGameState.incorrectAttemptsCount}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-purple-dark);">
+                    <span>Accuracy:</span>
+                    <strong>${accuracy}%</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
+                    <span>Time Taken:</span>
+                    <strong>${elapsedSeconds}s</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
+                    <span>Stars Earned:</span>
+                    <strong>⭐⭐⭐</strong>
+                </div>
+            </div>
+
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeQuestModal()" style="padding: 12px 40px; font-size: 1.15rem; margin-top: 8px;">
+                DONE
+            </button>
+        </div>
+    `;
+}
+
 // Close on outside clicks or escape key
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape') {

@@ -83,7 +83,7 @@ function generateMockQuestions(category, count) {
     return base.slice(0, count);
 }
 
-function openQuestGame(questName, rawCount, category) {
+function openQuestGame(questName, rawCount, category, chances = 3, teacherName = 'Professor Riley') {
     // Enforce perfect square question count
     let root = Math.round(Math.sqrt(rawCount));
     if (root < 2) root = 2;
@@ -92,14 +92,18 @@ function openQuestGame(questName, rawCount, category) {
     currentGameState = {
         questName: questName,
         category: category,
+        teacherName: teacherName || 'Professor Riley',
+        configuredChances: typeof chances === 'number' && chances > 0 ? chances : 3,
         questionCount: questionCount,
         gridDimension: root,
         questions: generateMockQuestions(category, questionCount),
         solvedTiles: new Set(),
         selectedTileIndex: null,
-        selectedOptionIndex: null,
         score: 0,
-        startTime: Date.now()
+        startTime: Date.now(),
+        remainingChances: typeof chances === 'number' && chances > 0 ? chances : 3,
+        disabledOptions: new Set(),
+        isProcessing: false
     };
 
     const modal = document.getElementById('quest-modal');
@@ -230,6 +234,11 @@ function openQuestionModal(tileIndex) {
     const question = currentGameState.questions[tileIndex];
     if (!question) return;
 
+    currentGameState.selectedTileIndex = tileIndex;
+    currentGameState.remainingChances = currentGameState.configuredChances;
+    currentGameState.disabledOptions = new Set();
+    currentGameState.isProcessing = false;
+
     card.innerHTML = `
         <div class="tile-question-header">
             <span class="tile-question-number-badge">TILE #${tileIndex + 1} QUESTION</span>
@@ -243,22 +252,13 @@ function openQuestionModal(tileIndex) {
                 <button type="button"
                         class="tile-option-btn"
                         id="option-btn-${idx}"
-                        onclick="selectQuestionOption(${idx})">
+                        onclick="handleTileOptionSelect(${tileIndex}, ${idx})">
                     <strong style="margin-right: 6px;">${String.fromCharCode(65 + idx)}.</strong> ${escapeHTML(opt)}
                 </button>
             `).join('')}
         </div>
 
         <div id="tile-question-feedback"></div>
-
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;">
-            <button type="button" class="cartoon-action-btn" onclick="closeQuestionModal()" style="padding: 10px 20px; font-size: 0.95rem; background: #cfd8dc; border-color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed);">
-                Cancel
-            </button>
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" id="submit-answer-btn" onclick="submitTileAnswer(${tileIndex})" style="padding: 10px 24px; font-size: 0.95rem;" disabled>
-                SUBMIT ANSWER
-            </button>
-        </div>
     `;
 
     // Activate dim overlay
@@ -272,49 +272,29 @@ function closeQuestionModal() {
     }
 }
 
-function selectQuestionOption(optIndex) {
-    currentGameState.selectedOptionIndex = optIndex;
-
-    const container = document.getElementById('tile-options-container');
-    if (!container) return;
-
-    const buttons = container.querySelectorAll('.tile-option-btn');
-    buttons.forEach((btn, idx) => {
-        btn.classList.toggle('selected', idx === optIndex);
-    });
-
-    const submitBtn = document.getElementById('submit-answer-btn');
-    if (submitBtn) {
-        submitBtn.disabled = false;
+function handleTileOptionSelect(tileIndex, optIndex) {
+    if (currentGameState.isProcessing || currentGameState.disabledOptions.has(optIndex)) {
+        return;
     }
-}
-
-function submitTileAnswer(tileIndex) {
-    const optIndex = currentGameState.selectedOptionIndex;
-    if (optIndex === null || optIndex === undefined) return;
 
     const question = currentGameState.questions[tileIndex];
     if (!question) return;
 
+    currentGameState.isProcessing = true;
+
+    const optBtn = document.getElementById(`option-btn-${optIndex}`);
     const feedbackEl = document.getElementById('tile-question-feedback');
-    const submitBtn = document.getElementById('submit-answer-btn');
     const optionBtns = document.querySelectorAll('.tile-option-btn');
 
     const isCorrect = optIndex === question.correctAnswer;
 
-    optionBtns.forEach((btn, idx) => {
-        btn.disabled = true;
-        if (idx === question.correctAnswer) {
-            btn.classList.add('correct');
-        } else if (idx === optIndex && !isCorrect) {
-            btn.classList.add('incorrect');
-        }
-    });
-
     if (isCorrect) {
+        if (optBtn) optBtn.classList.add('correct');
         currentGameState.solvedTiles.add(tileIndex);
         currentGameState.score += 25;
         addXPPoints(25);
+
+        optionBtns.forEach(btn => btn.disabled = true);
 
         if (feedbackEl) {
             feedbackEl.innerHTML = `
@@ -324,43 +304,60 @@ function submitTileAnswer(tileIndex) {
             `;
         }
 
-        if (submitBtn) {
-            submitBtn.textContent = "CONTINUE →";
-            submitBtn.disabled = false;
-            submitBtn.onclick = () => {
+        setTimeout(() => {
+            currentGameState.isProcessing = false;
+            closeQuestionModal();
+            renderGameBoard();
+
+            // Check completion
+            if (currentGameState.solvedTiles.size === currentGameState.questionCount) {
+                setTimeout(() => renderVictoryScreen(), 300);
+            }
+        }, 700);
+    } else {
+        currentGameState.remainingChances -= 1;
+        currentGameState.disabledOptions.add(optIndex);
+
+        if (optBtn) {
+            optBtn.classList.add('incorrect');
+            optBtn.disabled = true;
+        }
+
+        const remaining = currentGameState.remainingChances;
+
+        if (remaining > 0) {
+            if (feedbackEl) {
+                feedbackEl.innerHTML = `
+                    <div class="tile-feedback-box incorrect">
+                        ❌ INCORRECT! ${remaining} ${remaining === 1 ? 'chance' : 'chances'} remaining. Try again!
+                    </div>
+                `;
+            }
+
+            setTimeout(() => {
+                currentGameState.isProcessing = false;
+            }, 300);
+        } else {
+            const correctBtn = document.getElementById(`option-btn-${question.correctAnswer}`);
+            if (correctBtn) {
+                correctBtn.classList.add('correct');
+            }
+
+            optionBtns.forEach(btn => btn.disabled = true);
+
+            if (feedbackEl) {
+                feedbackEl.innerHTML = `
+                    <div class="tile-feedback-box incorrect">
+                        ❌ INCORRECT! No chances remaining. Correct answer: <strong>${escapeHTML(question.options[question.correctAnswer])}</strong>
+                    </div>
+                `;
+            }
+
+            setTimeout(() => {
+                currentGameState.isProcessing = false;
                 closeQuestionModal();
                 renderGameBoard();
-
-                // Check completion
-                if (currentGameState.solvedTiles.size === currentGameState.questionCount) {
-                    setTimeout(() => renderVictoryScreen(), 300);
-                }
-            };
-        }
-    } else {
-        if (feedbackEl) {
-            feedbackEl.innerHTML = `
-                <div class="tile-feedback-box incorrect">
-                    ❌ INCORRECT! Give it another try!
-                </div>
-            `;
-        }
-
-        if (submitBtn) {
-            submitBtn.textContent = "TRY AGAIN 🔄";
-            submitBtn.disabled = false;
-            submitBtn.onclick = () => {
-                // Re-enable options for retry
-                optionBtns.forEach(btn => {
-                    btn.disabled = false;
-                    btn.classList.remove('selected', 'correct', 'incorrect');
-                });
-                currentGameState.selectedOptionIndex = null;
-                submitBtn.disabled = true;
-                submitBtn.textContent = "SUBMIT ANSWER";
-                submitBtn.onclick = () => submitTileAnswer(tileIndex);
-                if (feedbackEl) feedbackEl.innerHTML = "";
-            };
+            }, 1400);
         }
     }
 }

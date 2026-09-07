@@ -129,8 +129,8 @@ function renderGameEntrance() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-entrance-screen">
-            <div class="tile-entrance-badge">${escapeHTML(currentGameState.category.toUpperCase())} QUEST</div>
+        <div class="tile-entrance-screen orixa-game-slide-enter">
+            <div class="tile-entrance-badge">${escapeHTML(currentGameState.category.toUpperCase())} • TILE PUZZLE</div>
             <h2 class="tile-entrance-title">${escapeHTML(currentGameState.questName)}</h2>
             <p class="tile-entrance-desc">
                 Uncover the puzzle by solving questions! Select tiles on the <strong>${currentGameState.gridDimension} × ${currentGameState.gridDimension} grid</strong> (${currentGameState.questionCount} Questions) to reveal questions and test your knowledge.
@@ -154,6 +154,7 @@ function renderGameBoard() {
     const dim = currentGameState.gridDimension;
     const solvedCount = currentGameState.solvedTiles.size;
     const totalCount = currentGameState.questionCount;
+    const pct = Math.round((solvedCount / totalCount) * 100);
 
     let tileButtonsHtml = "";
     for (let i = 0; i < totalCount; i++) {
@@ -175,10 +176,15 @@ function renderGameBoard() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-board-view">
-            <div class="tile-progress-bar-container">
-                <span>🧩 TILES SOLVED: ${solvedCount} / ${totalCount}</span>
-                <span style="color: var(--color-purple-dark);">✨ SCORE: ${currentGameState.score} XP</span>
+        <div class="tile-board-view orixa-game-slide-enter">
+            <div class="orixa-progress-container">
+                <div class="orixa-progress-header">
+                    <span>🧩 TILES SOLVED: ${solvedCount} / ${totalCount}</span>
+                    <span style="color: var(--color-purple-dark);">✨ SCORE: ${currentGameState.score} XP</span>
+                </div>
+                <div class="orixa-progress-track">
+                    <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
+                </div>
             </div>
 
             <div class="tile-grid-container" style="grid-template-columns: repeat(${dim}, 1fr);">
@@ -191,7 +197,7 @@ function renderGameBoard() {
 
             <!-- REQUIREMENT 3: TRUE MODAL OVERLAY LAYERED ABOVE TILE GRID -->
             <div class="tile-question-dim-overlay" id="tile-question-overlay">
-                <div class="tile-question-card" id="tile-question-card">
+                <div class="tile-question-card orixa-question-slide" id="tile-question-card">
                     <!-- Dynamic Question Content rendered when tile clicked -->
                 </div>
             </div>
@@ -375,8 +381,12 @@ function renderVictoryScreen() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close">✕</button>
         </header>
 
-        <div class="tile-victory-screen">
-            <div class="tile-stars-display">⭐ ⭐ ⭐</div>
+        <div class="tile-victory-screen orixa-game-slide-enter">
+            <div class="orixa-stars-row" aria-label="3 Stars Earned">
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
+            </div>
             <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">
                 PERFECT PUZZLE SOLVED!
             </h2>
@@ -384,26 +394,26 @@ function renderVictoryScreen() {
                 Awesome job! You solved all ${currentGameState.questionCount} tiles in <strong>"${escapeHTML(currentGameState.questName)}"</strong>!
             </p>
 
-            <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 18px; padding: 16px; width: 100%; max-width: 400px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; box-shadow: var(--shadow-chunky-pressed);">
-                <div style="text-align: center;">
-                    <span style="font-family: var(--font-header); font-size: 0.8rem; color: #78909c;">ACCURACY</span>
-                    <div style="font-family: var(--font-header); font-size: 1.5rem; color: var(--color-green-dark);">100%</div>
+            <div class="orixa-victory-analytics-card">
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">ACCURACY</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">100%</div>
                 </div>
-                <div style="text-align: center;">
-                    <span style="font-family: var(--font-header); font-size: 0.8rem; color: #78909c;">BONUS XP</span>
-                    <div style="font-family: var(--font-header); font-size: 1.5rem; color: var(--color-purple-dark);">+100 XP</div>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">BONUS XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+100 XP</div>
                 </div>
-                <div style="text-align: center;">
-                    <span style="font-family: var(--font-header); font-size: 0.8rem; color: #78909c;">TILES SOLVED</span>
-                    <div style="font-family: var(--font-header); font-size: 1.5rem; color: var(--border-dark);">${currentGameState.questionCount} / ${currentGameState.questionCount}</div>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">TILES SOLVED</span>
+                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${currentGameState.questionCount} / ${currentGameState.questionCount}</div>
                 </div>
-                <div style="text-align: center;">
-                    <span style="font-family: var(--font-header); font-size: 0.8rem; color: #78909c;">TIME TAKEN</span>
-                    <div style="font-family: var(--font-header); font-size: 1.5rem; color: var(--color-blue-dark);">${totalTimeSeconds}s</div>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">TIME TAKEN</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-blue-dark);">${totalTimeSeconds}s</div>
                 </div>
             </div>
 
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeQuestModal()" style="padding: 14px 40px; font-size: 1.2rem; margin-top: 8px;">
+            <button type="button" class="orixa-done-btn" onclick="closeQuestModal()" style="margin-top: 8px;">
                 DONE
             </button>
         </div>
@@ -564,14 +574,14 @@ function renderMatchEntrance() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-entrance-screen">
-            <div class="tile-entrance-badge" style="background: var(--color-purple); color: white;">MATCH THE FOLLOWING</div>
+        <div class="tile-entrance-screen orixa-game-slide-enter">
+            <div class="tile-entrance-badge" style="background: var(--color-purple); color: white;">GENERAL SCIENCE • MATCH THE FOLLOWING</div>
             <h2 class="tile-entrance-title">${escapeHTML(matchGameState.questName)}</h2>
             <p class="tile-entrance-desc">
                 Connect each question on the left to its correct answer on the right by dragging from the question to the answer card. Match all ${matchGameState.pairs.length} pairs correctly to win!
             </p>
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem;">
-                🎮 START MATCHING
+                🎮 START GAME
             </button>
         </div>
     `;
@@ -587,6 +597,7 @@ function renderMatchGameBoard() {
 
     const matchedCount = matchGameState.matches.size;
     const totalPairs = matchGameState.pairs.length;
+    const pct = Math.round((matchedCount / totalPairs) * 100);
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
@@ -594,10 +605,15 @@ function renderMatchGameBoard() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="match-game-container" id="match-game-container">
-            <div class="tile-progress-bar-container">
-                <span>🔗 PAIRS MATCHED: ${matchedCount} / ${totalPairs}</span>
-                <span style="color: var(--color-purple-dark);">✨ MATCHING GAME</span>
+        <div class="match-game-container orixa-game-slide-enter" id="match-game-container">
+            <div class="orixa-progress-container">
+                <div class="orixa-progress-header">
+                    <span>🔗 PAIRS MATCHED: ${matchedCount} / ${totalPairs}</span>
+                    <span style="color: var(--color-purple-dark);">✨ MATCHING GAME</span>
+                </div>
+                <div class="orixa-progress-track">
+                    <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
+                </div>
             </div>
 
             <svg class="match-svg-overlay" id="match-svg-overlay"></svg>
@@ -894,47 +910,49 @@ function renderMatchVictoryScreen() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
+    addCompletedQuiz();
+    addXPPoints(130);
+
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - matchGameState.startTime) / 1000));
     const totalPairs = matchGameState.pairs.length;
     const accuracy = Math.round((totalPairs / (totalPairs + matchGameState.incorrectAttempts)) * 100);
-    const score = Math.max(50, 150 - (matchGameState.incorrectAttempts * 15));
 
     windowEl.innerHTML = `
-        <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
+        <header class="tile-game-header" style="background: var(--color-green);">
+            <h3 class="tile-game-title">QUEST COMPLETED!</h3>
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-victory-screen">
-            <div class="victory-stars-row">
-                <span class="victory-star">⭐</span>
-                <span class="victory-star">⭐</span>
-                <span class="victory-star">⭐</span>
+        <div class="tile-victory-screen orixa-game-slide-enter">
+            <div class="orixa-stars-row" aria-label="3 Stars Earned">
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
             </div>
 
-            <h2 class="victory-title">AMAZING JOB!</h2>
-            <p class="victory-subtitle">You connected all pairs correctly!</p>
+            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">AMAZING MATCHING!</h2>
+            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">You connected all ${totalPairs} pairs correctly in <strong>"${escapeHTML(matchGameState.questName)}"</strong>!</p>
 
-            <div class="victory-stats-card">
-                <div class="victory-stat-item">
-                    <span class="victory-stat-label">SCORE</span>
-                    <span class="victory-stat-value" style="color: var(--color-purple-dark);">${score} XP</span>
+            <div class="orixa-victory-analytics-card">
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">ACCURACY</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${accuracy}%</div>
                 </div>
-                <div class="victory-stat-item">
-                    <span class="victory-stat-label">ACCURACY</span>
-                    <span class="victory-stat-value" style="color: var(--color-green-dark);">${accuracy}%</span>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">BONUS XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+130 XP</div>
                 </div>
-                <div class="victory-stat-item">
-                    <span class="victory-stat-label">MATCHES</span>
-                    <span class="victory-stat-value" style="color: var(--color-blue-dark);">${totalPairs} / ${totalPairs}</span>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">PAIRS MATCHED</span>
+                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${totalPairs} / ${totalPairs}</div>
                 </div>
-                <div class="victory-stat-item">
-                    <span class="victory-stat-label">TIME</span>
-                    <span class="victory-stat-value" style="color: var(--color-orange-dark);">${elapsedSeconds}s</span>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">TIME TAKEN</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-blue-dark);">${elapsedSeconds}s</div>
                 </div>
             </div>
 
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeQuestModal()" style="padding: 14px 42px; font-size: 1.15rem; margin-top: 8px;">
+            <button type="button" class="orixa-done-btn" onclick="closeQuestModal()" style="margin-top: 8px;">
                 DONE
             </button>
         </div>
@@ -1035,16 +1053,16 @@ function renderFillBlanksEntrance() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-entrance-body">
+        <div class="tile-entrance-screen orixa-game-slide-enter">
             <div class="tile-entrance-badge" style="background-color: var(--color-green); color: var(--border-dark);">
-                FILL IN THE BLANKS QUEST
+                GENERAL SCIENCE • FILL IN THE BLANKS
             </div>
             <h2 class="tile-entrance-title">${escapeHTML(fillBlanksGameState.questName)}</h2>
             <p class="tile-entrance-desc">
                 Drag the correct answer option from the answer box and place it into the blank in each statement to complete all <strong>${fillBlanksGameState.questions.length} questions</strong>!
             </p>
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startFillBlanksGame()" style="padding: 14px 36px; font-size: 1.15rem;">
-                START GAME
+                🎮 START GAME
             </button>
         </div>
     `;
@@ -1063,6 +1081,7 @@ function renderFillBlanksGameBoard() {
     const currentQ = fillBlanksGameState.questions[fillBlanksGameState.currentIndex];
     const totalQ = fillBlanksGameState.questions.length;
     const currentNum = fillBlanksGameState.currentIndex + 1;
+    const pct = Math.round(((currentNum - 1) / totalQ) * 100);
 
     // Build current statement with drop target
     const statement = currentQ.statement;
@@ -1082,13 +1101,18 @@ function renderFillBlanksGameBoard() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="fitb-game-container">
-            <div class="fitb-progress-bar">
-                <span>QUESTION ${currentNum} OF ${totalQ}</span>
-                <span>✨ PROGRESS: ${Math.round(((currentNum - 1) / totalQ) * 100)}%</span>
+        <div class="fitb-game-container orixa-game-slide-enter">
+            <div class="orixa-progress-container">
+                <div class="orixa-progress-header">
+                    <span>QUESTION ${currentNum} OF ${totalQ}</span>
+                    <span style="color: var(--color-green-dark);">✨ PROGRESS: ${pct}%</span>
+                </div>
+                <div class="orixa-progress-track">
+                    <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
+                </div>
             </div>
 
-            <div class="fitb-sentence-box">
+            <div class="fitb-sentence-box orixa-question-slide">
                 ${sentenceHtml}
             </div>
 
@@ -1256,55 +1280,49 @@ function renderFitbVictoryScreen() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
+    addCompletedQuiz();
+    addXPPoints(140);
+
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - fillBlanksGameState.startTime) / 1000));
     const totalQ = fillBlanksGameState.questions.length;
     const accuracy = Math.round((totalQ / (totalQ + fillBlanksGameState.incorrectAttempts)) * 100);
 
     windowEl.innerHTML = `
-        <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
+        <header class="tile-game-header" style="background: var(--color-green);">
+            <h3 class="tile-game-title">QUEST COMPLETED!</h3>
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-entrance-body" style="gap: 16px;">
-            <div style="font-size: 2.5rem; letter-spacing: 6px; animation: tile-entrance-pop 0.6s ease;" aria-label="3 Stars">
-                ⭐ ⭐ ⭐
+        <div class="tile-victory-screen orixa-game-slide-enter">
+            <div class="orixa-stars-row" aria-label="3 Stars Earned">
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
             </div>
 
-            <h2 class="tile-entrance-title" style="color: var(--color-purple-dark);">QUIZ COMPLETE!</h2>
-            <p style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a; margin-top: -8px;">
-                You solved all Fill in the Blanks statements!
-            </p>
+            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">BLANKS COMPLETED!</h2>
+            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">You solved all ${totalQ} statements in <strong>"${escapeHTML(fillBlanksGameState.questName)}"</strong>!</p>
 
-            <!-- Results Analytics -->
-            <div style="width: 100%; max-width: 380px; background: #ffffff; border: 3px solid var(--border-dark); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-chunky-pressed);">
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
-                    <span>Total Questions:</span>
-                    <strong>${totalQ} / ${totalQ}</strong>
+            <div class="orixa-victory-analytics-card">
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">ACCURACY</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${accuracy}%</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-green-dark);">
-                    <span>Correct Answers:</span>
-                    <strong>${totalQ}</strong>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">BONUS XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+140 XP</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-red-dark);">
-                    <span>Incorrect Attempts:</span>
-                    <strong>${fillBlanksGameState.incorrectAttempts}</strong>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">SOLVED</span>
+                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${totalQ} / ${totalQ}</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-purple-dark);">
-                    <span>Accuracy:</span>
-                    <strong>${accuracy}%</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
-                    <span>Time Taken:</span>
-                    <strong>${elapsedSeconds}s</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
-                    <span>Stars Earned:</span>
-                    <strong>⭐⭐⭐</strong>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">TIME TAKEN</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-blue-dark);">${elapsedSeconds}s</div>
                 </div>
             </div>
 
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeQuestModal()" style="padding: 12px 40px; font-size: 1.15rem; margin-top: 8px;">
+            <button type="button" class="orixa-done-btn" onclick="closeQuestModal()" style="margin-top: 8px;">
                 DONE
             </button>
         </div>
@@ -1387,9 +1405,9 @@ function renderTrueFalseEntrance() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-entrance-screen">
+        <div class="tile-entrance-screen orixa-game-slide-enter">
             <div class="tile-entrance-badge" style="background-color: var(--color-yellow); color: var(--border-dark);">
-                TRUE OR FALSE QUEST
+                SCIENCE • TRUE OR FALSE
             </div>
             <h2 class="tile-entrance-title">${escapeHTML(trueFalseGameState.questName)}</h2>
             <p class="tile-entrance-desc">
@@ -1413,6 +1431,7 @@ function renderTrueFalseGameBoard() {
     const currentQ = trueFalseGameState.questions[trueFalseGameState.currentIndex];
     const totalQ = trueFalseGameState.questions.length;
     const currentNum = trueFalseGameState.currentIndex + 1;
+    const pct = Math.round(((currentNum - 1) / totalQ) * 100);
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
@@ -1420,13 +1439,18 @@ function renderTrueFalseGameBoard() {
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tf-game-container">
-            <div class="tf-progress-bar">
-                <span>QUESTION ${currentNum} OF ${totalQ}</span>
-                <span>✨ PROGRESS: ${Math.round(((currentNum - 1) / totalQ) * 100)}%</span>
+        <div class="tf-game-container orixa-game-slide-enter">
+            <div class="orixa-progress-container">
+                <div class="orixa-progress-header">
+                    <span>STATEMENT ${currentNum} OF ${totalQ}</span>
+                    <span style="color: var(--color-yellow-dark);">✨ PROGRESS: ${pct}%</span>
+                </div>
+                <div class="orixa-progress-track">
+                    <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
+                </div>
             </div>
 
-            <div class="tf-statement-card" id="tf-statement-card">
+            <div class="tf-statement-card orixa-question-slide" id="tf-statement-card">
                 <p class="tf-statement-text">${escapeHTML(currentQ.statement)}</p>
             </div>
 
@@ -1522,57 +1546,48 @@ function renderTrueFalseVictoryScreen() {
     if (!windowEl) return;
 
     addCompletedQuiz();
-    addXPPoints(100);
+    addXPPoints(110);
 
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - trueFalseGameState.startTime) / 1000));
     const totalQ = trueFalseGameState.questions.length;
     const accuracy = Math.round((totalQ / (totalQ + trueFalseGameState.incorrectAttemptsCount)) * 100);
 
     windowEl.innerHTML = `
-        <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
+        <header class="tile-game-header" style="background: var(--color-green);">
+            <h3 class="tile-game-title">QUEST COMPLETED!</h3>
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
         </header>
 
-        <div class="tile-entrance-screen" style="gap: 16px;">
-            <div style="font-size: 2.5rem; letter-spacing: 6px; animation: tile-entrance-pop 0.6s ease;" aria-label="3 Stars">
-                ⭐ ⭐ ⭐
+        <div class="tile-victory-screen orixa-game-slide-enter">
+            <div class="orixa-stars-row" aria-label="3 Stars Earned">
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
+                <span class="orixa-star-item">⭐</span>
             </div>
 
-            <h2 class="tile-entrance-title" style="color: var(--color-purple-dark);">QUIZ COMPLETE!</h2>
-            <p style="font-family: var(--font-header); font-size: 1.1rem; color: #546e7a; margin-top: -8px;">
-                You answered all True or False statements!
-            </p>
+            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">GREAT DECISIONS!</h2>
+            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">You evaluated all ${totalQ} statements in <strong>"${escapeHTML(trueFalseGameState.questName)}"</strong>!</p>
 
-            <!-- Results Analytics -->
-            <div style="width: 100%; max-width: 380px; background: #ffffff; border: 3px solid var(--border-dark); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-chunky-pressed);">
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
-                    <span>Total Questions:</span>
-                    <strong>${totalQ} / ${totalQ}</strong>
+            <div class="orixa-victory-analytics-card">
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">ACCURACY</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${accuracy}%</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-green-dark);">
-                    <span>Correct Answers:</span>
-                    <strong>${trueFalseGameState.correctAnswersCount}</strong>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">BONUS XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+110 XP</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-red-dark);">
-                    <span>Incorrect Attempts:</span>
-                    <strong>${trueFalseGameState.incorrectAttemptsCount}</strong>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">STATEMENTS</span>
+                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${totalQ} / ${totalQ}</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--color-purple-dark);">
-                    <span>Accuracy:</span>
-                    <strong>${accuracy}%</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
-                    <span>Time Taken:</span>
-                    <strong>${elapsedSeconds}s</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 1rem; color: var(--border-dark);">
-                    <span>Stars Earned:</span>
-                    <strong>⭐⭐⭐</strong>
+                <div class="orixa-stat-box">
+                    <span class="orixa-stat-box-label">TIME TAKEN</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-blue-dark);">${elapsedSeconds}s</div>
                 </div>
             </div>
 
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeQuestModal()" style="padding: 12px 40px; font-size: 1.15rem; margin-top: 8px;">
+            <button type="button" class="orixa-done-btn" onclick="closeQuestModal()" style="margin-top: 8px;">
                 DONE
             </button>
         </div>

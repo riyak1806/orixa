@@ -407,7 +407,7 @@ body {
 .match-columns-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 60px;
+    gap: 72px;
     position: relative;
     z-index: 2;
 }
@@ -415,7 +415,8 @@ body {
 .match-column {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
+    align-items: center;
 }
 
 .match-column-title {
@@ -429,15 +430,16 @@ body {
     margin: 0 0 4px 0;
     padding-bottom: 6px;
     border-bottom: 2px dashed rgba(26,26,36,0.15);
+    width: 100%;
 }
 
 .match-card {
     background: var(--surface-white);
     border: var(--border-comic-thin);
-    border-radius: 16px;
-    padding: 16px 20px;
+    border-radius: 14px;
+    padding: 10px 14px;
     font-family: var(--font-header);
-    font-size: 1.05rem;
+    font-size: 0.98rem;
     font-weight: 700;
     color: var(--border-dark);
     box-shadow: var(--shadow-chunky-pressed);
@@ -450,7 +452,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 56px;
+    min-height: 48px;
+    width: 100%;
+    max-width: 300px;
     box-sizing: border-box;
 }
 

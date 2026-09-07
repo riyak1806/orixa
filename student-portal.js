@@ -523,7 +523,7 @@ let matchGameState = {
 
 let activeMatchDrag = null;
 
-function openMatchGame(questName, category) {
+function openMatchGame(questName, category, teacherName = 'Professor Riley') {
     const pairs = [
         { id: 'm1', text: "Capital of France?", answer: "Paris" },
         { id: 'm2', text: "2 + 2?", answer: "4" },
@@ -544,11 +544,13 @@ function openMatchGame(questName, category) {
     matchGameState = {
         questName: questName,
         category: category,
+        teacherName: teacherName || 'Professor Riley',
         pairs: pairs,
         questions: questions,
         answers: answers,
         matches: new Map(),
         selectedQuestionId: null,
+        selectedAnswerId: null,
         incorrectAttempts: 0,
         startTime: Date.now()
     };
@@ -572,12 +574,11 @@ function renderMatchEntrance() {
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
-            <div class="tile-entrance-badge" style="background: var(--color-purple); color: white;">GENERAL SCIENCE • MATCH THE FOLLOWING</div>
-            <h2 class="tile-entrance-title">${escapeHTML(matchGameState.questName)}</h2>
-            <p class="tile-entrance-desc">
-                Connect each question on the left to its correct answer on the right by dragging from the question to the answer card. Match all ${matchGameState.pairs.length} pairs correctly to win!
+            <h2 class="tile-entrance-title">MATCH THE FOLLOWING</h2>
+            <p class="tile-entrance-desc" style="font-family: var(--font-header); font-weight: 700; font-size: 1.25rem; color: var(--border-dark);">
+                Teacher: ${escapeHTML(matchGameState.teacherName)}
             </p>
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem;">
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem; margin-top: 8px;">
                 🎮 START GAME
             </button>
         </div>
@@ -617,7 +618,7 @@ function renderMatchGameBoard() {
 
             <div class="match-columns-grid">
                 <div class="match-column">
-                    <h4 class="match-column-title">Questions / Prompts</h4>
+                    <h4 class="match-column-title">Questions</h4>
                     ${matchGameState.questions.map(q => {
                         const isMatched = matchGameState.matches.has(q.id);
                         const isSelected = matchGameState.selectedQuestionId === q.id;
@@ -636,8 +637,9 @@ function renderMatchGameBoard() {
                     <h4 class="match-column-title">Possible Answers</h4>
                     ${matchGameState.answers.map(a => {
                         const isMatched = Array.from(matchGameState.matches.values()).includes(a.id);
+                        const isSelected = matchGameState.selectedAnswerId === a.id;
                         return `
-                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''}"
+                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
                                  data-a-id="${a.id}"
                                  id="a-card-${a.id}">
                                 <span class="match-card-dot" id="a-dot-${a.id}"></span>
@@ -662,7 +664,7 @@ function setupMatchInteractions() {
     const container = document.getElementById('match-game-container');
     if (!container) return;
 
-    // Pointer events on question cards
+    // Question Cards (Pointer Down / Drag / Tap)
     const qCards = container.querySelectorAll('.match-question-card');
     qCards.forEach(card => {
         const qId = card.dataset.qId;
@@ -670,76 +672,103 @@ function setupMatchInteractions() {
         card.addEventListener('pointerdown', (e) => {
             if (matchGameState.matches.has(qId)) return;
 
-            // Start drag
+            const prevAnsId = matchGameState.selectedAnswerId;
+
             activeMatchDrag = {
                 qId: qId,
-                pointerId: e.pointerId
+                pointerId: e.pointerId,
+                startX: e.clientX,
+                startY: e.clientY,
+                isDrag: false
             };
 
+            if (prevAnsId) {
+                attemptMatch(qId, prevAnsId);
+                return;
+            }
+
             matchGameState.selectedQuestionId = qId;
-            card.classList.add('is-selected');
+            qCards.forEach(qc => {
+                if (!matchGameState.matches.has(qc.dataset.qId)) {
+                    qc.classList.toggle('is-selected', qc.dataset.qId === qId);
+                }
+            });
 
             if (card.setPointerCapture) {
                 try { card.setPointerCapture(e.pointerId); } catch(err) {}
             }
-
-            drawDragLine(e.clientX, e.clientY);
         });
 
         card.addEventListener('pointermove', (e) => {
             if (!activeMatchDrag || activeMatchDrag.qId !== qId) return;
 
-            drawDragLine(e.clientX, e.clientY);
+            const dist = Math.hypot(e.clientX - activeMatchDrag.startX, e.clientY - activeMatchDrag.startY);
+            if (dist > 6) {
+                activeMatchDrag.isDrag = true;
+            }
 
-            // Highlight answer target under pointer
-            const elem = document.elementFromPoint(e.clientX, e.clientY);
-            const aCard = elem ? elem.closest('.match-answer-card') : null;
+            if (activeMatchDrag.isDrag) {
+                drawDragLine(e.clientX, e.clientY);
 
-            container.querySelectorAll('.match-answer-card').forEach(ac => {
-                if (aCard && ac === aCard && !Array.from(matchGameState.matches.values()).includes(ac.dataset.aId)) {
-                    ac.classList.add('is-hovered');
-                } else {
-                    ac.classList.remove('is-hovered');
-                }
-            });
+                const elem = document.elementFromPoint(e.clientX, e.clientY);
+                const aCard = elem ? elem.closest('.match-answer-card') : null;
+
+                container.querySelectorAll('.match-answer-card').forEach(ac => {
+                    if (aCard && ac === aCard && !Array.from(matchGameState.matches.values()).includes(ac.dataset.aId)) {
+                        ac.classList.add('is-hovered');
+                    } else {
+                        ac.classList.remove('is-hovered');
+                    }
+                });
+            }
         });
 
         const handlePointerEnd = (e) => {
             if (!activeMatchDrag || activeMatchDrag.qId !== qId) return;
 
-            const elem = document.elementFromPoint(e.clientX, e.clientY);
-            const aCard = elem ? elem.closest('.match-answer-card') : null;
+            const dragData = activeMatchDrag;
+            activeMatchDrag = null;
 
             if (card.releasePointerCapture) {
                 try { card.releasePointerCapture(e.pointerId); } catch(err) {}
             }
 
-            activeMatchDrag = null;
-            card.classList.remove('is-selected');
             container.querySelectorAll('.match-answer-card').forEach(ac => ac.classList.remove('is-hovered'));
-
             removeTempDragLine();
 
-            if (aCard) {
-                const aId = aCard.dataset.aId;
-                attemptMatch(qId, aId);
+            if (dragData.isDrag) {
+                const elem = document.elementFromPoint(e.clientX, e.clientY);
+                const aCard = elem ? elem.closest('.match-answer-card') : null;
+
+                if (aCard) {
+                    const aId = aCard.dataset.aId;
+                    attemptMatch(qId, aId);
+                }
             }
         };
 
         card.addEventListener('pointerup', handlePointerEnd);
         card.addEventListener('pointercancel', handlePointerEnd);
-
     });
 
-    // Tap selection on answer cards
+    // Answer Cards (Tap Selection)
     const aCards = container.querySelectorAll('.match-answer-card');
     aCards.forEach(card => {
         const aId = card.dataset.aId;
+
         card.addEventListener('click', () => {
             if (Array.from(matchGameState.matches.values()).includes(aId)) return;
+
             if (matchGameState.selectedQuestionId) {
                 const qId = matchGameState.selectedQuestionId;
                 attemptMatch(qId, aId);
+            } else {
+                matchGameState.selectedAnswerId = aId;
+                aCards.forEach(ac => {
+                    if (!Array.from(matchGameState.matches.values()).includes(ac.dataset.aId)) {
+                        ac.classList.toggle('is-selected', ac.dataset.aId === aId);
+                    }
+                });
             }
         });
     });
@@ -796,6 +825,7 @@ function attemptMatch(qId, aId) {
         // CORRECT MATCH
         matchGameState.matches.set(qId, aId);
         matchGameState.selectedQuestionId = null;
+        matchGameState.selectedAnswerId = null;
 
         renderMatchGameBoard();
 
@@ -807,6 +837,7 @@ function attemptMatch(qId, aId) {
         // INCORRECT MATCH
         matchGameState.incorrectAttempts++;
         matchGameState.selectedQuestionId = null;
+        matchGameState.selectedAnswerId = null;
 
         // Visual feedback
         const qCard = document.getElementById(`q-card-${qId}`);
@@ -819,8 +850,12 @@ function attemptMatch(qId, aId) {
         drawErrorLine(qId, aId);
 
         setTimeout(() => {
-            if (qCard) qCard.classList.remove('is-wrong');
-            if (aCard) aCard.classList.remove('is-wrong');
+            if (qCard) {
+                qCard.classList.remove('is-wrong', 'is-selected');
+            }
+            if (aCard) {
+                aCard.classList.remove('is-wrong', 'is-selected');
+            }
             removeErrorLine();
         }, 600);
     }

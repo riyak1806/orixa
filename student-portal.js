@@ -1333,6 +1333,7 @@ function renderFitbVictoryScreen() {
 let trueFalseGameState = {
     questName: "",
     category: "",
+    teacherName: "Professor Riley",
     questions: [], // { statement, correctAnswer: true/false }
     currentIndex: 0,
     correctAnswersCount: 0,
@@ -1341,7 +1342,7 @@ let trueFalseGameState = {
     isProcessing: false
 };
 
-function openTrueFalseGame(questName, category, customQuestions = null) {
+function openTrueFalseGame(questName, category, customQuestions = null, teacherName = 'Professor Riley') {
     const defaultQuestions = [
         {
             statement: "Water freezes at 0°C at standard atmospheric pressure.",
@@ -1376,6 +1377,7 @@ function openTrueFalseGame(questName, category, customQuestions = null) {
     trueFalseGameState = {
         questName: questName,
         category: category,
+        teacherName: teacherName || 'Professor Riley',
         questions: preparedQuestions,
         currentIndex: 0,
         correctAnswersCount: 0,

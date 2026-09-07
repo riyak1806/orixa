@@ -963,14 +963,18 @@ function renderMatchVictoryScreen() {
 let fillBlanksGameState = {
     questName: "",
     category: "",
+    teacherName: "Professor Riley",
+    configuredChances: 3,
+    remainingChances: 3,
     questions: [], // { statement, blankAnswer, options, correctAnswer }
     currentIndex: 0,
     incorrectAttempts: 0,
     startTime: 0,
-    selectedOption: null
+    selectedOption: null,
+    isProcessing: false
 };
 
-function openFillBlanksGame(questName, category, customQuestions = null) {
+function openFillBlanksGame(questName, category, customQuestions = null, chances = 3, teacherName = 'Professor Riley') {
     const defaultQuestions = [
         {
             statement: "The capital of France is Paris.",
@@ -1022,14 +1026,20 @@ function openFillBlanksGame(questName, category, customQuestions = null) {
         };
     });
 
+    const parsedChances = typeof chances === 'number' && chances > 0 ? chances : 3;
+
     fillBlanksGameState = {
         questName: questName,
         category: category,
+        teacherName: teacherName || 'Professor Riley',
+        configuredChances: parsedChances,
+        remainingChances: parsedChances,
         questions: preparedQuestions,
         currentIndex: 0,
         incorrectAttempts: 0,
         startTime: Date.now(),
-        selectedOption: null
+        selectedOption: null,
+        isProcessing: false
     };
 
     const modal = document.getElementById('quest-modal');
@@ -1102,7 +1112,7 @@ function renderFillBlanksGameBoard() {
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span>QUESTION ${currentNum} OF ${totalQ}</span>
-                    <span style="color: var(--color-green-dark);">✨ PROGRESS: ${pct}%</span>
+                    <span style="color: var(--color-purple-dark);">🎯 CHANCES: ${fillBlanksGameState.remainingChances}/${fillBlanksGameState.configuredChances}</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -1142,69 +1152,94 @@ function setupFitbInteractions() {
 
         // Pointer Dragging (Mouse & Touch)
         card.addEventListener('pointerdown', (e) => {
+            if (fillBlanksGameState.isProcessing) return;
             e.preventDefault();
             const rect = card.getBoundingClientRect();
             const offsetX = e.clientX - rect.left;
             const offsetY = e.clientY - rect.top;
 
-            card.classList.add('is-dragging');
+            // Keep original card in place so remaining options do NOT reflow or shift
+            card.style.opacity = '0.35';
             if (target) target.classList.add('is-target-active');
+
+            // Create floating drag avatar on document.body
+            const dragAvatar = document.createElement('div');
+            dragAvatar.className = 'fitb-drag-avatar';
+            dragAvatar.textContent = optionText;
+            dragAvatar.style.cssText = `
+                position: fixed;
+                left: ${e.clientX - offsetX}px;
+                top: ${e.clientY - offsetY}px;
+                padding: 12px 24px;
+                background: #ffffff;
+                border: 3px solid var(--border-dark);
+                border-radius: 14px;
+                font-family: var(--font-header);
+                font-size: 1.15rem;
+                color: var(--border-dark);
+                box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+                transform: scale(1.05) rotate(-2deg);
+                z-index: 9999;
+                pointer-events: none;
+                user-select: none;
+                touch-action: none;
+            `;
+            document.body.appendChild(dragAvatar);
 
             activeFitbDrag = {
                 card: card,
+                avatar: dragAvatar,
                 optionText: optionText,
-                initialParent: card.parentNode,
-                initialNextSibling: card.nextSibling,
                 offsetX: offsetX,
-                offsetY: offsetY
+                offsetY: offsetY,
+                pointerId: e.pointerId
             };
 
-            card.style.position = 'fixed';
-            card.style.left = `${e.clientX - offsetX}px`;
-            card.style.top = `${e.clientY - offsetY}px`;
-            card.setPointerCapture(e.pointerId);
+            try {
+                card.setPointerCapture(e.pointerId);
+            } catch (err) {}
         });
 
         card.addEventListener('pointermove', (e) => {
-            if (!activeFitbDrag || activeFitbDrag.card !== card) return;
-            card.style.left = `${e.clientX - activeFitbDrag.offsetX}px`;
-            card.style.top = `${e.clientY - activeFitbDrag.offsetY}px`;
+            if (!activeFitbDrag || activeFitbDrag.card !== card || !activeFitbDrag.avatar) return;
+            activeFitbDrag.avatar.style.left = `${e.clientX - activeFitbDrag.offsetX}px`;
+            activeFitbDrag.avatar.style.top = `${e.clientY - activeFitbDrag.offsetY}px`;
         });
 
-        const handlePointerUp = (e) => {
+        const handlePointerEnd = (e) => {
             if (!activeFitbDrag || activeFitbDrag.card !== card) return;
 
-            card.style.display = 'none';
-            const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
-            card.style.display = '';
+            const dragInfo = activeFitbDrag;
+            activeFitbDrag = null;
 
-            card.classList.remove('is-dragging');
+            try {
+                card.releasePointerCapture(e.pointerId);
+            } catch (err) {}
+
+            // Remove drag avatar from DOM
+            if (dragInfo.avatar && dragInfo.avatar.parentNode) {
+                dragInfo.avatar.parentNode.removeChild(dragInfo.avatar);
+            }
+
+            // Restore original card opacity
+            card.style.opacity = '';
             if (target) target.classList.remove('is-target-active');
 
-            card.style.position = '';
-            card.style.left = '';
-            card.style.top = '';
-
+            // Find element under pointer
+            const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
             const droppedOnTarget = elemBelow ? elemBelow.closest('#fitb-drop-target') : null;
-
-            activeFitbDrag = null;
 
             if (droppedOnTarget) {
                 attemptFitbAnswer(optionText, card);
-            } else {
-                // Return option to box
-                const optionsBox = document.getElementById('fitb-options-box');
-                if (optionsBox && card.parentNode !== optionsBox) {
-                    optionsBox.appendChild(card);
-                }
             }
         };
 
-        card.addEventListener('pointerup', handlePointerUp);
-        card.addEventListener('pointercancel', handlePointerUp);
+        card.addEventListener('pointerup', handlePointerEnd);
+        card.addEventListener('pointercancel', handlePointerEnd);
 
         // Tap Selection Fallback
         card.addEventListener('click', () => {
+            if (fillBlanksGameState.isProcessing) return;
             optionCards.forEach(c => c.classList.remove('is-selected'));
             card.classList.add('is-selected');
             fillBlanksGameState.selectedOption = { text: optionText, card: card };
@@ -1213,6 +1248,7 @@ function setupFitbInteractions() {
 
     if (target) {
         target.addEventListener('click', () => {
+            if (fillBlanksGameState.isProcessing) return;
             if (fillBlanksGameState.selectedOption) {
                 const { text, card } = fillBlanksGameState.selectedOption;
                 attemptFitbAnswer(text, card);
@@ -1222,14 +1258,17 @@ function setupFitbInteractions() {
 }
 
 function attemptFitbAnswer(optionText, card) {
+    if (fillBlanksGameState.isProcessing) return;
+
     const currentQ = fillBlanksGameState.questions[fillBlanksGameState.currentIndex];
     const target = document.getElementById('fitb-drop-target');
     if (!target) return;
 
+    fillBlanksGameState.isProcessing = true;
+    fillBlanksGameState.selectedOption = null;
+
     const isCorrect = (optionText === currentQ.correctAnswerText) ||
                       (currentQ.blankAnswer && optionText.toLowerCase() === currentQ.blankAnswer.toLowerCase());
-
-    fillBlanksGameState.selectedOption = null;
 
     if (isCorrect) {
         // Correct feedback
@@ -1243,7 +1282,9 @@ function attemptFitbAnswer(optionText, card) {
 
         // Transition to next question or victory screen
         setTimeout(() => {
+            fillBlanksGameState.isProcessing = false;
             fillBlanksGameState.currentIndex++;
+            fillBlanksGameState.remainingChances = fillBlanksGameState.configuredChances;
             if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
                 renderFitbVictoryScreen();
             } else {
@@ -1254,22 +1295,49 @@ function attemptFitbAnswer(optionText, card) {
     } else {
         // Incorrect feedback
         fillBlanksGameState.incorrectAttempts++;
+        fillBlanksGameState.remainingChances--;
+
         target.textContent = optionText;
         target.classList.remove('is-target-active');
         target.classList.add('is-incorrect');
 
-        // Reset after shake animation
-        setTimeout(() => {
-            target.textContent = "______";
-            target.classList.remove('is-incorrect');
-            const optionsBox = document.getElementById('fitb-options-box');
-            if (optionsBox && card && card.parentNode !== optionsBox) {
-                optionsBox.appendChild(card);
-            }
-            if (card) {
-                card.classList.remove('is-selected', 'is-dragging');
-            }
-        }, 600);
+        // Update progress chances display
+        const progressHeaderSpans = document.querySelectorAll('.orixa-progress-header span');
+        if (progressHeaderSpans && progressHeaderSpans[1]) {
+            progressHeaderSpans[1].textContent = `🎯 CHANCES: ${Math.max(0, fillBlanksGameState.remainingChances)}/${fillBlanksGameState.configuredChances}`;
+        }
+
+        if (fillBlanksGameState.remainingChances > 0) {
+            // Chances remain: keep correct answer hidden, allow trying again
+            setTimeout(() => {
+                target.textContent = "______";
+                target.classList.remove('is-incorrect');
+                if (card) {
+                    card.classList.remove('is-selected', 'is-dragging');
+                    card.style.opacity = '';
+                }
+                fillBlanksGameState.isProcessing = false;
+            }, 600);
+        } else {
+            // All chances exhausted: reveal correct answer before proceeding
+            setTimeout(() => {
+                const correctRevealText = currentQ.correctAnswerText || currentQ.blankAnswer || optionText;
+                target.textContent = correctRevealText;
+                target.classList.remove('is-incorrect');
+                target.classList.add('is-correct');
+
+                setTimeout(() => {
+                    fillBlanksGameState.isProcessing = false;
+                    fillBlanksGameState.currentIndex++;
+                    fillBlanksGameState.remainingChances = fillBlanksGameState.configuredChances;
+                    if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
+                        renderFitbVictoryScreen();
+                    } else {
+                        renderFillBlanksGameBoard();
+                    }
+                }, 1200);
+            }, 500);
+        }
     }
 }
 

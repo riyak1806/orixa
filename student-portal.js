@@ -296,13 +296,29 @@ function renderGameBoard() {
     let tileButtonsHtml = "";
     for (let i = 0; i < totalCount; i++) {
         const isSolved = currentGameState.solvedTiles.has(i);
+        const isProcessed = currentGameState.processedTiles.has(i);
+        const isDisabled = isSolved || isProcessed;
+        let buttonClass = 'tile-button';
+        if (isSolved) {
+            buttonClass += ' solved';
+        } else if (isProcessed) {
+            buttonClass += ' failed';
+        }
+
+        let buttonText = i + 1;
+        if (isSolved) {
+            buttonText = '✓';
+        } else if (isProcessed) {
+            buttonText = '✗';
+        }
+
         tileButtonsHtml += `
             <button type="button"
-                    class="tile-button ${isSolved ? 'solved' : ''}"
+                    class="${buttonClass}"
                     id="tile-btn-${i}"
                     onclick="handleTileClick(${i})"
-                    ${isSolved ? 'disabled' : ''}>
-                ${isSolved ? '✓' : i + 1}
+                    ${isDisabled ? 'disabled' : ''}>
+                ${buttonText}
             </button>
         `;
     }
@@ -343,7 +359,7 @@ function renderGameBoard() {
 }
 
 function handleTileClick(tileIndex) {
-    if (currentGameState.solvedTiles.has(tileIndex)) return;
+    if (currentGameState.solvedTiles.has(tileIndex) || currentGameState.processedTiles.has(tileIndex)) return;
 
     currentGameState.selectedTileIndex = tileIndex;
     currentGameState.selectedOptionIndex = null;
@@ -703,7 +719,7 @@ let matchGameState = {
 
 let activeMatchDrag = null;
 
-function openMatchGame(questName, category, teacherName = 'Professor Riley') {
+function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3) {
     const pairs = [
         { id: 'm1', text: "Capital of France?", answer: "Paris" },
         { id: 'm2', text: "2 + 2?", answer: "4" },
@@ -721,6 +737,8 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley') {
         [answers[i], answers[j]] = [answers[j], answers[i]];
     }
 
+    const parsedChances = typeof chances === 'number' && chances > 0 ? chances : 3;
+
     const pairStats = pairs.map(p => ({
         id: p.id,
         mistakes: 0,
@@ -732,11 +750,13 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley') {
         questName: questName,
         category: category,
         teacherName: teacherName || 'Professor Riley',
+        configuredChances: parsedChances,
         pairs: pairs,
         questions: questions,
         answers: answers,
         pairStats: pairStats,
         matches: new Map(),
+        failedPairs: new Set(),
         selectedQuestionId: null,
         selectedAnswerId: null,
         incorrectAttempts: 0,
@@ -812,9 +832,10 @@ function renderMatchGameBoard() {
                     <h4 class="match-column-title">Questions</h4>
                     ${matchGameState.questions.map(q => {
                         const isMatched = matchGameState.matches.has(q.id);
+                        const isFailed = matchGameState.failedPairs.has(q.id);
                         const isSelected = matchGameState.selectedQuestionId === q.id;
                         return `
-                            <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
+                            <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
                                  data-q-id="${q.id}"
                                  id="q-card-${q.id}">
                                 <span>${escapeHTML(q.text)}</span>
@@ -828,9 +849,10 @@ function renderMatchGameBoard() {
                     <h4 class="match-column-title">Possible Answers</h4>
                     ${matchGameState.answers.map(a => {
                         const isMatched = Array.from(matchGameState.matches.values()).includes(a.id);
+                        const isFailed = matchGameState.failedPairs.has(a.id);
                         const isSelected = matchGameState.selectedAnswerId === a.id;
                         return `
-                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
+                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
                                  data-a-id="${a.id}"
                                  id="a-card-${a.id}">
                                 <span class="match-card-dot" id="a-dot-${a.id}"></span>
@@ -861,7 +883,7 @@ function setupMatchInteractions() {
         const qId = card.dataset.qId;
 
         card.addEventListener('pointerdown', (e) => {
-            if (matchGameState.matches.has(qId)) return;
+            if (matchGameState.matches.has(qId) || matchGameState.failedPairs.has(qId)) return;
 
             const prevAnsId = matchGameState.selectedAnswerId;
 
@@ -880,7 +902,7 @@ function setupMatchInteractions() {
 
             matchGameState.selectedQuestionId = qId;
             qCards.forEach(qc => {
-                if (!matchGameState.matches.has(qc.dataset.qId)) {
+                if (!matchGameState.matches.has(qc.dataset.qId) && !matchGameState.failedPairs.has(qc.dataset.qId)) {
                     qc.classList.toggle('is-selected', qc.dataset.qId === qId);
                 }
             });
@@ -948,7 +970,7 @@ function setupMatchInteractions() {
         const aId = card.dataset.aId;
 
         card.addEventListener('click', () => {
-            if (Array.from(matchGameState.matches.values()).includes(aId)) return;
+            if (Array.from(matchGameState.matches.values()).includes(aId) || matchGameState.failedPairs.has(aId)) return;
 
             if (matchGameState.selectedQuestionId) {
                 const qId = matchGameState.selectedQuestionId;
@@ -956,7 +978,7 @@ function setupMatchInteractions() {
             } else {
                 matchGameState.selectedAnswerId = aId;
                 aCards.forEach(ac => {
-                    if (!Array.from(matchGameState.matches.values()).includes(ac.dataset.aId)) {
+                    if (!Array.from(matchGameState.matches.values()).includes(ac.dataset.aId) && !matchGameState.failedPairs.has(ac.dataset.aId)) {
                         ac.classList.toggle('is-selected', ac.dataset.aId === aId);
                     }
                 });
@@ -1010,8 +1032,8 @@ function removeTempDragLine() {
 }
 
 function attemptMatch(qId, aId) {
-    if (matchGameState.matches.has(qId)) return;
-    if (Array.from(matchGameState.matches.values()).includes(aId)) return;
+    if (matchGameState.matches.has(qId) || matchGameState.failedPairs.has(qId)) return;
+    if (Array.from(matchGameState.matches.values()).includes(aId) || matchGameState.failedPairs.has(aId)) return;
 
     const stat = matchGameState.pairStats ? matchGameState.pairStats.find(p => p.id === qId) : null;
 
@@ -1027,8 +1049,8 @@ function attemptMatch(qId, aId) {
 
         renderMatchGameBoard();
 
-        // Check if all matched
-        if (matchGameState.matches.size === matchGameState.pairs.length) {
+        // Check if all pairs processed (matched + failed)
+        if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
             setTimeout(renderMatchVictoryScreen, 600);
         }
     } else {
@@ -1051,15 +1073,40 @@ function attemptMatch(qId, aId) {
         // Draw temporary red error line
         drawErrorLine(qId, aId);
 
-        setTimeout(() => {
-            if (qCard) {
-                qCard.classList.remove('is-wrong', 'is-selected');
+        const currentMistakes = stat ? stat.mistakes : 1;
+        const maxChances = matchGameState.configuredChances || 3;
+
+        if (currentMistakes >= maxChances) {
+            if (stat) {
+                stat.isSolved = false;
             }
-            if (aCard) {
-                aCard.classList.remove('is-wrong', 'is-selected');
-            }
-            removeErrorLine();
-        }, 600);
+            matchGameState.failedPairs.add(qId);
+
+            setTimeout(() => {
+                if (qCard) {
+                    qCard.classList.remove('is-wrong', 'is-selected');
+                }
+                if (aCard) {
+                    aCard.classList.remove('is-wrong', 'is-selected');
+                }
+                removeErrorLine();
+                renderMatchGameBoard();
+
+                if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+                    setTimeout(renderMatchVictoryScreen, 600);
+                }
+            }, 600);
+        } else {
+            setTimeout(() => {
+                if (qCard) {
+                    qCard.classList.remove('is-wrong', 'is-selected');
+                }
+                if (aCard) {
+                    aCard.classList.remove('is-wrong', 'is-selected');
+                }
+                removeErrorLine();
+            }, 600);
+        }
     }
 }
 
@@ -1671,6 +1718,8 @@ let trueFalseGameState = {
     questName: "",
     category: "",
     teacherName: "Professor Riley",
+    configuredChances: 1,
+    remainingChances: 1,
     questions: [], // { statement, correctAnswer: true/false }
     currentIndex: 0,
     correctAnswersCount: 0,
@@ -1679,7 +1728,7 @@ let trueFalseGameState = {
     isProcessing: false
 };
 
-function openTrueFalseGame(questName, category, customQuestions = null, teacherName = 'Professor Riley') {
+function openTrueFalseGame(questName, category, customQuestions = null, teacherName = 'Professor Riley', chances = 1) {
     const defaultQuestions = [
         {
             statement: "Water freezes at 0°C at standard atmospheric pressure.",
@@ -1721,6 +1770,8 @@ function openTrueFalseGame(questName, category, customQuestions = null, teacherN
         questName: questName,
         category: category,
         teacherName: teacherName || 'Professor Riley',
+        configuredChances: parsedChances,
+        remainingChances: parsedChances,
         questions: preparedQuestions,
         questionStats: questionStats,
         currentIndex: 0,
@@ -1849,6 +1900,7 @@ function evaluateTrueFalseChoice(selectedBool) {
         setTimeout(() => {
             trueFalseGameState.isProcessing = false;
             trueFalseGameState.currentIndex++;
+            trueFalseGameState.remainingChances = trueFalseGameState.configuredChances;
             if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
                 renderTrueFalseVictoryScreen();
             } else {
@@ -1862,6 +1914,7 @@ function evaluateTrueFalseChoice(selectedBool) {
             currentStat.totalAttempts++;
         }
         trueFalseGameState.incorrectAttemptsCount++;
+        trueFalseGameState.remainingChances--;
 
         if (cardEl) {
             cardEl.classList.add('is-incorrect');
@@ -1872,24 +1925,48 @@ function evaluateTrueFalseChoice(selectedBool) {
             if (btnFalse) btnFalse.classList.add('selected-incorrect');
         }
 
-        if (feedbackEl) {
-            feedbackEl.style.color = "var(--color-red-dark)";
-            feedbackEl.textContent = "✕ Incorrect! Try again.";
-        }
+        const correctText = currentQ.correctAnswer ? "TRUE" : "FALSE";
 
-        setTimeout(() => {
-            if (cardEl) cardEl.classList.remove('is-incorrect');
-            if (btnTrue) {
-                btnTrue.classList.remove('selected-incorrect');
-                btnTrue.disabled = false;
+        if (trueFalseGameState.remainingChances > 0) {
+            if (feedbackEl) {
+                feedbackEl.style.color = "var(--color-red-dark)";
+                feedbackEl.textContent = "✕ Incorrect! Try again.";
             }
-            if (btnFalse) {
-                btnFalse.classList.remove('selected-incorrect');
-                btnFalse.disabled = false;
+
+            setTimeout(() => {
+                if (cardEl) cardEl.classList.remove('is-incorrect');
+                if (btnTrue) {
+                    btnTrue.classList.remove('selected-incorrect');
+                    btnTrue.disabled = false;
+                }
+                if (btnFalse) {
+                    btnFalse.classList.remove('selected-incorrect');
+                    btnFalse.disabled = false;
+                }
+                if (feedbackEl) feedbackEl.textContent = "";
+                trueFalseGameState.isProcessing = false;
+            }, 800);
+        } else {
+            if (currentStat) {
+                currentStat.isSolved = false;
             }
-            if (feedbackEl) feedbackEl.textContent = "";
-            trueFalseGameState.isProcessing = false;
-        }, 800);
+
+            if (feedbackEl) {
+                feedbackEl.style.color = "var(--color-red-dark)";
+                feedbackEl.textContent = `✕ Incorrect! Correct answer: ${correctText}`;
+            }
+
+            setTimeout(() => {
+                trueFalseGameState.isProcessing = false;
+                trueFalseGameState.currentIndex++;
+                trueFalseGameState.remainingChances = trueFalseGameState.configuredChances;
+                if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
+                    renderTrueFalseVictoryScreen();
+                } else {
+                    renderTrueFalseGameBoard();
+                }
+            }, 1200);
+        }
     }
 }
 

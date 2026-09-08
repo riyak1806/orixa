@@ -104,6 +104,12 @@ function calculateQuizResults(questionStatsArray, totalPossibleXP) {
     };
 }
 
+function getCurrentQuizXP(questionStats, questName) {
+    if (!questionStats || !Array.isArray(questionStats) || questionStats.length === 0 || !questName) return 0;
+    const totalMaxXP = getQuestMaxXP(questName);
+    return calculateQuizResults(questionStats, totalMaxXP).earnedXP;
+}
+
 function renderStarsRowHtml(starsCount) {
     let html = '<div class="orixa-stars-row" aria-label="' + starsCount + ' Stars Earned">';
     for (let i = 1; i <= 3; i++) {
@@ -292,6 +298,7 @@ function renderGameBoard() {
     const solvedCount = currentGameState.solvedTiles.size;
     const totalCount = currentGameState.questionCount;
     const pct = Math.round((solvedCount / totalCount) * 100);
+    const currentXP = getCurrentQuizXP(currentGameState.questionStats, currentGameState.questName);
 
     let tileButtonsHtml = "";
     for (let i = 0; i < totalCount; i++) {
@@ -333,7 +340,7 @@ function renderGameBoard() {
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span>🧩 TILES SOLVED: ${solvedCount} / ${totalCount}</span>
-                    <span style="color: var(--color-purple-dark);">✨ SCORE: ${currentGameState.score} XP</span>
+                    <span style="color: var(--color-purple-dark);" id="tile-live-xp">✨ SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -807,6 +814,7 @@ function renderMatchGameBoard() {
     const matchedCount = matchGameState.matches.size;
     const totalPairs = matchGameState.pairs.length;
     const pct = Math.round((matchedCount / totalPairs) * 100);
+    const currentXP = getCurrentQuizXP(matchGameState.pairStats, matchGameState.questName);
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
@@ -818,7 +826,7 @@ function renderMatchGameBoard() {
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span>🔗 PAIRS MATCHED: ${matchedCount} / ${totalPairs}</span>
-                    <span style="color: var(--color-purple-dark);">✨ MATCHING GAME</span>
+                    <span style="color: var(--color-purple-dark);" id="match-live-xp">✨ SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -1381,6 +1389,7 @@ function renderFillBlanksGameBoard() {
     const totalQ = fillBlanksGameState.questions.length;
     const currentNum = fillBlanksGameState.currentIndex + 1;
     const pct = Math.round(((currentNum - 1) / totalQ) * 100);
+    const currentXP = getCurrentQuizXP(fillBlanksGameState.questionStats, fillBlanksGameState.questName);
 
     // Build current statement with drop target
     const statement = currentQ.statement;
@@ -1404,7 +1413,7 @@ function renderFillBlanksGameBoard() {
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span>QUESTION ${currentNum} OF ${totalQ}</span>
-                    <span style="color: var(--color-purple-dark);">🎯 CHANCES: ${fillBlanksGameState.remainingChances}/${fillBlanksGameState.configuredChances}</span>
+                    <span style="color: var(--color-purple-dark);" id="fitb-live-xp">✨ SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -1766,6 +1775,8 @@ function openTrueFalseGame(questName, category, customQuestions = null, teacherN
         totalAttempts: 0
     }));
 
+    const parsedChances = typeof chances === 'number' && chances > 0 ? chances : 1;
+
     trueFalseGameState = {
         questName: questName,
         category: category,
@@ -1826,6 +1837,7 @@ function renderTrueFalseGameBoard() {
     const totalQ = trueFalseGameState.questions.length;
     const currentNum = trueFalseGameState.currentIndex + 1;
     const pct = Math.round(((currentNum - 1) / totalQ) * 100);
+    const currentXP = getCurrentQuizXP(trueFalseGameState.questionStats, trueFalseGameState.questName);
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
@@ -1837,7 +1849,7 @@ function renderTrueFalseGameBoard() {
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span>STATEMENT ${currentNum} OF ${totalQ}</span>
-                    <span style="color: var(--color-yellow-dark);">✨ PROGRESS: ${pct}%</span>
+                    <span style="color: var(--color-purple-dark);" id="tf-live-xp">✨ SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>

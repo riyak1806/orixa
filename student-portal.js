@@ -2,6 +2,118 @@
    ORIXA - STUDENT PORTAL CONTROLLER (TILE PUZZLE GAME ENGINE)
    ========================================================================= */
 
+/* ==========================================================================
+   SHARED ORIXA SCORING, ACCURACY, STAR & COMPLETION ENGINE
+   ========================================================================== */
+
+const STORAGE_KEYS = {
+    COMPLETED_QUIZZES: 'orixa_completed_quizzes',
+    STUDENT_STATS: 'orixa_student_stats'
+};
+
+let completedQuizzes = new Set();
+
+function loadCompletedQuizzesFromStorage() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.COMPLETED_QUIZZES);
+        if (stored) {
+            const arr = JSON.parse(stored);
+            if (Array.isArray(arr)) {
+                completedQuizzes = new Set(arr);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load completed quizzes from localStorage:', e);
+    }
+}
+
+function saveCompletedQuizzesToStorage() {
+    try {
+        localStorage.setItem(STORAGE_KEYS.COMPLETED_QUIZZES, JSON.stringify(Array.from(completedQuizzes)));
+    } catch (e) {
+        console.warn('Failed to save completed quizzes to localStorage:', e);
+    }
+}
+
+function getQuestMaxXP(questName) {
+    const xpMap = {
+        "Ancient Egypt Quest": 100,
+        "Solar System True or False": 110,
+        "Geography & Science Blanks": 140,
+        "World & Science Matching": 130,
+        "Math Galaxy Challenge": 120,
+        "Space Explorer Mission": 150
+    };
+    return xpMap[questName] || 100;
+}
+
+function calculateQuestionScoreRatio(mistakes, isSolved) {
+    if (!isSolved) return 0;
+    if (mistakes <= 0) return 1.0;
+    // 1 mistake -> 0.75, 2 mistakes -> 0.50, 3 mistakes -> 0.25, >= 4 mistakes -> 0
+    const ratio = 1.0 - (0.25 * mistakes);
+    return Math.max(0, ratio);
+}
+
+function calculateStarsFromXP(earnedXP, totalPossibleXP) {
+    if (!totalPossibleXP || totalPossibleXP <= 0) return 0;
+    const pct = (earnedXP / totalPossibleXP) * 100;
+    // Less than 33.33% -> 0 stars
+    // 33.33% or more -> 1 star
+    // 66.66% or more -> 2 stars
+    // More than 90% -> 3 stars
+    if (pct > 90) {
+        return 3;
+    } else if (pct >= 66.66 - 0.0001) {
+        return 2;
+    } else if (pct >= 33.33 - 0.0001) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+function calculateQuizResults(questionStatsArray, totalPossibleXP) {
+    const totalQuestions = questionStatsArray.length;
+    if (totalQuestions === 0) {
+        return { earnedXP: 0, accuracy: 0, stars: 0, totalPossibleXP: 0 };
+    }
+
+    const maxXPPerQuestion = totalPossibleXP / totalQuestions;
+    let totalEarnedXP = 0;
+    let sumRatios = 0;
+
+    questionStatsArray.forEach(q => {
+        const mistakes = q.mistakes || 0;
+        const isSolved = Boolean(q.isSolved);
+        const ratio = calculateQuestionScoreRatio(mistakes, isSolved);
+        const qXP = maxXPPerQuestion * ratio;
+        totalEarnedXP += qXP;
+        sumRatios += ratio;
+    });
+
+    const finalEarnedXP = Math.min(totalPossibleXP, Math.max(0, Math.round(totalEarnedXP)));
+    const finalAccuracy = Math.min(100, Math.max(0, Math.round((sumRatios / totalQuestions) * 100)));
+    const finalStars = calculateStarsFromXP(finalEarnedXP, totalPossibleXP);
+
+    return {
+        earnedXP: finalEarnedXP,
+        accuracy: finalAccuracy,
+        stars: finalStars,
+        totalPossibleXP: totalPossibleXP
+    };
+}
+
+function renderStarsRowHtml(starsCount) {
+    let html = '<div class="orixa-stars-row" aria-label="' + starsCount + ' Stars Earned">';
+    for (let i = 1; i <= 3; i++) {
+        const isEarned = i <= starsCount;
+        html += `<span class="orixa-star-item" style="${isEarned ? '' : 'filter: grayscale(1); opacity: 0.35;'}">⭐</span>`;
+    }
+    html += '</div>';
+    return html;
+}
+
 let currentGameState = {
     questName: "",
     category: "",
@@ -89,6 +201,12 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
     if (root < 2) root = 2;
     const questionCount = root * root;
 
+    const questionStats = Array.from({ length: questionCount }, () => ({
+        mistakes: 0,
+        isSolved: false,
+        totalAttempts: 0
+    }));
+
     currentGameState = {
         questName: questName,
         category: category,
@@ -97,7 +215,9 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
         questionCount: questionCount,
         gridDimension: root,
         questions: generateMockQuestions(category, questionCount),
+        questionStats: questionStats,
         solvedTiles: new Set(),
+        processedTiles: new Set(),
         selectedTileIndex: null,
         score: 0,
         startTime: Date.now(),
@@ -285,21 +405,25 @@ function handleTileOptionSelect(tileIndex, optIndex) {
     const optBtn = document.getElementById(`option-btn-${optIndex}`);
     const feedbackEl = document.getElementById('tile-question-feedback');
     const optionBtns = document.querySelectorAll('.tile-option-btn');
+    const stat = currentGameState.questionStats[tileIndex];
 
     const isCorrect = optIndex === question.correctAnswer;
 
     if (isCorrect) {
         if (optBtn) optBtn.classList.add('correct');
         currentGameState.solvedTiles.add(tileIndex);
-        currentGameState.score += 25;
-        addXPPoints(25);
+        currentGameState.processedTiles.add(tileIndex);
+        if (stat) {
+            stat.isSolved = true;
+            stat.totalAttempts++;
+        }
 
         optionBtns.forEach(btn => btn.disabled = true);
 
         if (feedbackEl) {
             feedbackEl.innerHTML = `
                 <div class="tile-feedback-box correct">
-                    🎉 CORRECT! You revealed Tile #${tileIndex + 1} (+25 XP)
+                    🎉 CORRECT! You revealed Tile #${tileIndex + 1}
                 </div>
             `;
         }
@@ -310,11 +434,15 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             renderGameBoard();
 
             // Check completion
-            if (currentGameState.solvedTiles.size === currentGameState.questionCount) {
+            if (currentGameState.processedTiles.size === currentGameState.questionCount) {
                 setTimeout(() => renderVictoryScreen(), 300);
             }
         }, 700);
     } else {
+        if (stat) {
+            stat.mistakes++;
+            stat.totalAttempts++;
+        }
         currentGameState.remainingChances -= 1;
         currentGameState.disabledOptions.add(optIndex);
 
@@ -338,6 +466,11 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 currentGameState.isProcessing = false;
             }, 300);
         } else {
+            currentGameState.processedTiles.add(tileIndex);
+            if (stat) {
+                stat.isSolved = false;
+            }
+
             const correctBtn = document.getElementById(`option-btn-${question.correctAnswer}`);
             if (correctBtn) {
                 correctBtn.classList.add('correct');
@@ -357,6 +490,10 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 currentGameState.isProcessing = false;
                 closeQuestionModal();
                 renderGameBoard();
+
+                if (currentGameState.processedTiles.size === currentGameState.questionCount) {
+                    setTimeout(() => renderVictoryScreen(), 300);
+                }
             }, 1400);
         }
     }
@@ -367,8 +504,10 @@ function renderVictoryScreen() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
-    addCompletedQuiz();
-    addXPPoints(100);
+    const totalMaxXP = getQuestMaxXP(currentGameState.questName);
+    const results = calculateQuizResults(currentGameState.questionStats, totalMaxXP);
+
+    addCompletedQuiz(currentGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
     const totalTimeSeconds = Math.max(1, Math.round((Date.now() - currentGameState.startTime) / 1000));
 
@@ -379,30 +518,26 @@ function renderVictoryScreen() {
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
-            <div class="orixa-stars-row" aria-label="3 Stars Earned">
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-            </div>
+            ${renderStarsRowHtml(results.stars)}
             <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">
-                PERFECT PUZZLE SOLVED!
+                ${results.stars === 3 ? 'PERFECT PUZZLE SOLVED!' : (results.stars >= 1 ? 'QUEST COMPLETED!' : 'QUEST FINISHED')}
             </h2>
             <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">
-                Awesome job! You solved all ${currentGameState.questionCount} tiles in <strong>"${escapeHTML(currentGameState.questName)}"</strong>!
+                Awesome job! You finished <strong>"${escapeHTML(currentGameState.questName)}"</strong>!
             </p>
 
             <div class="orixa-victory-analytics-card">
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">ACCURACY</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">100%</div>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${results.accuracy}%</div>
                 </div>
                 <div class="orixa-stat-box">
-                    <span class="orixa-stat-box-label">BONUS XP</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+100 XP</div>
+                    <span class="orixa-stat-box-label">EARNED XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+${results.earnedXP} XP</div>
                 </div>
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">TILES SOLVED</span>
-                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${currentGameState.questionCount} / ${currentGameState.questionCount}</div>
+                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${currentGameState.solvedTiles.size} / ${currentGameState.questionCount}</div>
                 </div>
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">TIME TAKEN</span>
@@ -428,7 +563,25 @@ function addXPPoints(amount) {
     xpValueElement.textContent = currentXP.toLocaleString();
 }
 
-function addCompletedQuiz() {
+function hideCompletedQuizzes() {
+    const questCards = document.querySelectorAll('.student-quest-grid .quest-card');
+    questCards.forEach(card => {
+        const title = (card.getAttribute('data-title') || card.querySelector('.quiz-mgmt-card-title')?.textContent || '').trim();
+        if (title && completedQuizzes.has(title)) {
+            card.classList.add('completed-hidden');
+            card.style.display = 'none';
+        }
+    });
+
+    filterQuizzes();
+}
+
+function addCompletedQuiz(questName, earnedXP = 0, accuracy = 100, stars = 3) {
+    if (questName) {
+        completedQuizzes.add(questName);
+        saveCompletedQuizzesToStorage();
+    }
+
     const playedValueElement = document.getElementById('stat-quizzes-played');
     if (playedValueElement) {
         let played = parseInt(playedValueElement.textContent, 10);
@@ -436,12 +589,23 @@ function addCompletedQuiz() {
         playedValueElement.textContent = played;
     }
 
+    if (earnedXP > 0) {
+        addXPPoints(earnedXP);
+    }
+
     const starsValueElement = document.getElementById('stat-stars');
     if (starsValueElement) {
-        let stars = parseInt(starsValueElement.textContent, 10);
-        stars += 3;
-        starsValueElement.textContent = stars;
+        let currentStars = parseInt(starsValueElement.textContent, 10);
+        currentStars += (typeof stars === 'number' ? stars : 0);
+        starsValueElement.textContent = currentStars;
     }
+
+    const accuracyValueElement = document.getElementById('stat-accuracy');
+    if (accuracyValueElement && typeof accuracy === 'number') {
+        accuracyValueElement.textContent = accuracy + '%';
+    }
+
+    hideCompletedQuizzes();
 }
 
 function filterQuizzes() {
@@ -449,12 +613,15 @@ function filterQuizzes() {
     const noResults = document.getElementById('no-quizzes-found');
     const questCards = document.querySelectorAll('.student-quest-grid .quest-card');
 
-    if (!searchInput) return;
-
-    const query = searchInput.value.trim().toLowerCase();
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
     let visibleCount = 0;
 
     questCards.forEach(card => {
+        if (card.classList.contains('completed-hidden')) {
+            card.style.display = 'none';
+            return;
+        }
+
         const title = (card.getAttribute('data-title') || card.querySelector('.quiz-mgmt-card-title')?.textContent || '').toLowerCase();
         const subject = (card.getAttribute('data-subject') || card.querySelector('.quiz-mgmt-card-subject')?.textContent || '').toLowerCase();
         const topic = (card.getAttribute('data-topic') || '').toLowerCase();
@@ -541,6 +708,13 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley') {
         [answers[i], answers[j]] = [answers[j], answers[i]];
     }
 
+    const pairStats = pairs.map(p => ({
+        id: p.id,
+        mistakes: 0,
+        isSolved: false,
+        totalAttempts: 0
+    }));
+
     matchGameState = {
         questName: questName,
         category: category,
@@ -548,6 +722,7 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley') {
         pairs: pairs,
         questions: questions,
         answers: answers,
+        pairStats: pairStats,
         matches: new Map(),
         selectedQuestionId: null,
         selectedAnswerId: null,
@@ -821,8 +996,14 @@ function attemptMatch(qId, aId) {
     if (matchGameState.matches.has(qId)) return;
     if (Array.from(matchGameState.matches.values()).includes(aId)) return;
 
+    const stat = matchGameState.pairStats ? matchGameState.pairStats.find(p => p.id === qId) : null;
+
     if (qId === aId) {
         // CORRECT MATCH
+        if (stat) {
+            stat.isSolved = true;
+            stat.totalAttempts++;
+        }
         matchGameState.matches.set(qId, aId);
         matchGameState.selectedQuestionId = null;
         matchGameState.selectedAnswerId = null;
@@ -835,6 +1016,10 @@ function attemptMatch(qId, aId) {
         }
     } else {
         // INCORRECT MATCH
+        if (stat) {
+            stat.mistakes++;
+            stat.totalAttempts++;
+        }
         matchGameState.incorrectAttempts++;
         matchGameState.selectedQuestionId = null;
         matchGameState.selectedAnswerId = null;
@@ -942,12 +1127,13 @@ function renderMatchVictoryScreen() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
-    addCompletedQuiz();
-    addXPPoints(130);
+    const totalMaxXP = getQuestMaxXP(matchGameState.questName);
+    const results = calculateQuizResults(matchGameState.pairStats, totalMaxXP);
+
+    addCompletedQuiz(matchGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - matchGameState.startTime) / 1000));
     const totalPairs = matchGameState.pairs.length;
-    const accuracy = Math.round((totalPairs / (totalPairs + matchGameState.incorrectAttempts)) * 100);
 
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
@@ -956,23 +1142,23 @@ function renderMatchVictoryScreen() {
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
-            <div class="orixa-stars-row" aria-label="3 Stars Earned">
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-            </div>
+            ${renderStarsRowHtml(results.stars)}
 
-            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">AMAZING MATCHING!</h2>
-            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">You connected all ${totalPairs} pairs correctly in <strong>"${escapeHTML(matchGameState.questName)}"</strong>!</p>
+            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">
+                ${results.stars === 3 ? 'AMAZING MATCHING!' : (results.stars >= 1 ? 'MATCHING COMPLETED!' : 'QUEST FINISHED')}
+            </h2>
+            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">
+                You connected all ${totalPairs} pairs in <strong>"${escapeHTML(matchGameState.questName)}"</strong>!
+            </p>
 
             <div class="orixa-victory-analytics-card">
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">ACCURACY</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${accuracy}%</div>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${results.accuracy}%</div>
                 </div>
                 <div class="orixa-stat-box">
-                    <span class="orixa-stat-box-label">BONUS XP</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+130 XP</div>
+                    <span class="orixa-stat-box-label">EARNED XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+${results.earnedXP} XP</div>
                 </div>
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">PAIRS MATCHED</span>
@@ -1063,6 +1249,12 @@ function openFillBlanksGame(questName, category, customQuestions = null, chances
 
     const parsedChances = typeof chances === 'number' && chances > 0 ? chances : 3;
 
+    const questionStats = preparedQuestions.map(() => ({
+        mistakes: 0,
+        isSolved: false,
+        totalAttempts: 0
+    }));
+
     fillBlanksGameState = {
         questName: questName,
         category: category,
@@ -1070,6 +1262,7 @@ function openFillBlanksGame(questName, category, customQuestions = null, chances
         configuredChances: parsedChances,
         remainingChances: parsedChances,
         questions: preparedQuestions,
+        questionStats: questionStats,
         currentIndex: 0,
         incorrectAttempts: 0,
         startTime: Date.now(),
@@ -1302,10 +1495,17 @@ function attemptFitbAnswer(optionText, card) {
     fillBlanksGameState.isProcessing = true;
     fillBlanksGameState.selectedOption = null;
 
+    const currentStat = fillBlanksGameState.questionStats ? fillBlanksGameState.questionStats[fillBlanksGameState.currentIndex] : null;
+
     const isCorrect = (optionText === currentQ.correctAnswerText) ||
                       (currentQ.blankAnswer && optionText.toLowerCase() === currentQ.blankAnswer.toLowerCase());
 
     if (isCorrect) {
+        if (currentStat) {
+            currentStat.isSolved = true;
+            currentStat.totalAttempts++;
+        }
+
         // Correct feedback
         target.textContent = optionText;
         target.classList.remove('is-incorrect', 'is-target-active');
@@ -1328,6 +1528,11 @@ function attemptFitbAnswer(optionText, card) {
         }, 700);
 
     } else {
+        if (currentStat) {
+            currentStat.mistakes++;
+            currentStat.totalAttempts++;
+        }
+
         // Incorrect feedback
         fillBlanksGameState.incorrectAttempts++;
         fillBlanksGameState.remainingChances--;
@@ -1354,6 +1559,10 @@ function attemptFitbAnswer(optionText, card) {
                 fillBlanksGameState.isProcessing = false;
             }, 600);
         } else {
+            if (currentStat) {
+                currentStat.isSolved = false;
+            }
+
             // All chances exhausted: reveal correct answer before proceeding
             setTimeout(() => {
                 const correctRevealText = currentQ.correctAnswerText || currentQ.blankAnswer || optionText;
@@ -1380,12 +1589,13 @@ function renderFitbVictoryScreen() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
-    addCompletedQuiz();
-    addXPPoints(140);
+    const totalMaxXP = getQuestMaxXP(fillBlanksGameState.questName);
+    const results = calculateQuizResults(fillBlanksGameState.questionStats, totalMaxXP);
+
+    addCompletedQuiz(fillBlanksGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - fillBlanksGameState.startTime) / 1000));
     const totalQ = fillBlanksGameState.questions.length;
-    const accuracy = Math.round((totalQ / (totalQ + fillBlanksGameState.incorrectAttempts)) * 100);
 
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
@@ -1394,26 +1604,26 @@ function renderFitbVictoryScreen() {
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
-            <div class="orixa-stars-row" aria-label="3 Stars Earned">
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-            </div>
+            ${renderStarsRowHtml(results.stars)}
 
-            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">BLANKS COMPLETED!</h2>
-            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">You solved all ${totalQ} statements in <strong>"${escapeHTML(fillBlanksGameState.questName)}"</strong>!</p>
+            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">
+                ${results.stars === 3 ? 'BLANKS COMPLETED!' : (results.stars >= 1 ? 'QUEST COMPLETED!' : 'QUEST FINISHED')}
+            </h2>
+            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">
+                You evaluated all ${totalQ} statements in <strong>"${escapeHTML(fillBlanksGameState.questName)}"</strong>!
+            </p>
 
             <div class="orixa-victory-analytics-card">
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">ACCURACY</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${accuracy}%</div>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${results.accuracy}%</div>
                 </div>
                 <div class="orixa-stat-box">
-                    <span class="orixa-stat-box-label">BONUS XP</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+140 XP</div>
+                    <span class="orixa-stat-box-label">EARNED XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+${results.earnedXP} XP</div>
                 </div>
                 <div class="orixa-stat-box">
-                    <span class="orixa-stat-box-label">SOLVED</span>
+                    <span class="orixa-stat-box-label">STATEMENTS</span>
                     <div class="orixa-stat-box-value" style="color: var(--border-dark);">${totalQ} / ${totalQ}</div>
                 </div>
                 <div class="orixa-stat-box">
@@ -1477,11 +1687,18 @@ function openTrueFalseGame(questName, category, customQuestions = null, teacherN
         };
     });
 
+    const questionStats = preparedQuestions.map(() => ({
+        mistakes: 0,
+        isSolved: false,
+        totalAttempts: 0
+    }));
+
     trueFalseGameState = {
         questName: questName,
         category: category,
         teacherName: teacherName || 'Professor Riley',
         questions: preparedQuestions,
+        questionStats: questionStats,
         currentIndex: 0,
         correctAnswersCount: 0,
         incorrectAttemptsCount: 0,
@@ -1579,6 +1796,7 @@ function evaluateTrueFalseChoice(selectedBool) {
     const feedbackEl = document.getElementById('tf-feedback-banner');
     const btnTrue = document.getElementById('btn-true');
     const btnFalse = document.getElementById('btn-false');
+    const currentStat = trueFalseGameState.questionStats ? trueFalseGameState.questionStats[trueFalseGameState.currentIndex] : null;
 
     if (btnTrue) btnTrue.disabled = true;
     if (btnFalse) btnFalse.disabled = true;
@@ -1586,6 +1804,10 @@ function evaluateTrueFalseChoice(selectedBool) {
     const isCorrect = selectedBool === currentQ.correctAnswer;
 
     if (isCorrect) {
+        if (currentStat) {
+            currentStat.isSolved = true;
+            currentStat.totalAttempts++;
+        }
         trueFalseGameState.correctAnswersCount++;
 
         if (cardEl) cardEl.classList.add('is-correct');
@@ -1611,6 +1833,10 @@ function evaluateTrueFalseChoice(selectedBool) {
         }, 700);
 
     } else {
+        if (currentStat) {
+            currentStat.mistakes++;
+            currentStat.totalAttempts++;
+        }
         trueFalseGameState.incorrectAttemptsCount++;
 
         if (cardEl) {
@@ -1647,12 +1873,13 @@ function renderTrueFalseVictoryScreen() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
-    addCompletedQuiz();
-    addXPPoints(110);
+    const totalMaxXP = getQuestMaxXP(trueFalseGameState.questName);
+    const results = calculateQuizResults(trueFalseGameState.questionStats, totalMaxXP);
+
+    addCompletedQuiz(trueFalseGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - trueFalseGameState.startTime) / 1000));
     const totalQ = trueFalseGameState.questions.length;
-    const accuracy = Math.round((totalQ / (totalQ + trueFalseGameState.incorrectAttemptsCount)) * 100);
 
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
@@ -1661,23 +1888,23 @@ function renderTrueFalseVictoryScreen() {
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
-            <div class="orixa-stars-row" aria-label="3 Stars Earned">
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-                <span class="orixa-star-item">⭐</span>
-            </div>
+            ${renderStarsRowHtml(results.stars)}
 
-            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">GREAT DECISIONS!</h2>
-            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">You evaluated all ${totalQ} statements in <strong>"${escapeHTML(trueFalseGameState.questName)}"</strong>!</p>
+            <h2 style="font-family: var(--font-header); font-size: 2rem; color: var(--border-dark); margin: 0;">
+                ${results.stars === 3 ? 'GREAT DECISIONS!' : (results.stars >= 1 ? 'QUEST COMPLETED!' : 'QUEST FINISHED')}
+            </h2>
+            <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">
+                You evaluated all ${totalQ} statements in <strong>"${escapeHTML(trueFalseGameState.questName)}"</strong>!
+            </p>
 
             <div class="orixa-victory-analytics-card">
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">ACCURACY</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${accuracy}%</div>
+                    <div class="orixa-stat-box-value" style="color: var(--color-green-dark);">${results.accuracy}%</div>
                 </div>
                 <div class="orixa-stat-box">
-                    <span class="orixa-stat-box-label">BONUS XP</span>
-                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+110 XP</div>
+                    <span class="orixa-stat-box-label">EARNED XP</span>
+                    <div class="orixa-stat-box-value" style="color: var(--color-purple-dark);">+${results.earnedXP} XP</div>
                 </div>
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">STATEMENTS</span>
@@ -1695,6 +1922,11 @@ function renderTrueFalseVictoryScreen() {
         </div>
     `;
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCompletedQuizzesFromStorage();
+    hideCompletedQuizzes();
+});
 
 // Close on outside clicks or escape key
 document.addEventListener('keydown', event => {

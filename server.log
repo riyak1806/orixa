@@ -1,0 +1,13 @@
+127.0.0.1 - - [08/Sep/2026 17:22:32] "HEAD /student-portal.html HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:04] "GET /student-portal.html HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:04] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:04] "GET /teacher-dashboard.css HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:04] "GET /student.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:04] "GET /student-portal.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:04] "GET /teacher.css HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:52] "GET /student-portal.html HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:52] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:52] "GET /teacher-dashboard.css HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:52] "GET /student-portal.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:52] "GET /student.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Sep/2026 17:23:52] "GET /teacher.css HTTP/1.1" 200 -

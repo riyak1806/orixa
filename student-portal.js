@@ -236,6 +236,19 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
 }
 
 function closeQuestModal() {
+    if (typeof activeFitbDrag !== 'undefined' && activeFitbDrag) {
+        if (activeFitbDrag.avatar && activeFitbDrag.avatar.parentNode) {
+            activeFitbDrag.avatar.parentNode.removeChild(activeFitbDrag.avatar);
+        }
+        activeFitbDrag = null;
+    }
+    if (typeof activeMatchDrag !== 'undefined') {
+        activeMatchDrag = null;
+    }
+    if (typeof updateMatchConnectionLines === 'function') {
+        window.removeEventListener('resize', updateMatchConnectionLines);
+    }
+
     const modal = document.getElementById('quest-modal');
     if (modal) {
         modal.classList.add('hidden');
@@ -749,11 +762,14 @@ function renderMatchEntrance() {
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
-            <h2 class="tile-entrance-title">MATCH THE FOLLOWING</h2>
-            <p class="tile-entrance-desc" style="font-family: var(--font-header); font-weight: 700; font-size: 1.25rem; color: var(--border-dark);">
-                Teacher: ${escapeHTML(matchGameState.teacherName)}
+            <div class="tile-entrance-badge" style="background-color: var(--color-purple); color: white;">
+                ${escapeHTML((matchGameState.category || 'General Science').toUpperCase())} • MATCH THE FOLLOWING
+            </div>
+            <h2 class="tile-entrance-title">${escapeHTML(matchGameState.questName)}</h2>
+            <p class="tile-entrance-desc">
+                Connect each question or prompt on the left with its correct answer on the right to complete all <strong>${matchGameState.pairs.length} pairs</strong>!
             </p>
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem; margin-top: 8px;">
+            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem;">
                 🎮 START GAME
             </button>
         </div>
@@ -949,6 +965,7 @@ function setupMatchInteractions() {
     });
 
     // Window resize handler for SVG lines
+    window.removeEventListener('resize', updateMatchConnectionLines);
     window.addEventListener('resize', updateMatchConnectionLines);
 }
 
@@ -1430,8 +1447,15 @@ function setupFitbInteractions() {
 
         card.addEventListener('pointermove', (e) => {
             if (!activeFitbDrag || activeFitbDrag.card !== card || !activeFitbDrag.avatar) return;
-            activeFitbDrag.avatar.style.left = `${e.clientX - activeFitbDrag.offsetX}px`;
-            activeFitbDrag.avatar.style.top = `${e.clientY - activeFitbDrag.offsetY}px`;
+            const left = e.clientX - activeFitbDrag.offsetX;
+            const top = e.clientY - activeFitbDrag.offsetY;
+            const avatar = activeFitbDrag.avatar;
+            requestAnimationFrame(() => {
+                if (avatar) {
+                    avatar.style.left = `${left}px`;
+                    avatar.style.top = `${top}px`;
+                }
+            });
         });
 
         const handlePointerEnd = (e) => {

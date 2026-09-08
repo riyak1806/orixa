@@ -642,8 +642,9 @@ body {
     color: var(--border-dark);
     cursor: grab;
     box-shadow: var(--shadow-chunky-pressed);
-    transition: transform 0.15 ease, box-shadow 0.15 ease, background 0.15 ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     touch-action: none;
+    will-change: transform;
 }
 
 .fitb-option-card:hover {

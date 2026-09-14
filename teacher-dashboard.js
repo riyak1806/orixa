@@ -1028,7 +1028,7 @@ function renderGameSelectionStep(dynamicPage) {
                             <p class="game-card-desc">${escapeHTML(opt.description)}</p>
                             <div class="game-card-action">
                                 <button type="button" class="cartoon-action-btn ${isSelected ? 'primary-yellow-btn' : ''} game-card-select-btn">
-                                    ${isSelected ? 'Selected ✓' : 'Select'}
+                                    ${isSelected ? 'Selected <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: -1px; margin-left: 2px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>' : 'Select'}
                                 </button>
                             </div>
                         </div>
@@ -1405,17 +1405,17 @@ function renderGameBuilderStep(dynamicPage) {
                         <!-- Teacher Live Preview -->
                         <div style="margin-top: 8px; padding: 12px; background: #ffffff; border: 2px solid var(--border-dark); border-radius: 12px; box-shadow: var(--shadow-chunky-pressed);">
                             <div style="font-family: var(--font-header); font-size: 0.8rem; text-transform: uppercase; color: #78909c; margin-bottom: 6px;">
-                                👁️ Student Preview
+                                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/></svg> Student Preview
                             </div>
                             <div style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 12px; text-align: center; min-height: 24px;">
                                 ${statement.trim() ? escapeHTML(statement) : '<span style="color: #b0bec5; font-style: italic;">Enter statement text above...</span>'}
                             </div>
                             <div style="display: flex; justify-content: center; gap: 16px;">
                                 <span style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; padding: 6px 20px; border: 2px solid var(--border-dark); border-radius: 10px; background: ${isTrue ? 'var(--color-green)' : '#f5f5f5'}; color: var(--border-dark);">
-                                    TRUE ${isTrue ? '✓' : ''}
+                                    TRUE ${isTrue ? '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: -1px; margin-left: 2px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>' : ''}
                                 </span>
                                 <span style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; padding: 6px 20px; border: 2px solid var(--border-dark); border-radius: 10px; background: ${isFalse ? 'var(--color-red)' : '#f5f5f5'}; color: var(--border-dark);">
-                                    FALSE ${isFalse ? '✓' : ''}
+                                    FALSE ${isFalse ? '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: -1px; margin-left: 2px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>' : ''}
                                 </span>
                             </div>
                         </div>
@@ -1499,7 +1499,7 @@ function renderGameBuilderStep(dynamicPage) {
                                         </label>
                                         <input type="text" class="cartoon-input fitb-option-input" data-question-id="${q.id}" data-option-index="${optIdx}" placeholder="Option ${optIdx + 1}" value="${escapeHTML(opt)}" style="height: 40px; font-size: 0.9rem;">
                                         ${options.length > 2 ? `
-                                            <button type="button" class="fitb-delete-option-btn" data-question-id="${q.id}" data-option-index="${optIdx}" style="background: var(--color-red); border: 2px solid var(--border-dark); border-radius: 6px; padding: 4px 8px; font-family: var(--font-header); font-size: 0.75rem; color: var(--border-dark); font-weight: 700; cursor: pointer;">✕</button>
+                                            <button type="button" class="fitb-delete-option-btn" data-question-id="${q.id}" data-option-index="${optIdx}" style="background: var(--color-red); border: 2px solid var(--border-dark); border-radius: 6px; padding: 4px 8px; font-family: var(--font-header); font-size: 0.75rem; color: var(--border-dark); font-weight: 700; cursor: pointer;"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 12px; height: 12px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
                                         ` : ''}
                                     </div>
                                 `;
@@ -1509,7 +1509,7 @@ function renderGameBuilderStep(dynamicPage) {
                         <!-- Teacher Live Preview -->
                         <div style="margin-top: 8px; padding: 12px; background: #ffffff; border: 2px solid var(--border-dark); border-radius: 12px; box-shadow: var(--shadow-chunky-pressed);">
                             <div style="font-family: var(--font-header); font-size: 0.8rem; text-transform: uppercase; color: #78909c; margin-bottom: 6px;">
-                                👁️ Student Preview
+                                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/></svg> Student Preview
                             </div>
                             <div style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 8px;">
                                 ${escapeHTML(previewStatement)}
@@ -4104,7 +4104,7 @@ window.viewQuestionDetails = function(id) {
                     const letter = String.fromCharCode(65 + idx);
                     const isCorrect = q.correctAnswer === idx;
                     const borderStyle = isCorrect ? 'border: 3px solid var(--color-green-dark); background: #e8f5e9;' : 'border: var(--border-comic-thin); background: var(--color-cream);';
-                    const checkmark = isCorrect ? `<span style="color: var(--color-green-dark); font-weight: 700; margin-left: auto;">✔ Correct</span>` : '';
+                    const checkmark = isCorrect ? `<span style="color: var(--color-green-dark); font-weight: 700; margin-left: auto; display: inline-flex; align-items: center; gap: 4px;"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> Correct</span>` : '';
                     return `
                         <div style="${borderStyle} border-radius: 12px; padding: 10px 16px; font-family: var(--font-body); font-weight: 700; color: var(--border-dark); display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-chunky-pressed);">
                             <span style="font-family: var(--font-header); background: var(--color-yellow); border: 2px solid var(--border-dark); border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem;">${letter}</span>
@@ -4124,10 +4124,10 @@ window.viewQuestionDetails = function(id) {
                 <p class="field-label" style="margin-bottom: 4px; font-weight: 700;">CORRECT ANSWER:</p>
                 <div style="display: flex; gap: var(--t-space-2); width: 100%;">
                     <div style="${borderTrue} flex: 1; text-align: center; border-radius: 12px; padding: 12px; font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed);">
-                        True ${isTrueCorrect ? '✔' : ''}
+                        True ${isTrueCorrect ? '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: -1px; margin-left: 4px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>' : ''}
                     </div>
                     <div style="${borderFalse} flex: 1; text-align: center; border-radius: 12px; padding: 12px; font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed);">
-                        False ${!isTrueCorrect ? '✔' : ''}
+                        False ${!isTrueCorrect ? '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: -1px; margin-left: 4px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>' : ''}
                     </div>
                 </div>
             </div>

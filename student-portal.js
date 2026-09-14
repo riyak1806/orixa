@@ -114,7 +114,7 @@ function renderStarsRowHtml(starsCount) {
     let html = '<div class="orixa-stars-row" aria-label="' + starsCount + ' Stars Earned">';
     for (let i = 1; i <= 3; i++) {
         const isEarned = i <= starsCount;
-        html += `<span class="orixa-star-item" style="${isEarned ? '' : 'filter: grayscale(1); opacity: 0.35;'}">⭐</span>`;
+        html += `<span class="orixa-star-item" style="${isEarned ? '' : 'filter: grayscale(1); opacity: 0.35;'}"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 38px; height: 38px; fill: currentColor; display: inline-block; vertical-align: middle;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></span>`;
     }
     html += '</div>';
     return html;
@@ -292,7 +292,7 @@ function renderGameEntrance() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(currentGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -302,7 +302,7 @@ function renderGameEntrance() {
                 Uncover the puzzle by solving questions! Select tiles on the <strong>${currentGameState.gridDimension} × ${currentGameState.gridDimension} grid</strong> (${currentGameState.questionCount} Questions) to reveal questions and test your knowledge.
             </p>
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startTileGame()" style="padding: 14px 36px; font-size: 1.15rem;">
-                🎮 START GAME
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M8 5v14l11-7z" fill="currentColor"/></svg> START GAME
             </button>
         </div>
     `;
@@ -337,9 +337,9 @@ function renderGameBoard() {
 
         let buttonText = i + 1;
         if (isSolved) {
-            buttonText = '✓';
+            buttonText = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>`;
         } else if (isProcessed) {
-            buttonText = '✗';
+            buttonText = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg>`;
         }
 
         tileButtonsHtml += `
@@ -356,14 +356,14 @@ function renderGameBoard() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(currentGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-board-view orixa-game-slide-enter">
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
-                    <span>🧩 TILES SOLVED: ${solvedCount} / ${totalCount}</span>
-                    <span style="color: var(--color-purple-dark);" id="tile-live-xp">✨ SCORE: ${currentXP} XP</span>
+                    <span><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="13" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/></svg> TILES SOLVED: ${solvedCount} / ${totalCount}</span>
+                    <span style="color: var(--color-purple-dark);" id="tile-live-xp"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 17.9V19H7v2h10v-2h-4v-1.1a5.01 5.01 0 003.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="currentColor"/></svg> SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -375,7 +375,7 @@ function renderGameBoard() {
             </div>
 
             <p style="font-family: var(--font-body); font-size: 0.88rem; color: #546e7a; margin: 0; text-align: center;">
-                💡 Tap any available tile to reveal its question!
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Tap any available tile to reveal its question!
             </p>
 
             <!-- REQUIREMENT 3: TRUE MODAL OVERLAY LAYERED ABOVE TILE GRID -->
@@ -421,7 +421,7 @@ function openQuestionModal(tileIndex) {
     card.innerHTML = `
         <div class="tile-question-header">
             <span class="tile-question-number-badge">TILE #${tileIndex + 1} QUESTION</span>
-            <button type="button" class="sidebar-toggle-btn" onclick="closeQuestionModal()" aria-label="Close question modal" style="width: 32px; height: 32px;">✕</button>
+            <button type="button" class="sidebar-toggle-btn" onclick="closeQuestionModal()" aria-label="Close question modal" style="width: 32px; height: 32px;"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </div>
 
         <h4 class="tile-question-text">${escapeHTML(question.text)}</h4>
@@ -482,7 +482,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
         if (feedbackEl) {
             feedbackEl.innerHTML = `
                 <div class="tile-feedback-box correct">
-                    🎉 CORRECT! You revealed Tile #${tileIndex + 1}
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> CORRECT! You revealed Tile #${tileIndex + 1}
                 </div>
             `;
         }
@@ -516,7 +516,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             if (feedbackEl) {
                 feedbackEl.innerHTML = `
                     <div class="tile-feedback-box incorrect">
-                        ❌ INCORRECT! ${remaining} ${remaining === 1 ? 'chance' : 'chances'} remaining. Try again!
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! ${remaining} ${remaining === 1 ? 'chance' : 'chances'} remaining. Try again!
                     </div>
                 `;
             }
@@ -540,7 +540,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             if (feedbackEl) {
                 feedbackEl.innerHTML = `
                     <div class="tile-feedback-box incorrect">
-                        ❌ INCORRECT! No chances remaining. Correct answer: <strong>${escapeHTML(question.options[question.correctAnswer])}</strong>
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! No chances remaining. Correct answer: <strong>${escapeHTML(question.options[question.correctAnswer])}</strong>
                     </div>
                 `;
             }
@@ -573,7 +573,7 @@ function renderVictoryScreen() {
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
             <h3 class="tile-game-title" id="tile-modal-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
@@ -811,7 +811,7 @@ function renderMatchEntrance() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -823,7 +823,7 @@ function renderMatchEntrance() {
                 Connect each question or prompt on the left with its correct answer on the right to complete all <strong>${matchGameState.pairs.length} pairs</strong>!
             </p>
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem;">
-                🎮 START GAME
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M8 5v14l11-7z" fill="currentColor"/></svg> START GAME
             </button>
         </div>
     `;
@@ -845,14 +845,14 @@ function renderMatchGameBoard() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="match-game-container orixa-game-slide-enter" id="match-game-container">
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
-                    <span>🔗 PAIRS MATCHED: ${matchedCount} / ${totalPairs}</span>
-                    <span style="color: var(--color-purple-dark);" id="match-live-xp">✨ SCORE: ${currentXP} XP</span>
+                    <span><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 6h6M9 18l6-12" stroke="currentColor" stroke-width="2"/></svg> PAIRS MATCHED: ${matchedCount} / ${totalPairs}</span>
+                    <span style="color: var(--color-purple-dark);" id="match-live-xp"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 17.9V19H7v2h10v-2h-4v-1.1a5.01 5.01 0 003.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="currentColor"/></svg> SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -898,7 +898,7 @@ function renderMatchGameBoard() {
             </div>
 
             <p style="font-family: var(--font-body); font-size: 0.88rem; color: #546e7a; margin: 4px 0 0 0; text-align: center;">
-                💡 Drag from a question to its answer, or tap a question and then tap its matching answer!
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Drag from a question to its answer, or tap a question and then tap its matching answer!
             </p>
         </div>
     `;
@@ -1236,7 +1236,7 @@ function renderMatchVictoryScreen() {
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
             <h3 class="tile-game-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
@@ -1386,7 +1386,7 @@ function renderFillBlanksEntrance() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -1398,7 +1398,7 @@ function renderFillBlanksEntrance() {
                 Drag the correct answer option from the answer box and place it into the blank in each statement to complete all <strong>${fillBlanksGameState.questions.length} questions</strong>!
             </p>
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startFillBlanksGame()" style="padding: 14px 36px; font-size: 1.15rem;">
-                🎮 START GAME
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M8 5v14l11-7z" fill="currentColor"/></svg> START GAME
             </button>
         </div>
     `;
@@ -1435,14 +1435,14 @@ function renderFillBlanksGameBoard() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="fitb-game-container orixa-game-slide-enter">
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span>QUESTION ${currentNum} OF ${totalQ}</span>
-                    <span style="color: var(--color-purple-dark);" id="fitb-live-xp">✨ SCORE: ${currentXP} XP</span>
+                    <span style="color: var(--color-purple-dark);" id="fitb-live-xp"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 17.9V19H7v2h10v-2h-4v-1.1a5.01 5.01 0 003.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="currentColor"/></svg> SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -1462,7 +1462,7 @@ function renderFillBlanksGameBoard() {
             </div>
 
             <div style="font-family: var(--font-header); font-size: 0.95rem; color: #546e7a; text-align: center; margin-top: 4px;">
-                💡 Drag an option into the blank, or tap an option and tap the blank!
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Drag an option into the blank, or tap an option and tap the blank!
             </div>
         </div>
     `;
@@ -1653,7 +1653,7 @@ function attemptFitbAnswer(optionText, card) {
         // Update progress chances display
         const progressHeaderSpans = document.querySelectorAll('.orixa-progress-header span');
         if (progressHeaderSpans && progressHeaderSpans[1]) {
-            progressHeaderSpans[1].textContent = `🎯 CHANCES: ${Math.max(0, fillBlanksGameState.remainingChances)}/${fillBlanksGameState.configuredChances}`;
+            progressHeaderSpans[1].innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg> CHANCES: ${Math.max(0, fillBlanksGameState.remainingChances)}/${fillBlanksGameState.configuredChances}`;
         }
 
         if (fillBlanksGameState.remainingChances > 0) {
@@ -1709,7 +1709,7 @@ function renderFitbVictoryScreen() {
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
             <h3 class="tile-game-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
@@ -1839,7 +1839,7 @@ function renderTrueFalseEntrance() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -1851,7 +1851,7 @@ function renderTrueFalseEntrance() {
                 Read each statement carefully and decide whether it is <strong>TRUE</strong> or <strong>FALSE</strong>. Answer all <strong>${trueFalseGameState.questions.length} statements</strong> to complete the game!
             </p>
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startTrueFalseGame()" style="padding: 14px 36px; font-size: 1.15rem;">
-                🎮 START GAME
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M8 5v14l11-7z" fill="currentColor"/></svg> START GAME
             </button>
         </div>
     `;
@@ -1874,14 +1874,14 @@ function renderTrueFalseGameBoard() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tf-game-container orixa-game-slide-enter">
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span>STATEMENT ${currentNum} OF ${totalQ}</span>
-                    <span style="color: var(--color-purple-dark);" id="tf-live-xp">✨ SCORE: ${currentXP} XP</span>
+                    <span style="color: var(--color-purple-dark);" id="tf-live-xp"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 17.9V19H7v2h10v-2h-4v-1.1a5.01 5.01 0 003.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="currentColor"/></svg> SCORE: ${currentXP} XP</span>
                 </div>
                 <div class="orixa-progress-track">
                     <div class="orixa-progress-fill" style="width: ${pct}%;"></div>
@@ -1896,10 +1896,10 @@ function renderTrueFalseGameBoard() {
 
             <div class="tf-buttons-row">
                 <button type="button" class="tf-choice-btn btn-true" id="btn-true" onclick="evaluateTrueFalseChoice(true)">
-                    ✓ TRUE
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 4px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> TRUE
                 </button>
                 <button type="button" class="tf-choice-btn btn-false" id="btn-false" onclick="evaluateTrueFalseChoice(false)">
-                    ✕ FALSE
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 4px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> FALSE
                 </button>
             </div>
         </div>
@@ -1938,7 +1938,7 @@ function evaluateTrueFalseChoice(selectedBool) {
 
         if (feedbackEl) {
             feedbackEl.style.color = "var(--color-green-dark)";
-            feedbackEl.textContent = "✓ Correct!";
+            feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> Correct!`;
         }
 
         setTimeout(() => {
@@ -1974,7 +1974,7 @@ function evaluateTrueFalseChoice(selectedBool) {
         if (trueFalseGameState.remainingChances > 0) {
             if (feedbackEl) {
                 feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.textContent = "✕ Incorrect! Try again.";
+                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Try again.`;
             }
 
             setTimeout(() => {
@@ -1997,7 +1997,7 @@ function evaluateTrueFalseChoice(selectedBool) {
 
             if (feedbackEl) {
                 feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.textContent = `✕ Incorrect! Correct answer: ${correctText}`;
+                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Correct answer: ${correctText}`;
             }
 
             setTimeout(() => {
@@ -2029,7 +2029,7 @@ function renderTrueFalseVictoryScreen() {
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
             <h3 class="tile-game-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz">✕</button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">

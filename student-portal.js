@@ -919,6 +919,31 @@ function renderMatchGameBoard() {
 
     setupMatchInteractions();
     updateMatchConnectionLines();
+
+    requestAnimationFrame(() => {
+        updateMatchConnectionLines();
+    });
+
+    const matchContainer = document.getElementById('match-game-container');
+    if (matchContainer) {
+        matchContainer.addEventListener('animationend', () => {
+            updateMatchConnectionLines();
+        }, { once: true });
+    }
+
+    setTimeout(() => {
+        updateMatchConnectionLines();
+    }, 360);
+}
+
+function getCircleCenterCoordinates(circleEl, containerEl) {
+    if (!circleEl || !containerEl) return { x: 0, y: 0 };
+    const circleRect = circleEl.getBoundingClientRect();
+    const containerRect = containerEl.getBoundingClientRect();
+    return {
+        x: (circleRect.left + circleRect.width / 2) - containerRect.left,
+        y: (circleRect.top + circleRect.height / 2) - containerRect.top
+    };
 }
 
 function setupMatchInteractions() {
@@ -1048,14 +1073,11 @@ function drawDragLine(pointerX, pointerY) {
     const qDot = document.getElementById(`q-dot-${activeMatchDrag.qId}`);
     if (!qDot) return;
 
-    const cRect = container.getBoundingClientRect();
-    const qRect = qDot.getBoundingClientRect();
+    const startPos = getCircleCenterCoordinates(qDot, svg);
 
-    const startX = qRect.left + qRect.width / 2 - cRect.left;
-    const startY = qRect.top + qRect.height / 2 - cRect.top;
-
-    const endX = pointerX - cRect.left;
-    const endY = pointerY - cRect.top;
+    const svgRect = svg.getBoundingClientRect();
+    const endX = pointerX - svgRect.left;
+    const endY = pointerY - svgRect.top;
 
     let tempLine = document.getElementById('temp-drag-line');
     if (!tempLine) {
@@ -1068,8 +1090,8 @@ function drawDragLine(pointerX, pointerY) {
         svg.appendChild(tempLine);
     }
 
-    tempLine.setAttribute('x1', startX);
-    tempLine.setAttribute('y1', startY);
+    tempLine.setAttribute('x1', startPos.x);
+    tempLine.setAttribute('y1', startPos.y);
     tempLine.setAttribute('x2', endX);
     tempLine.setAttribute('y2', endY);
 }
@@ -1167,15 +1189,8 @@ function drawErrorLine(qId, aId) {
     const aDot = document.getElementById(`a-dot-${aId}`);
     if (!qDot || !aDot) return;
 
-    const cRect = container.getBoundingClientRect();
-    const qRect = qDot.getBoundingClientRect();
-    const aRect = aDot.getBoundingClientRect();
-
-    const startX = qRect.left + qRect.width / 2 - cRect.left;
-    const startY = qRect.top + qRect.height / 2 - cRect.top;
-
-    const endX = aRect.left + aRect.width / 2 - cRect.left;
-    const endY = aRect.top + aRect.height / 2 - cRect.top;
+    const startPos = getCircleCenterCoordinates(qDot, svg);
+    const endPos = getCircleCenterCoordinates(aDot, svg);
 
     let errLine = document.getElementById('temp-error-line');
     if (!errLine) {
@@ -1187,10 +1202,10 @@ function drawErrorLine(qId, aId) {
         svg.appendChild(errLine);
     }
 
-    errLine.setAttribute('x1', startX);
-    errLine.setAttribute('y1', startY);
-    errLine.setAttribute('x2', endX);
-    errLine.setAttribute('y2', endY);
+    errLine.setAttribute('x1', startPos.x);
+    errLine.setAttribute('y1', startPos.y);
+    errLine.setAttribute('x2', endPos.x);
+    errLine.setAttribute('y2', endPos.y);
 }
 
 function removeErrorLine() {
@@ -1206,28 +1221,20 @@ function updateMatchConnectionLines() {
     // Clear existing permanent lines
     svg.querySelectorAll('.match-permanent-line').forEach(el => el.remove());
 
-    const cRect = container.getBoundingClientRect();
-
     matchGameState.matches.forEach((aId, qId) => {
         const qDot = document.getElementById(`q-dot-${qId}`);
         const aDot = document.getElementById(`a-dot-${aId}`);
         if (!qDot || !aDot) return;
 
-        const qRect = qDot.getBoundingClientRect();
-        const aRect = aDot.getBoundingClientRect();
-
-        const startX = qRect.left + qRect.width / 2 - cRect.left;
-        const startY = qRect.top + qRect.height / 2 - cRect.top;
-
-        const endX = aRect.left + aRect.width / 2 - cRect.left;
-        const endY = aRect.top + aRect.height / 2 - cRect.top;
+        const startPos = getCircleCenterCoordinates(qDot, svg);
+        const endPos = getCircleCenterCoordinates(aDot, svg);
 
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('class', 'match-connection-line match-permanent-line');
-        line.setAttribute('x1', startX);
-        line.setAttribute('y1', startY);
-        line.setAttribute('x2', endX);
-        line.setAttribute('y2', endY);
+        line.setAttribute('x1', startPos.x);
+        line.setAttribute('y1', startPos.y);
+        line.setAttribute('x2', endPos.x);
+        line.setAttribute('y2', endPos.y);
         line.setAttribute('stroke', 'var(--color-green)');
         line.setAttribute('stroke-width', '4');
 

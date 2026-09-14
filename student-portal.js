@@ -201,6 +201,26 @@ function generateMockQuestions(category, count) {
     return base.slice(0, count);
 }
 
+function getQuestThemeStyle(questName, subject) {
+    const nameMap = {
+        "Ancient Egypt Quest": { bg: "var(--color-green)", text: "var(--border-dark)" },
+        "Solar System True or False": { bg: "var(--color-yellow)", text: "var(--border-dark)" },
+        "Geography & Science Blanks": { bg: "var(--color-green)", text: "var(--border-dark)" },
+        "World & Science Matching": { bg: "var(--color-purple)", text: "white" },
+        "Math Galaxy Challenge": { bg: "var(--color-orange)", text: "var(--border-dark)" },
+        "Space Explorer Mission": { bg: "var(--color-blue)", text: "white" }
+    };
+    if (questName && nameMap[questName]) {
+        return nameMap[questName];
+    }
+    const subjLower = (subject || "").toLowerCase();
+    if (subjLower.includes("math")) return { bg: "var(--color-orange)", text: "var(--border-dark)" };
+    if (subjLower.includes("history")) return { bg: "var(--color-green)", text: "var(--border-dark)" };
+    if (subjLower.includes("purple")) return { bg: "var(--color-purple)", text: "white" };
+    if (subjLower.includes("blue")) return { bg: "var(--color-blue)", text: "white" };
+    return { bg: "var(--color-purple)", text: "white" };
+}
+
 function openQuestGame(questName, rawCount, category, chances = 3, teacherName = 'Professor Riley') {
     // Enforce perfect square question count
     let root = Math.round(Math.sqrt(rawCount));
@@ -215,6 +235,7 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
 
     currentGameState = {
         questName: questName,
+        subject: category,
         category: category,
         teacherName: teacherName || 'Professor Riley',
         configuredChances: typeof chances === 'number' && chances > 0 ? chances : 3,
@@ -266,6 +287,8 @@ function renderGameEntrance() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
+    const theme = getQuestThemeStyle(currentGameState.questName, currentGameState.subject || currentGameState.category);
+
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(currentGameState.questName)}</h3>
@@ -273,7 +296,7 @@ function renderGameEntrance() {
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
-            <div class="tile-entrance-badge">${escapeHTML(currentGameState.category.toUpperCase())} • TILE PUZZLE</div>
+            <div class="tile-entrance-badge" style="background-color: ${theme.bg}; color: ${theme.text};">${escapeHTML((currentGameState.subject || currentGameState.category || '').toUpperCase())} • TILE PUZZLE</div>
             <h2 class="tile-entrance-title">${escapeHTML(currentGameState.questName)}</h2>
             <p class="tile-entrance-desc">
                 Uncover the puzzle by solving questions! Select tiles on the <strong>${currentGameState.gridDimension} × ${currentGameState.gridDimension} grid</strong> (${currentGameState.questionCount} Questions) to reveal questions and test your knowledge.
@@ -755,6 +778,7 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley', cha
 
     matchGameState = {
         questName: questName,
+        subject: category,
         category: category,
         teacherName: teacherName || 'Professor Riley',
         configuredChances: parsedChances,
@@ -782,6 +806,8 @@ function renderMatchEntrance() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
+    const theme = getQuestThemeStyle(matchGameState.questName, matchGameState.subject || matchGameState.category);
+
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
@@ -789,8 +815,8 @@ function renderMatchEntrance() {
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
-            <div class="tile-entrance-badge" style="background-color: var(--color-purple); color: white;">
-                ${escapeHTML((matchGameState.category || 'General Science').toUpperCase())} • MATCH THE FOLLOWING
+            <div class="tile-entrance-badge" style="background-color: ${theme.bg}; color: ${theme.text};">
+                ${escapeHTML((matchGameState.subject || matchGameState.category || 'General Science').toUpperCase())} • MATCH THE FOLLOWING
             </div>
             <h2 class="tile-entrance-title">${escapeHTML(matchGameState.questName)}</h2>
             <p class="tile-entrance-desc">
@@ -1329,6 +1355,7 @@ function openFillBlanksGame(questName, category, customQuestions = null, chances
 
     fillBlanksGameState = {
         questName: questName,
+        subject: category,
         category: category,
         teacherName: teacherName || 'Professor Riley',
         configuredChances: parsedChances,
@@ -1354,6 +1381,8 @@ function renderFillBlanksEntrance() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
+    const theme = getQuestThemeStyle(fillBlanksGameState.questName, fillBlanksGameState.subject || fillBlanksGameState.category);
+
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
@@ -1361,8 +1390,8 @@ function renderFillBlanksEntrance() {
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
-            <div class="tile-entrance-badge" style="background-color: var(--color-green); color: var(--border-dark);">
-                GENERAL SCIENCE • FILL IN THE BLANKS
+            <div class="tile-entrance-badge" style="background-color: ${theme.bg}; color: ${theme.text};">
+                ${escapeHTML((fillBlanksGameState.subject || fillBlanksGameState.category || 'General Science').toUpperCase())} • FILL IN THE BLANKS
             </div>
             <h2 class="tile-entrance-title">${escapeHTML(fillBlanksGameState.questName)}</h2>
             <p class="tile-entrance-desc">
@@ -1779,6 +1808,7 @@ function openTrueFalseGame(questName, category, customQuestions = null, teacherN
 
     trueFalseGameState = {
         questName: questName,
+        subject: category,
         category: category,
         teacherName: teacherName || 'Professor Riley',
         configuredChances: parsedChances,
@@ -1804,6 +1834,8 @@ function renderTrueFalseEntrance() {
     const windowEl = document.getElementById('tile-game-window');
     if (!windowEl) return;
 
+    const theme = getQuestThemeStyle(trueFalseGameState.questName, trueFalseGameState.subject || trueFalseGameState.category);
+
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
@@ -1811,8 +1843,8 @@ function renderTrueFalseEntrance() {
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
-            <div class="tile-entrance-badge" style="background-color: var(--color-yellow); color: var(--border-dark);">
-                SCIENCE • TRUE OR FALSE
+            <div class="tile-entrance-badge" style="background-color: ${theme.bg}; color: ${theme.text};">
+                ${escapeHTML((trueFalseGameState.subject || trueFalseGameState.category || 'Science').toUpperCase())} • TRUE OR FALSE
             </div>
             <h2 class="tile-entrance-title">${escapeHTML(trueFalseGameState.questName)}</h2>
             <p class="tile-entrance-desc">

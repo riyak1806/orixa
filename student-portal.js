@@ -114,7 +114,27 @@ function renderStarsRowHtml(starsCount) {
     let html = '<div class="orixa-stars-row" aria-label="' + starsCount + ' Stars Earned">';
     for (let i = 1; i <= 3; i++) {
         const isEarned = i <= starsCount;
-        html += `<span class="orixa-star-item" style="${isEarned ? '' : 'filter: grayscale(1); opacity: 0.35;'}"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 38px; height: 38px; fill: currentColor; display: inline-block; vertical-align: middle;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></span>`;
+        html += `<span class="orixa-star-item ${isEarned ? 'is-earned' : 'is-unearned'}">
+            <svg class="orixa-star-svg" viewBox="0 0 24 24" aria-hidden="true">
+                <defs>
+                    <linearGradient id="orixa-star-gold-grad-${i}" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#fff9c4"/>
+                        <stop offset="40%" stop-color="#ffd54f"/>
+                        <stop offset="100%" stop-color="#ffb300"/>
+                    </linearGradient>
+                    <linearGradient id="orixa-star-gray-grad-${i}" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#cfd8dc"/>
+                        <stop offset="100%" stop-color="#90a4ae"/>
+                    </linearGradient>
+                </defs>
+                <path class="star-path" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+                      fill="${isEarned ? `url(#orixa-star-gold-grad-${i})` : `url(#orixa-star-gray-grad-${i})`}"
+                      stroke="var(--border-dark)" stroke-width="1.8" stroke-linejoin="round" />
+                <path class="star-gloss" d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21l6.18-3.73V2z"
+                      fill="rgba(255, 255, 255, ${isEarned ? '0.35' : '0.15'})" />
+            </svg>
+            ${isEarned ? '<span class="orixa-star-glint" aria-hidden="true"></span>' : ''}
+        </span>`;
     }
     html += '</div>';
     return html;

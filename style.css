@@ -284,39 +284,113 @@ body {
     transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Staggered 3-Star Reveal Animations */
+/* Staggered 3-Star Reveal Animations & Glossy Reward Style */
 .orixa-stars-row {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    margin: 8px 0;
+    gap: 16px;
+    margin: 12px 0;
 }
 
 .orixa-star-item {
-    font-size: 3.2rem;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
     line-height: 1;
-    display: inline-block;
-    opacity: 0;
-    transform: scale(0.2) rotate(-20deg);
-    animation: orixa-star-pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-.orixa-star-item:nth-child(1) { animation-delay: 0.15s; }
-.orixa-star-item:nth-child(2) { animation-delay: 0.35s; }
-.orixa-star-item:nth-child(3) { animation-delay: 0.55s; }
+.orixa-star-svg {
+    width: 52px;
+    height: 52px;
+    display: block;
+    overflow: visible;
+}
+
+/* Earned Stars - Energetic Pop & Bounce Entrance */
+.orixa-star-item.is-earned {
+    opacity: 0;
+    transform: scale(0) rotate(-25deg);
+    filter: drop-shadow(0 4px 0 var(--border-dark));
+    animation: orixa-star-pop-in 0.48s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.orixa-star-item.is-earned:nth-child(1) { animation-delay: 0.12s; }
+.orixa-star-item.is-earned:nth-child(2) { animation-delay: 0.38s; }
+.orixa-star-item.is-earned:nth-child(3) { animation-delay: 0.64s; }
 
 @keyframes orixa-star-pop-in {
     0% {
         opacity: 0;
-        transform: scale(0.2) rotate(-20deg);
+        transform: scale(0) rotate(-25deg);
     }
-    70% {
-        transform: scale(1.25) rotate(10deg);
+    60% {
+        opacity: 1;
+        transform: scale(1.38) rotate(12deg);
+    }
+    82% {
+        transform: scale(0.92) rotate(-4deg);
     }
     100% {
         opacity: 1;
         transform: scale(1) rotate(0deg);
+    }
+}
+
+/* Unearned Stars - Static & Dimmed Background Placement */
+.orixa-star-item.is-unearned {
+    opacity: 0.35;
+    transform: scale(0.9);
+    filter: grayscale(0.8) drop-shadow(0 2px 0 var(--border-dark));
+}
+
+/* Secondary Shine / Glint Highlight Moment */
+.orixa-star-glint {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle, #ffffff 0%, rgba(255,255,255,0.8) 40%, rgba(255,255,255,0) 80%);
+    clip-path: polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%);
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+}
+
+.orixa-star-item.is-earned .orixa-star-glint {
+    animation: orixa-star-glint-anim 0.5s ease-out forwards;
+}
+
+.orixa-star-item.is-earned:nth-child(1) .orixa-star-glint { animation-delay: 0.42s; }
+.orixa-star-item.is-earned:nth-child(2) .orixa-star-glint { animation-delay: 0.68s; }
+.orixa-star-item.is-earned:nth-child(3) .orixa-star-glint { animation-delay: 0.94s; }
+
+@keyframes orixa-star-glint-anim {
+    0% {
+        opacity: 0;
+        transform: scale(0) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.6) rotate(45deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8) rotate(90deg);
+    }
+}
+
+/* Accessibility: Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .orixa-star-item.is-earned,
+    .orixa-star-glint {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
     }
 }
 

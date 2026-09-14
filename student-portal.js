@@ -674,12 +674,15 @@ function filterQuizzes() {
 
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
     let visibleCount = 0;
+    let totalAvailable = 0;
 
     questCards.forEach(card => {
         if (card.classList.contains('completed-hidden')) {
             card.style.display = 'none';
             return;
         }
+
+        totalAvailable++;
 
         const title = (card.getAttribute('data-title') || card.querySelector('.quiz-mgmt-card-title')?.textContent || '').toLowerCase();
         const subject = (card.getAttribute('data-subject') || card.querySelector('.quiz-mgmt-card-subject')?.textContent || '').toLowerCase();
@@ -697,6 +700,17 @@ function filterQuizzes() {
 
     if (noResults) {
         if (visibleCount === 0) {
+            const titleEl = noResults.querySelector('.quiz-mgmt-no-results-title');
+            const descEl = noResults.querySelector('.quiz-mgmt-no-results-desc');
+
+            if (totalAvailable === 0) {
+                if (titleEl) titleEl.textContent = 'All quizzes done for now!';
+                if (descEl) descEl.textContent = 'There are currently no more quizzes available. Please check back later for new quests!';
+            } else {
+                if (titleEl) titleEl.textContent = 'No quizzes found';
+                if (descEl) descEl.textContent = 'Try searching with a different title, subject, or topic.';
+            }
+
             noResults.classList.remove('hidden');
         } else {
             noResults.classList.add('hidden');

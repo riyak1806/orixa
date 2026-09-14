@@ -999,6 +999,16 @@ function setupMatchInteractions() {
     window.addEventListener('resize', updateMatchConnectionLines);
 }
 
+function getCircleCenterCoordinates(circleEl, containerEl) {
+    if (!circleEl || !containerEl) return { x: 0, y: 0 };
+    const cRect = containerEl.getBoundingClientRect();
+    const circleRect = circleEl.getBoundingClientRect();
+    return {
+        x: circleRect.left + circleRect.width / 2 - cRect.left,
+        y: circleRect.top + circleRect.height / 2 - cRect.top
+    };
+}
+
 function drawDragLine(pointerX, pointerY) {
     if (!activeMatchDrag) return;
     const container = document.getElementById('match-game-container');
@@ -1008,12 +1018,11 @@ function drawDragLine(pointerX, pointerY) {
     const qDot = document.getElementById(`q-dot-${activeMatchDrag.qId}`);
     if (!qDot) return;
 
+    const startPos = getCircleCenterCoordinates(qDot, container);
+    const startX = startPos.x;
+    const startY = startPos.y;
+
     const cRect = container.getBoundingClientRect();
-    const qRect = qDot.getBoundingClientRect();
-
-    const startX = qRect.left + qRect.width / 2 - cRect.left;
-    const startY = qRect.top + qRect.height / 2 - cRect.top;
-
     const endX = pointerX - cRect.left;
     const endY = pointerY - cRect.top;
 
@@ -1127,15 +1136,13 @@ function drawErrorLine(qId, aId) {
     const aDot = document.getElementById(`a-dot-${aId}`);
     if (!qDot || !aDot) return;
 
-    const cRect = container.getBoundingClientRect();
-    const qRect = qDot.getBoundingClientRect();
-    const aRect = aDot.getBoundingClientRect();
+    const startPos = getCircleCenterCoordinates(qDot, container);
+    const endPos = getCircleCenterCoordinates(aDot, container);
 
-    const startX = qRect.left + qRect.width / 2 - cRect.left;
-    const startY = qRect.top + qRect.height / 2 - cRect.top;
-
-    const endX = aRect.left + aRect.width / 2 - cRect.left;
-    const endY = aRect.top + aRect.height / 2 - cRect.top;
+    const startX = startPos.x;
+    const startY = startPos.y;
+    const endX = endPos.x;
+    const endY = endPos.y;
 
     let errLine = document.getElementById('temp-error-line');
     if (!errLine) {
@@ -1166,21 +1173,18 @@ function updateMatchConnectionLines() {
     // Clear existing permanent lines
     svg.querySelectorAll('.match-permanent-line').forEach(el => el.remove());
 
-    const cRect = container.getBoundingClientRect();
-
     matchGameState.matches.forEach((aId, qId) => {
         const qDot = document.getElementById(`q-dot-${qId}`);
         const aDot = document.getElementById(`a-dot-${aId}`);
         if (!qDot || !aDot) return;
 
-        const qRect = qDot.getBoundingClientRect();
-        const aRect = aDot.getBoundingClientRect();
+        const startPos = getCircleCenterCoordinates(qDot, container);
+        const endPos = getCircleCenterCoordinates(aDot, container);
 
-        const startX = qRect.left + qRect.width / 2 - cRect.left;
-        const startY = qRect.top + qRect.height / 2 - cRect.top;
-
-        const endX = aRect.left + aRect.width / 2 - cRect.left;
-        const endY = aRect.top + aRect.height / 2 - cRect.top;
+        const startX = startPos.x;
+        const startY = startPos.y;
+        const endX = endPos.x;
+        const endY = endPos.y;
 
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('class', 'match-connection-line match-permanent-line');

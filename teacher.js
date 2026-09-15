@@ -117,6 +117,26 @@ function initPasswordToggle() {
     });
 }
 
+function initHodPasswordToggle() {
+    const passwordInput = document.getElementById('hod-password');
+    const toggleButton = document.getElementById('hod-password-toggle');
+    const eyeOpen = document.getElementById('hod-eye-open');
+    const eyeClosed = document.getElementById('hod-eye-closed');
+
+    if (!passwordInput || !toggleButton || !eyeOpen || !eyeClosed) {
+        return;
+    }
+
+    toggleButton.addEventListener('click', () => {
+        const shouldShowPassword = passwordInput.type === 'password';
+
+        passwordInput.type = shouldShowPassword ? 'text' : 'password';
+        toggleButton.setAttribute('aria-label', shouldShowPassword ? 'Hide password' : 'Show password');
+        eyeOpen.classList.toggle('hidden', shouldShowPassword);
+        eyeClosed.classList.toggle('hidden', !shouldShowPassword);
+    });
+}
+
 function initCollegePasswordToggle() {
     const passwordInput = document.getElementById('college-password');
     const toggleButton = document.getElementById('college-password-toggle');
@@ -340,12 +360,124 @@ function initCollegeLoginForm() {
     });
 }
 
+function initHodLoginForm() {
+    const form = document.getElementById('hod-login-form');
+    const empIdInput = document.getElementById('hod-employee-id');
+    const passwordInput = document.getElementById('hod-password');
+    const empIdError = document.getElementById('hod-employee-id-error');
+    const passwordError = document.getElementById('hod-password-error');
+    const formMessage = document.getElementById('hod-form-msg');
+    const submitButton = document.getElementById('hod-login-submit-btn');
+    const buttonLabel = submitButton ? submitButton.querySelector('.btn-label') : null;
+    const buttonSpinner = submitButton ? submitButton.querySelector('.btn-spinner') : null;
+
+    if (!form || !empIdInput || !passwordInput || !empIdError || !passwordError || !formMessage || !submitButton) {
+        return;
+    }
+
+    const setFieldState = (input, errorElement, message) => {
+        input.classList.toggle('input-invalid', Boolean(message));
+        errorElement.textContent = message;
+    };
+
+    const setFormMessage = (message, type) => {
+        formMessage.textContent = message;
+        formMessage.classList.remove('success', 'error');
+
+        if (type) {
+            formMessage.classList.add(type);
+        }
+    };
+
+    const setSubmitting = isSubmitting => {
+        submitButton.disabled = isSubmitting;
+
+        if (buttonLabel) {
+            buttonLabel.textContent = isSubmitting ? 'LOGGING IN' : 'LOG IN';
+        }
+
+        if (buttonSpinner) {
+            buttonSpinner.classList.toggle('hidden', !isSubmitting);
+        }
+    };
+
+    const validate = () => {
+        let isValid = true;
+        const empId = empIdInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        setFieldState(empIdInput, empIdError, '');
+        setFieldState(passwordInput, passwordError, '');
+        setFormMessage('', null);
+
+        if (!empId) {
+            setFieldState(empIdInput, empIdError, 'HOD Employee ID is required.');
+            isValid = false;
+        }
+
+        if (!password) {
+            setFieldState(passwordInput, passwordError, 'Password is required.');
+            isValid = false;
+        }
+
+        return isValid;
+    };
+
+    empIdInput.addEventListener('input', () => {
+        setFieldState(empIdInput, empIdError, '');
+        setFormMessage('', null);
+    });
+
+    passwordInput.addEventListener('input', () => {
+        setFieldState(passwordInput, passwordError, '');
+        setFormMessage('', null);
+    });
+
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+
+        if (!validate()) {
+            return;
+        }
+
+        const empId = empIdInput.value.trim().toUpperCase();
+        const password = passwordInput.value.trim();
+
+        setSubmitting(true);
+
+        window.setTimeout(() => {
+            setSubmitting(false);
+
+            const validEmpIds = ['HOD-CS-01', 'HOD-CS-02', 'HOD-CS-03', 'HOD-CS-04', 'HOD-CS', 'HOD-101', 'HOD01'];
+            const validPasswords = ['password123', 'hod123', 'password', 'admin123', 'jspmntccs', 'hod-cs-01'];
+
+            const isValidEmpId = validEmpIds.includes(empId) || (empId.startsWith('HOD-') && empId.length > 4);
+            const isValidPassword = validPasswords.includes(password) || password === 'hod123' || password === 'password123';
+
+            if (isValidEmpId && isValidPassword) {
+                setFormMessage('Opening Computer Department HOD Dashboard...', 'success');
+                window.location.href = 'hod-dashboard.html';
+            } else {
+                setFormMessage('Invalid HOD Employee ID or Password. Please try again.', 'error');
+                if (!isValidEmpId) {
+                    setFieldState(empIdInput, empIdError, 'Unrecognized HOD Employee ID.');
+                }
+                if (!isValidPassword) {
+                    setFieldState(passwordInput, passwordError, 'Incorrect password.');
+                }
+            }
+        }, 500);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const particles = new TeacherParticles('particles-canvas');
 
     particles.animate();
     initPasswordToggle();
     initCollegePasswordToggle();
+    initHodPasswordToggle();
     initTeacherLoginForm();
     initCollegeLoginForm();
+    initHodLoginForm();
 });

@@ -249,6 +249,34 @@ function initTeacherLoginForm() {
             return;
         }
 
+        const emailVal = emailInput.value.trim().toLowerCase();
+        let teacherName = 'Professor Riley';
+        let teacherEmpId = 'EMP-7392';
+
+        if (emailVal.includes('teachera') || emailVal.includes('teacher-a') || emailVal === 'a@school.edu') {
+            teacherName = 'Teacher A';
+            teacherEmpId = 'EMP-CS-03';
+        } else if (emailVal.includes('teacherb') || emailVal.includes('teacher-b') || emailVal === 'b@school.edu') {
+            teacherName = 'Teacher B';
+            teacherEmpId = 'EMP-CS-04';
+        } else if (emailVal.includes('sarah')) {
+            teacherName = 'Prof. Sarah Jenkins';
+            teacherEmpId = 'EMP-CS-01';
+        } else if (emailVal.includes('alan')) {
+            teacherName = 'Prof. Alan Turing';
+            teacherEmpId = 'EMP-CS-02';
+        }
+
+        try {
+            localStorage.setItem('orixa_current_teacher', JSON.stringify({
+                name: teacherName,
+                email: emailVal,
+                empId: teacherEmpId
+            }));
+        } catch (e) {
+            console.warn('Could not save current teacher login to localStorage:', e);
+        }
+
         setSubmitting(true);
 
         window.setTimeout(() => {

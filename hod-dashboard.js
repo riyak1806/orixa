@@ -2,8 +2,7 @@
    ORIXA - COMPUTER DEPARTMENT HOD DASHBOARD CONTROLLER (jspmntccs)
    ========================================================================== */
 
-// Isolated frontend mock state for Computer Department HOD
-const HOD_MOCK_DATA = {
+const DEFAULT_HOD_MOCK_DATA = {
     deptInfo: {
         id: 'jspmntccs',
         name: 'Computer Engineering Department',
@@ -25,6 +24,20 @@ const HOD_MOCK_DATA = {
             empId: 'EMP-CS-02',
             subjects: ['Cloud Computing', 'Database Management'],
             years: ['2nd Year', '4th Year']
+        },
+        {
+            id: 'T-103',
+            name: 'Teacher A',
+            empId: 'EMP-CS-03',
+            subjects: ['DBMS'],
+            years: ['2nd Year']
+        },
+        {
+            id: 'T-104',
+            name: 'Teacher B',
+            empId: 'EMP-CS-04',
+            subjects: ['AI'],
+            years: ['2nd Year']
         }
     ],
     students: [
@@ -43,9 +56,53 @@ const HOD_MOCK_DATA = {
             year: '2nd Year',
             subject: 'Database Management',
             teacher: 'Prof. Alan Turing'
+        },
+        {
+            id: 'STU-CS-103',
+            name: 'Rahul',
+            studentId: 'STU-CS-103',
+            year: '2nd Year',
+            subject: 'DBMS',
+            teacher: 'Teacher A'
+        },
+        {
+            id: 'STU-CS-104',
+            name: 'Priya',
+            studentId: 'STU-CS-104',
+            year: '2nd Year',
+            subject: 'AI',
+            teacher: 'Teacher B'
         }
     ]
 };
+
+function loadHodMockData() {
+    try {
+        const stored = localStorage.getItem('orixa_hod_mock_data');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && Array.isArray(parsed.teachers) && Array.isArray(parsed.students)) {
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load HOD mock data from localStorage:', e);
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_HOD_MOCK_DATA));
+}
+
+function saveHodMockData() {
+    try {
+        localStorage.setItem('orixa_hod_mock_data', JSON.stringify(HOD_MOCK_DATA));
+    } catch (e) {
+        console.warn('Could not save HOD mock data to localStorage:', e);
+    }
+}
+
+// Isolated frontend mock state for Computer Department HOD
+const HOD_MOCK_DATA = loadHodMockData();
+// Ensure initial data is persisted to localStorage
+saveHodMockData();
 
 /* ==========================================================================
    DOM RENDERING FUNCTIONS
@@ -300,6 +357,7 @@ function initAddTeacherForm() {
         };
 
         HOD_MOCK_DATA.teachers.push(newTeacher);
+        saveHodMockData();
 
         form.reset();
         [nameInput, empIdInput, subjectsInput, yearsInput].forEach(setFieldValid);
@@ -414,6 +472,7 @@ function initAddStudentForm() {
         };
 
         HOD_MOCK_DATA.students.push(newStudent);
+        saveHodMockData();
 
         form.reset();
         [nameInput, idInput, yearSelect, subjectSelect, teacherSelect].forEach(setFieldValid);

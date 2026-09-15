@@ -7394,7 +7394,100 @@ function escapeHTML(str) {
     );
 }
 
+function initCurrentTeacherData() {
+    let currentTeacher = null;
+    try {
+        const stored = localStorage.getItem('orixa_current_teacher');
+        if (stored) {
+            currentTeacher = JSON.parse(stored);
+        }
+    } catch (e) {
+        console.warn('Could not read current teacher from localStorage:', e);
+    }
+
+    if (currentTeacher && currentTeacher.name) {
+        MOCK_DATA.teacher.name = currentTeacher.name;
+        if (currentTeacher.email) MOCK_DATA.teacher.email = currentTeacher.email;
+        if (currentTeacher.empId) MOCK_DATA.teacher.employeeId = currentTeacher.empId;
+    }
+
+    let hodAssignments = [];
+    try {
+        const hodStored = localStorage.getItem('orixa_hod_mock_data');
+        if (hodStored) {
+            const parsedHod = JSON.parse(hodStored);
+            if (parsedHod && Array.isArray(parsedHod.students)) {
+                hodAssignments = parsedHod.students;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load HOD mock data in teacher dashboard:', e);
+    }
+
+    // Default fallbacks if local storage empty
+    if (hodAssignments.length === 0) {
+        hodAssignments = [
+            { id: 'STU-CS-101', name: 'Aarav Sharma', studentId: 'STU-CS-101', year: '1st Year', subject: 'Data Structures', teacher: 'Prof. Sarah Jenkins' },
+            { id: 'STU-CS-102', name: 'Ananya Deshmukh', studentId: 'STU-CS-102', year: '2nd Year', subject: 'Database Management', teacher: 'Prof. Alan Turing' },
+            { id: 'STU-CS-103', name: 'Rahul', studentId: 'STU-CS-103', year: '2nd Year', subject: 'DBMS', teacher: 'Teacher A' },
+            { id: 'STU-CS-104', name: 'Priya', studentId: 'STU-CS-104', year: '2nd Year', subject: 'AI', teacher: 'Teacher B' }
+        ];
+    }
+
+    const currentTeacherName = MOCK_DATA.teacher.name.toLowerCase().trim();
+
+    // Check if current teacher has specific HOD assigned students
+    const teacherHodStudents = hodAssignments.filter(s =>
+        s.teacher && s.teacher.toLowerCase().trim() === currentTeacherName
+    );
+
+    // If teacher exists in HOD assignments (or is a specific test teacher like Teacher A/B or Sarah/Alan), restrict view strictly to their assigned students
+    const isSpecificHodTeacher = teacherHodStudents.length > 0 ||
+        currentTeacherName.includes('teacher a') ||
+        currentTeacherName.includes('teacher b') ||
+        currentTeacherName.includes('sarah') ||
+        currentTeacherName.includes('alan');
+
+    if (isSpecificHodTeacher) {
+        const mappedStudents = teacherHodStudents.map(s => {
+            const existing = MOCK_DATA.students.find(m => m.name.toLowerCase() === s.name.toLowerCase() || m.id === s.studentId);
+            if (existing) {
+                return {
+                    ...existing,
+                    grade: s.year || existing.grade,
+                    subject: s.subject || existing.subject
+                };
+            }
+            return {
+                id: s.studentId || s.id || `STU-${Date.now()}`,
+                name: s.name,
+                grade: s.year || '2nd Year',
+                email: `${s.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+                quizzesAttempted: 5,
+                averageScore: 85,
+                status: 'Active',
+                lastActivity: '2026-08-12',
+                subject: s.subject || 'Computer Science',
+                bestScore: 90,
+                recentQuizzes: []
+            };
+        });
+
+        MOCK_DATA.students = mappedStudents;
+    }
+
+    // Update stats total students and caption
+    const activeCount = MOCK_DATA.students.filter(s => s.status === 'Active').length;
+    const inactiveCount = MOCK_DATA.students.length - activeCount;
+    const studentStat = MOCK_DATA.stats.find(st => st.label === 'Total Students');
+    if (studentStat) {
+        studentStat.value = String(MOCK_DATA.students.length);
+        studentStat.caption = `Active: ${activeCount} | Inactive: ${inactiveCount}`;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    initCurrentTeacherData();
     renderSidebar();
     renderStats();
     renderActivities();

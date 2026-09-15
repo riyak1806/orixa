@@ -7474,6 +7474,14 @@ function initCurrentTeacherData() {
         });
 
         MOCK_DATA.students = mappedStudents;
+
+        // Scope results strictly to assigned students for this teacher
+        const assignedStudentNames = new Set(mappedStudents.map(s => s.name.toLowerCase()));
+        const assignedStudentIds = new Set(mappedStudents.map(s => s.id));
+
+        MOCK_DATA.results = MOCK_DATA.results.filter(r =>
+            assignedStudentNames.has(r.studentName.toLowerCase()) || assignedStudentIds.has(r.studentId)
+        );
     }
 
     // Update stats total students and caption

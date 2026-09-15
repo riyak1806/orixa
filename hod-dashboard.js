@@ -73,8 +73,20 @@ const DEFAULT_HOD_MOCK_DATA = {
             subject: 'AI',
             teacher: 'Teacher B'
         }
+    ],
+    performance: [
+        { id: 'STU-CS-101', name: 'Aarav Sharma', year: '1st Year', subject: 'Data Structures', teacher: 'Prof. Sarah Jenkins', quizzesCompleted: 14, avgAccuracy: 94, status: 'Top Performer' },
+        { id: 'STU-CS-102', name: 'Ananya Deshmukh', year: '2nd Year', subject: 'Database Management', teacher: 'Prof. Alan Turing', quizzesCompleted: 11, avgAccuracy: 88, status: 'Above Average' },
+        { id: 'STU-CS-103', name: 'Rahul', year: '2nd Year', subject: 'DBMS', teacher: 'Teacher A', quizzesCompleted: 9, avgAccuracy: 85, status: 'Above Average' },
+        { id: 'STU-CS-104', name: 'Priya', year: '2nd Year', subject: 'AI', teacher: 'Teacher B', quizzesCompleted: 7, avgAccuracy: 78, status: 'Average' },
+        { id: 'STU-CS-105', name: 'Sanya Malhotra', year: '3rd Year', subject: 'Web Technologies', teacher: 'Prof. Sarah Jenkins', quizzesCompleted: 12, avgAccuracy: 91, status: 'Top Performer' },
+        { id: 'STU-CS-106', name: 'Isha Gupta', year: '4th Year', subject: 'Cloud Computing', teacher: 'Prof. Alan Turing', quizzesCompleted: 13, avgAccuracy: 89, status: 'Above Average' }
     ]
 };
+
+let currentHodTeacherFilter = 'ALL';
+let currentHodSubjectFilter = 'ALL';
+let currentHodYearFilter = 'ALL';
 
 function loadHodMockData() {
     try {
@@ -82,6 +94,9 @@ function loadHodMockData() {
         if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed && Array.isArray(parsed.teachers) && Array.isArray(parsed.students)) {
+                if (!Array.isArray(parsed.performance)) {
+                    parsed.performance = JSON.parse(JSON.stringify(DEFAULT_HOD_MOCK_DATA.performance));
+                }
                 return parsed;
             }
         }
@@ -547,12 +562,158 @@ function confirmHodLogout(event) {
     });
 }
 
+function renderHodTeacherAndSubjectFilters() {
+    const teacherSelect = document.getElementById('hod-filter-teacher');
+    const subjectSelect = document.getElementById('hod-filter-subject');
+
+    const performanceList = HOD_MOCK_DATA.performance || [];
+
+    let available = performanceList;
+    if (currentHodYearFilter !== 'ALL') {
+        available = available.filter(s => s.year === currentHodYearFilter);
+    }
+
+    if (teacherSelect) {
+        const selectedTeacher = teacherSelect.value || 'ALL';
+        const teachers = Array.from(new Set(available.map(s => s.teacher))).sort();
+        teacherSelect.innerHTML = `
+            <option value="ALL">All Department Teachers</option>
+            ${teachers.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
+        `;
+        if (teachers.includes(selectedTeacher)) {
+            teacherSelect.value = selectedTeacher;
+        } else {
+            teacherSelect.value = 'ALL';
+            currentHodTeacherFilter = 'ALL';
+        }
+    }
+
+    if (subjectSelect) {
+        const selectedSubject = subjectSelect.value || 'ALL';
+        const subjects = Array.from(new Set(available.map(s => s.subject))).sort();
+        subjectSelect.innerHTML = `
+            <option value="ALL">All Department Subjects</option>
+            ${subjects.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
+        `;
+        if (subjects.includes(selectedSubject)) {
+            subjectSelect.value = selectedSubject;
+        } else {
+            subjectSelect.value = 'ALL';
+            currentHodSubjectFilter = 'ALL';
+        }
+    }
+}
+
+function renderHodPerformanceTable() {
+    const tableBody = document.getElementById('hod-performance-table-body');
+    const countEl = document.getElementById('hod-performance-count');
+
+    if (!tableBody) return;
+
+    const performanceList = HOD_MOCK_DATA.performance || [];
+
+    const filtered = performanceList.filter(item => {
+        const matchTeacher = (currentHodTeacherFilter === 'ALL' || item.teacher === currentHodTeacherFilter);
+        const matchSubject = (currentHodSubjectFilter === 'ALL' || item.subject === currentHodSubjectFilter);
+        const matchYear = (currentHodYearFilter === 'ALL' || item.year === currentHodYearFilter);
+        return matchTeacher && matchSubject && matchYear;
+    });
+
+    if (countEl) {
+        countEl.textContent = `Showing ${filtered.length} of ${performanceList.length} records`;
+    }
+
+    if (filtered.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="hod-no-results">
+                    <div style="padding: 16px 0;">
+                        <p style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 4px;">No department student performance records found</p>
+                        <p style="font-size: 0.88rem; color: #78909c;">Try adjusting your Teacher, Subject, or Year filters.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = filtered.map(item => `
+        <tr>
+            <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(item.name)}</td>
+            <td><code class="hod-code-badge">${escapeHtml(item.id)}</code></td>
+            <td><span class="hod-badge hod-badge-yellow">${escapeHtml(item.year)}</span></td>
+            <td><span class="hod-badge hod-badge-green">${escapeHtml(item.subject)}</span></td>
+            <td><span class="hod-badge hod-badge-purple">${escapeHtml(item.teacher)}</span></td>
+            <td><strong>${item.quizzesCompleted}</strong></td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-family: var(--font-header); font-weight: 700; color: var(--border-dark); min-width: 38px;">${item.avgAccuracy}%</span>
+                    <span class="quiz-status-pill ${getHodAccuracyPillClass(item.avgAccuracy)}">${escapeHtml(item.status)}</span>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getHodAccuracyPillClass(accuracy) {
+    if (accuracy >= 90) return 'pill-live';
+    if (accuracy >= 75) return 'pill-draft';
+    return 'pill-closed';
+}
+
+function initHodPerformanceFilters() {
+    const teacherSelect = document.getElementById('hod-filter-teacher');
+    const subjectSelect = document.getElementById('hod-filter-subject');
+    const yearSelect = document.getElementById('hod-filter-year');
+    const clearBtn = document.getElementById('hod-clear-filters-btn');
+
+    if (teacherSelect) {
+        teacherSelect.addEventListener('change', e => {
+            currentHodTeacherFilter = e.target.value;
+            renderHodPerformanceTable();
+        });
+    }
+
+    if (subjectSelect) {
+        subjectSelect.addEventListener('change', e => {
+            currentHodSubjectFilter = e.target.value;
+            renderHodPerformanceTable();
+        });
+    }
+
+    if (yearSelect) {
+        yearSelect.addEventListener('change', e => {
+            currentHodYearFilter = e.target.value;
+            renderHodTeacherAndSubjectFilters();
+            renderHodPerformanceTable();
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            currentHodTeacherFilter = 'ALL';
+            currentHodSubjectFilter = 'ALL';
+            currentHodYearFilter = 'ALL';
+
+            if (teacherSelect) teacherSelect.value = 'ALL';
+            if (subjectSelect) subjectSelect.value = 'ALL';
+            if (yearSelect) yearSelect.value = 'ALL';
+
+            renderHodTeacherAndSubjectFilters();
+            renderHodPerformanceTable();
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     renderHodStats();
     renderTeacherList();
     renderStudentList();
+    renderHodTeacherAndSubjectFilters();
+    renderHodPerformanceTable();
     updateStudentFormDropdowns();
 
     initAddTeacherForm();
     initAddStudentForm();
+    initHodPerformanceFilters();
 });

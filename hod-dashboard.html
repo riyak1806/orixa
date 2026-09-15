@@ -417,7 +417,61 @@
             </div>
         </section>
 
-        <!-- SECTION 2: STUDENT MANAGEMENT & ASSIGNMENT -->
+        <!-- SECTION 2: DEPARTMENT STUDENT PERFORMANCE ANALYTICS -->
+        <section class="dashboard-panel cartoon-panel" aria-labelledby="hod-perf-heading">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Department Analytics</p>
+                    <h3 id="hod-perf-heading">Computer Department Performance Analytics</h3>
+                </div>
+                <span id="hod-performance-count" style="font-family: var(--font-header); font-size: 0.85rem; color: #78909c;"></span>
+            </div>
+
+            <!-- Multi-parameter Filter Toolbar for Computer Department -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--t-space-1); padding: var(--t-space-2); background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; margin-bottom: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
+                <select id="hod-filter-teacher" class="cartoon-select" style="flex: 1; min-width: 140px; height: 42px; font-family: var(--font-header); font-size: 0.85rem;" aria-label="Filter by teacher">
+                    <option value="ALL">All Department Teachers</option>
+                </select>
+
+                <select id="hod-filter-subject" class="cartoon-select" style="flex: 1; min-width: 140px; height: 42px; font-family: var(--font-header); font-size: 0.85rem;" aria-label="Filter by subject">
+                    <option value="ALL">All Department Subjects</option>
+                </select>
+
+                <select id="hod-filter-year" class="cartoon-select" style="flex: 1; min-width: 140px; height: 42px; font-family: var(--font-header); font-size: 0.85rem;" aria-label="Filter by year">
+                    <option value="ALL">All Classes / Years</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                </select>
+
+                <button type="button" id="hod-clear-filters-btn" class="cartoon-action-btn" style="height: 42px; padding: 0 16px; font-family: var(--font-header); font-size: 0.85rem; background: var(--color-orange); border: var(--border-comic-thin); border-radius: 12px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; white-space: nowrap;">
+                    <span>CLEAR FILTERS</span>
+                </button>
+            </div>
+
+            <!-- Performance Data Table -->
+            <div class="hod-table-wrapper">
+                <table class="hod-data-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Student ID</th>
+                            <th>Class / Year</th>
+                            <th>Subject</th>
+                            <th>Assigned Teacher</th>
+                            <th>Quizzes Done</th>
+                            <th>Avg Accuracy / Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hod-performance-table-body">
+                        <!-- Populated dynamically by hod-dashboard.js -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION 3: STUDENT MANAGEMENT & ASSIGNMENT -->
         <section class="hod-grid-dual" aria-labelledby="student-management-heading">
             <!-- Form Card: Add & Assign Student -->
             <div class="dashboard-panel cartoon-panel">

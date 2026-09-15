@@ -113,24 +113,42 @@ function renderTeacherAndSubjectFilterOptions() {
     const teacherSelect = document.getElementById('filter-teacher');
     const subjectSelect = document.getElementById('filter-subject');
 
+    let availableStudents = MOCK_COLLEGE_DATA.studentPerformance;
+    if (currentDepartmentFilter !== 'ALL') {
+        availableStudents = availableStudents.filter(s => s.department === currentDepartmentFilter);
+    }
+    if (currentYearFilter !== 'ALL') {
+        availableStudents = availableStudents.filter(s => s.year === currentYearFilter);
+    }
+
     if (teacherSelect) {
         const selectedTeacher = teacherSelect.value || 'ALL';
-        const teachers = Array.from(new Set(MOCK_COLLEGE_DATA.studentPerformance.map(s => s.teacher))).sort();
+        const teachers = Array.from(new Set(availableStudents.map(s => s.teacher))).sort();
         teacherSelect.innerHTML = `
             <option value="ALL">All Teachers</option>
             ${teachers.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
         `;
-        teacherSelect.value = selectedTeacher;
+        if (teachers.includes(selectedTeacher)) {
+            teacherSelect.value = selectedTeacher;
+        } else {
+            teacherSelect.value = 'ALL';
+            currentTeacherFilter = 'ALL';
+        }
     }
 
     if (subjectSelect) {
         const selectedSubject = subjectSelect.value || 'ALL';
-        const subjects = Array.from(new Set(MOCK_COLLEGE_DATA.studentPerformance.map(s => s.subject))).sort();
+        const subjects = Array.from(new Set(availableStudents.map(s => s.subject))).sort();
         subjectSelect.innerHTML = `
             <option value="ALL">All Subjects</option>
             ${subjects.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
         `;
-        subjectSelect.value = selectedSubject;
+        if (subjects.includes(selectedSubject)) {
+            subjectSelect.value = selectedSubject;
+        } else {
+            subjectSelect.value = 'ALL';
+            currentSubjectFilter = 'ALL';
+        }
     }
 }
 
@@ -306,6 +324,7 @@ function initPerformanceFilters() {
     if (deptSelect) {
         deptSelect.addEventListener('change', e => {
             currentDepartmentFilter = e.target.value;
+            renderTeacherAndSubjectFilterOptions();
             renderStudentPerformanceTable();
         });
     }
@@ -320,6 +339,7 @@ function initPerformanceFilters() {
     if (yearSelect) {
         yearSelect.addEventListener('change', e => {
             currentYearFilter = e.target.value;
+            renderTeacherAndSubjectFilterOptions();
             renderStudentPerformanceTable();
         });
     }

@@ -12,6 +12,21 @@ const STORAGE_KEYS = {
 };
 
 let completedQuizzes = new Set();
+let activeGameTimeouts = [];
+
+function setGameTimeout(fn, delay) {
+    const id = setTimeout(() => {
+        activeGameTimeouts = activeGameTimeouts.filter(t => t !== id);
+        fn();
+    }, delay);
+    activeGameTimeouts.push(id);
+    return id;
+}
+
+function clearGameTimeouts() {
+    activeGameTimeouts.forEach(id => clearTimeout(id));
+    activeGameTimeouts = [];
+}
 
 function loadCompletedQuizzesFromStorage() {
     try {
@@ -283,6 +298,7 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
 }
 
 function closeQuestModal() {
+    clearGameTimeouts();
     if (typeof activeFitbDrag !== 'undefined' && activeFitbDrag) {
         if (activeFitbDrag.avatar && activeFitbDrag.avatar.parentNode) {
             activeFitbDrag.avatar.parentNode.removeChild(activeFitbDrag.avatar);
@@ -312,7 +328,7 @@ function renderGameEntrance() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(currentGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -359,7 +375,7 @@ function renderGameBoard() {
         if (isSolved) {
             buttonText = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>`;
         } else if (isProcessed) {
-            buttonText = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg>`;
+            buttonText = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg>`;
         }
 
         tileButtonsHtml += `
@@ -376,7 +392,7 @@ function renderGameBoard() {
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(currentGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-board-view orixa-game-slide-enter">
@@ -417,7 +433,7 @@ function handleTileClick(tileIndex) {
     const btn = document.getElementById(`tile-btn-${tileIndex}`);
     if (btn) {
         btn.classList.add('flipping');
-        setTimeout(() => btn.classList.remove('flipping'), 300);
+        setGameTimeout(() => btn.classList.remove('flipping'), 300);
     }
 
     // REQUIREMENT 3: Open centered question modal overlay in front of dimmed tile grid
@@ -441,7 +457,7 @@ function openQuestionModal(tileIndex) {
     card.innerHTML = `
         <div class="tile-question-header">
             <span class="tile-question-number-badge">TILE #${tileIndex + 1} QUESTION</span>
-            <button type="button" class="sidebar-toggle-btn" onclick="closeQuestionModal()" aria-label="Close question modal" style="width: 32px; height: 32px;"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <button type="button" class="sidebar-toggle-btn" onclick="closeQuestionModal()" aria-label="Close question modal" style="width: 32px; height: 32px;"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </div>
 
         <h4 class="tile-question-text">${escapeHTML(question.text)}</h4>
@@ -507,14 +523,14 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             `;
         }
 
-        setTimeout(() => {
+        setGameTimeout(() => {
             currentGameState.isProcessing = false;
             closeQuestionModal();
             renderGameBoard();
 
             // Check completion
             if (currentGameState.processedTiles.size === currentGameState.questionCount) {
-                setTimeout(() => renderVictoryScreen(), 300);
+                setGameTimeout(() => renderVictoryScreen(), 300);
             }
         }, 700);
     } else {
@@ -536,7 +552,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             if (feedbackEl) {
                 feedbackEl.innerHTML = `
                     <div class="tile-feedback-box incorrect">
-                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! ${remaining} ${remaining === 1 ? 'chance' : 'chances'} remaining. Try again!
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! ${remaining} ${remaining === 1 ? 'chance' : 'chances'} remaining. Try again!
                     </div>
                 `;
             }
@@ -560,7 +576,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             if (feedbackEl) {
                 feedbackEl.innerHTML = `
                     <div class="tile-feedback-box incorrect">
-                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! No chances remaining. Correct answer: <strong>${escapeHTML(question.options[question.correctAnswer])}</strong>
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! No chances remaining. Correct answer: <strong>${escapeHTML(question.options[question.correctAnswer])}</strong>
                     </div>
                 `;
             }
@@ -571,7 +587,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 renderGameBoard();
 
                 if (currentGameState.processedTiles.size === currentGameState.questionCount) {
-                    setTimeout(() => renderVictoryScreen(), 300);
+                    setGameTimeout(() => renderVictoryScreen(), 300);
                 }
             }, 1400);
         }
@@ -593,7 +609,7 @@ function renderVictoryScreen() {
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
             <h3 class="tile-game-title" id="tile-modal-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
@@ -844,8 +860,8 @@ function renderMatchEntrance() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(matchGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -878,8 +894,8 @@ function renderMatchGameBoard() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(matchGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(matchGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="match-game-container orixa-game-slide-enter" id="match-game-container">
@@ -951,7 +967,7 @@ function renderMatchGameBoard() {
         }, { once: true });
     }
 
-    setTimeout(() => {
+    setGameTimeout(() => {
         updateMatchConnectionLines();
     }, 360);
 }
@@ -960,6 +976,9 @@ function getCircleCenterCoordinates(circleEl, containerEl) {
     if (!circleEl || !containerEl) return { x: 0, y: 0 };
     const circleRect = circleEl.getBoundingClientRect();
     const containerRect = containerEl.getBoundingClientRect();
+    if (circleRect.width === 0 || circleRect.height === 0 || containerRect.width === 0 || containerRect.height === 0) {
+        return { x: 0, y: 0 };
+    }
     return {
         x: (circleRect.left + circleRect.width / 2) - containerRect.left,
         y: (circleRect.top + circleRect.height / 2) - containerRect.top
@@ -1141,7 +1160,7 @@ function attemptMatch(qId, aId) {
 
         // Check if all pairs processed (matched + failed)
         if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
-            setTimeout(renderMatchVictoryScreen, 600);
+            setGameTimeout(renderMatchVictoryScreen, 600);
         }
     } else {
         // INCORRECT MATCH
@@ -1183,7 +1202,7 @@ function attemptMatch(qId, aId) {
                 renderMatchGameBoard();
 
                 if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
-                    setTimeout(renderMatchVictoryScreen, 600);
+                    setGameTimeout(renderMatchVictoryScreen, 600);
                 }
             }, 600);
         } else {
@@ -1249,6 +1268,10 @@ function updateMatchConnectionLines() {
         const startPos = getCircleCenterCoordinates(qDot, svg);
         const endPos = getCircleCenterCoordinates(aDot, svg);
 
+        if ((startPos.x === 0 && startPos.y === 0) || (endPos.x === 0 && endPos.y === 0)) {
+            return;
+        }
+
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('class', 'match-connection-line match-permanent-line');
         line.setAttribute('x1', startPos.x);
@@ -1276,8 +1299,8 @@ function renderMatchVictoryScreen() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
-            <h3 class="tile-game-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">QUEST COMPLETED!</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
@@ -1426,8 +1449,8 @@ function renderFillBlanksEntrance() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -1475,8 +1498,8 @@ function renderFillBlanksGameBoard() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(fillBlanksGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="fitb-game-container orixa-game-slide-enter">
@@ -1493,6 +1516,8 @@ function renderFillBlanksGameBoard() {
             <div class="fitb-sentence-box orixa-question-slide">
                 ${sentenceHtml}
             </div>
+
+            <div id="fitb-feedback-banner" style="min-height: 24px; text-align: center; font-family: var(--font-header); font-size: 0.95rem; font-weight: 700;"></div>
 
             <div class="fitb-options-box" id="fitb-options-box">
                 ${currentQ.options.map((optText, idx) => `
@@ -1691,13 +1716,14 @@ function attemptFitbAnswer(optionText, card) {
         target.classList.remove('is-target-active');
         target.classList.add('is-incorrect');
 
-        // Update progress chances display
-        const progressHeaderSpans = document.querySelectorAll('.orixa-progress-header span');
-        if (progressHeaderSpans && progressHeaderSpans[1]) {
-            progressHeaderSpans[1].innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg> CHANCES: ${Math.max(0, fillBlanksGameState.remainingChances)}/${fillBlanksGameState.configuredChances}`;
-        }
+        const feedbackEl = document.getElementById('fitb-feedback-banner');
 
         if (fillBlanksGameState.remainingChances > 0) {
+            if (feedbackEl) {
+                feedbackEl.style.color = "var(--color-red-dark)";
+                feedbackEl.innerHTML = `Incorrect! ${fillBlanksGameState.remainingChances} ${fillBlanksGameState.remainingChances === 1 ? 'chance' : 'chances'} remaining. Try again!`;
+            }
+
             // Chances remain: keep correct answer hidden, allow trying again
             setTimeout(() => {
                 target.textContent = "______";
@@ -1706,6 +1732,7 @@ function attemptFitbAnswer(optionText, card) {
                     card.classList.remove('is-selected', 'is-dragging');
                     card.style.opacity = '';
                 }
+                if (feedbackEl) feedbackEl.innerHTML = '';
                 fillBlanksGameState.isProcessing = false;
             }, 600);
         } else {
@@ -1713,9 +1740,14 @@ function attemptFitbAnswer(optionText, card) {
                 currentStat.isSolved = false;
             }
 
+            const correctRevealText = currentQ.correctAnswerText || currentQ.blankAnswer || optionText;
+            if (feedbackEl) {
+                feedbackEl.style.color = "var(--color-red-dark)";
+                feedbackEl.innerHTML = `Incorrect! Correct answer: <strong>${escapeHTML(correctRevealText)}</strong>`;
+            }
+
             // All chances exhausted: reveal correct answer before proceeding
             setTimeout(() => {
-                const correctRevealText = currentQ.correctAnswerText || currentQ.blankAnswer || optionText;
                 target.textContent = correctRevealText;
                 target.classList.remove('is-incorrect');
                 target.classList.add('is-correct');
@@ -1749,8 +1781,8 @@ function renderFitbVictoryScreen() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
-            <h3 class="tile-game-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">QUEST COMPLETED!</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
@@ -1879,8 +1911,8 @@ function renderTrueFalseEntrance() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(trueFalseGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-entrance-screen orixa-game-slide-enter">
@@ -1914,8 +1946,8 @@ function renderTrueFalseGameBoard() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header">
-            <h3 class="tile-game-title">${escapeHTML(trueFalseGameState.questName)}</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(trueFalseGameState.questName)}</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tf-game-container orixa-game-slide-enter">
@@ -1940,7 +1972,7 @@ function renderTrueFalseGameBoard() {
                     <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 4px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> TRUE
                 </button>
                 <button type="button" class="tf-choice-btn btn-false" id="btn-false" onclick="evaluateTrueFalseChoice(false)">
-                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 4px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> FALSE
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 4px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> FALSE
                 </button>
             </div>
         </div>
@@ -2015,7 +2047,7 @@ function evaluateTrueFalseChoice(selectedBool) {
         if (trueFalseGameState.remainingChances > 0) {
             if (feedbackEl) {
                 feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Try again.`;
+                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Try again.`;
             }
 
             setTimeout(() => {
@@ -2038,7 +2070,7 @@ function evaluateTrueFalseChoice(selectedBool) {
 
             if (feedbackEl) {
                 feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Correct answer: ${correctText}`;
+                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Correct answer: ${correctText}`;
             }
 
             setTimeout(() => {
@@ -2069,8 +2101,8 @@ function renderTrueFalseVictoryScreen() {
 
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
-            <h3 class="tile-game-title">QUEST COMPLETED!</h3>
-            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+            <h3 class="tile-game-title" id="tile-modal-title">QUEST COMPLETED!</h3>
+            <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
         <div class="tile-victory-screen orixa-game-slide-enter">
@@ -2144,7 +2176,7 @@ function confirmStudentLogout(event) {
                 <h3 class="orixa-modal-title" style="color: var(--border-dark);">Log Out?</h3>
                 <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
                     <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z" fill="currentColor"/>
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/>
                     </svg>
                 </button>
             </header>

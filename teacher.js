@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ORIXA - TEACHER LOGIN CONTROLLER
+   ORIXA - TEACHER & COLLEGE LOGIN CONTROLLER
    ========================================================================== */
 
 class TeacherParticles {
@@ -117,6 +117,26 @@ function initPasswordToggle() {
     });
 }
 
+function initCollegePasswordToggle() {
+    const passwordInput = document.getElementById('college-password');
+    const toggleButton = document.getElementById('college-password-toggle');
+    const eyeOpen = document.getElementById('college-eye-open');
+    const eyeClosed = document.getElementById('college-eye-closed');
+
+    if (!passwordInput || !toggleButton || !eyeOpen || !eyeClosed) {
+        return;
+    }
+
+    toggleButton.addEventListener('click', () => {
+        const shouldShowPassword = passwordInput.type === 'password';
+
+        passwordInput.type = shouldShowPassword ? 'text' : 'password';
+        toggleButton.setAttribute('aria-label', shouldShowPassword ? 'Hide password' : 'Show password');
+        eyeOpen.classList.toggle('hidden', shouldShowPassword);
+        eyeClosed.classList.toggle('hidden', !shouldShowPassword);
+    });
+}
+
 function initTeacherLoginForm() {
     const form = document.getElementById('teacher-login-form');
     const emailInput = document.getElementById('login-email');
@@ -219,10 +239,113 @@ function initTeacherLoginForm() {
     });
 }
 
+function initCollegeLoginForm() {
+    const form = document.getElementById('college-login-form');
+    const codeInput = document.getElementById('college-code');
+    const passwordInput = document.getElementById('college-password');
+    const codeError = document.getElementById('college-code-error');
+    const passwordError = document.getElementById('college-password-error');
+    const formMessage = document.getElementById('college-form-msg');
+    const submitButton = document.getElementById('college-login-submit-btn');
+    const buttonLabel = submitButton ? submitButton.querySelector('.btn-label') : null;
+    const buttonSpinner = submitButton ? submitButton.querySelector('.btn-spinner') : null;
+
+    if (!form || !codeInput || !passwordInput || !codeError || !passwordError || !formMessage || !submitButton) {
+        return;
+    }
+
+    const setFieldState = (input, errorElement, message) => {
+        input.classList.toggle('input-invalid', Boolean(message));
+        errorElement.textContent = message;
+    };
+
+    const setFormMessage = (message, type) => {
+        formMessage.textContent = message;
+        formMessage.classList.remove('success', 'error');
+
+        if (type) {
+            formMessage.classList.add(type);
+        }
+    };
+
+    const setSubmitting = isSubmitting => {
+        submitButton.disabled = isSubmitting;
+
+        if (buttonLabel) {
+            buttonLabel.textContent = isSubmitting ? 'LOGGING IN' : 'LOG IN';
+        }
+
+        if (buttonSpinner) {
+            buttonSpinner.classList.toggle('hidden', !isSubmitting);
+        }
+    };
+
+    const validate = () => {
+        let isValid = true;
+        const code = codeInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        setFieldState(codeInput, codeError, '');
+        setFieldState(passwordInput, passwordError, '');
+        setFormMessage('', null);
+
+        if (!code) {
+            setFieldState(codeInput, codeError, 'College ID is required.');
+            isValid = false;
+        }
+
+        if (!password) {
+            setFieldState(passwordInput, passwordError, 'Password is required.');
+            isValid = false;
+        }
+
+        return isValid;
+    };
+
+    codeInput.addEventListener('input', () => {
+        setFieldState(codeInput, codeError, '');
+        setFormMessage('', null);
+    });
+
+    passwordInput.addEventListener('input', () => {
+        setFieldState(passwordInput, passwordError, '');
+        setFormMessage('', null);
+    });
+
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+
+        if (!validate()) {
+            return;
+        }
+
+        const collegeId = codeInput.value.trim().toLowerCase();
+
+        setSubmitting(true);
+
+        window.setTimeout(() => {
+            setSubmitting(false);
+
+            if (collegeId === 'jspmntc') {
+                setFormMessage('Redirecting to General College Dashboard...', 'success');
+                window.location.href = 'college-dashboard.html';
+            } else if (collegeId === 'jspmntccs') {
+                setFormMessage('Redirecting to Computer Department HOD Login...', 'success');
+                window.location.href = 'hod-login.html';
+            } else {
+                setFormMessage('Invalid College ID. Please enter a valid registered College ID.', 'error');
+                setFieldState(codeInput, codeError, 'Unrecognized College ID.');
+            }
+        }, 500);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const particles = new TeacherParticles('particles-canvas');
 
     particles.animate();
     initPasswordToggle();
+    initCollegePasswordToggle();
     initTeacherLoginForm();
+    initCollegeLoginForm();
 });

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>General College Dashboard | ORIXA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="teacher.css">
+    <style>
+        .back-nav-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 8px;
+            width: 100%;
+        }
+
+        .back-link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-header);
+            font-size: 0.9rem;
+            color: var(--border-dark);
+            text-decoration: none;
+            background: var(--color-blue);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            padding: 8px 16px;
+            box-shadow: var(--shadow-chunky-pressed);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .back-link-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-chunky-small);
+        }
+
+        .back-link-btn:active {
+            transform: translateY(1px);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        .college-info-box {
+            text-align: center;
+            padding: 20px;
+            background: var(--surface-white);
+            border: var(--border-comic-thin);
+            border-radius: 16px;
+            box-shadow: var(--shadow-chunky-pressed);
+            margin-top: 15px;
+        }
+
+        .college-info-box h2 {
+            font-family: var(--font-header);
+            font-size: 1.4rem;
+            color: var(--border-dark);
+            margin-bottom: 8px;
+        }
+
+        .college-info-box p {
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            color: #546e7a;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body class="teacher-body">
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="teacher-page">
+        <!-- Back Navigation Button -->
+        <div class="back-nav-container">
+            <a href="college-login.html" class="back-link-btn">
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor" />
+                </svg>
+                <span>LOGOUT / BACK</span>
+            </a>
+        </div>
+
+        <main class="teacher-card cartoon-panel">
+            <header class="teacher-card-header">
+                <h1 class="cartoon-logo teacher-logo bounce-anim" style="color: var(--color-blue);">ORIXA</h1>
+                <p class="cartoon-subtitle teacher-subtitle">General College Dashboard</p>
+            </header>
+
+            <div class="college-info-box cartoon-panel">
+                <h2>Welcome, General College Administrator</h2>
+                <p>College ID: <strong>jspmntc</strong></p>
+                <p style="margin-top: 10px; font-size: 0.85rem; color: #78909c;">General College Management Portal Destination</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="teacher.js"></script>
+</body>
+
+</html>

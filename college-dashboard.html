@@ -326,17 +326,20 @@
             </div>
         </section>
 
-        <!-- SECTION 1: DEPARTMENT MANAGEMENT -->
-        <section class="college-grid-dual" aria-labelledby="dept-management-heading">
-            <!-- Form Card: Add Department -->
-            <div class="dashboard-panel cartoon-panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">Department Management</p>
-                        <h3 id="dept-management-heading">Add Department</h3>
-                    </div>
+        <!-- SECTION 1: COLLEGE DEPARTMENT LIST -->
+        <section class="dashboard-panel cartoon-panel" aria-labelledby="dept-management-heading">
+            <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <p class="panel-kicker">Overview</p>
+                    <h3 id="dept-management-heading">College Departments List</h3>
                 </div>
+                <button type="button" id="toggle-add-dept-btn" class="cartoon-action-btn primary-yellow-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <span>+ ADD</span>
+                </button>
+            </div>
 
+            <!-- Form Drawer for Adding Department -->
+            <div id="add-dept-drawer" style="display: none; padding: var(--t-space-2); background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; margin-bottom: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
                 <form id="add-department-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
                     <div class="form-field">
                         <label for="dept-name" class="field-label">
@@ -388,32 +391,22 @@
                 </form>
             </div>
 
-            <!-- Table Card: Department List -->
-            <div class="dashboard-panel cartoon-panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">Overview</p>
-                        <h3>College Departments List</h3>
-                    </div>
-                </div>
-
-                <div class="college-table-wrapper">
-                    <table class="college-data-table">
-                        <thead>
-                            <tr>
-                                <th>Department Name</th>
-                                <th>HOD Name</th>
-                                <th>HOD Emp ID</th>
-                                <th>Students</th>
-                                <th>Teachers</th>
-                                <th>Avg Accuracy</th>
-                            </tr>
-                        </thead>
-                        <tbody id="department-table-body">
-                            <!-- Populated dynamically by college-dashboard.js -->
-                        </tbody>
-                    </table>
-                </div>
+            <div class="college-table-wrapper">
+                <table class="college-data-table">
+                    <thead>
+                        <tr>
+                            <th>Department Name</th>
+                            <th>HOD Name</th>
+                            <th>HOD Emp ID</th>
+                            <th>Students</th>
+                            <th>Teachers</th>
+                            <th>Avg Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody id="department-table-body">
+                        <!-- Populated dynamically by college-dashboard.js -->
+                    </tbody>
+                </table>
             </div>
         </section>
 

@@ -223,6 +223,18 @@ function escapeHtml(str) {
    EVENT HANDLERS & INITIALIZATION
    ========================================================================== */
 
+function initAddDepartmentDrawer() {
+    const toggleBtn = document.getElementById('toggle-add-dept-btn');
+    const drawer = document.getElementById('add-dept-drawer');
+
+    if (toggleBtn && drawer) {
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = drawer.style.display === 'none' || !drawer.style.display;
+            drawer.style.display = isHidden ? 'block' : 'none';
+        });
+    }
+}
+
 function initAddDepartmentForm() {
     const form = document.getElementById('add-department-form');
     const nameInput = document.getElementById('dept-name');
@@ -409,6 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTeacherAndSubjectFilterOptions();
     renderStudentPerformanceTable();
 
+    initAddDepartmentDrawer();
     initAddDepartmentForm();
     initPerformanceFilters();
 });

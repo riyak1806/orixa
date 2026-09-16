@@ -12,6 +12,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="intro.css">
     <style>
         .teacher-page {
             max-width: 580px;
@@ -117,6 +118,142 @@
 </head>
 
 <body class="teacher-body">
+    <!-- ORIXA Game Cinematic Intro Overlay -->
+    <div id="orixa-intro-overlay" class="orixa-intro-overlay" aria-label="ORIXA Cinematic Intro">
+        <button id="orixa-intro-skip" class="orixa-intro-skip-btn" type="button" aria-label="Skip intro animation">SKIP</button>
+        <div class="orixa-intro-stage">
+            <svg class="orixa-intro-svg" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <defs>
+                    <!-- Sky Gradient -->
+                    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#b2ebf2"/>
+                        <stop offset="100%" stop-color="#80deea"/>
+                    </linearGradient>
+                    <!-- Mountain Gradient -->
+                    <linearGradient id="mountainGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#9fa8da"/>
+                        <stop offset="100%" stop-color="#7e57c2"/>
+                    </linearGradient>
+                    <!-- Summit Mountain Gradient -->
+                    <linearGradient id="summitGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#ab47bc"/>
+                        <stop offset="100%" stop-color="#5e35b1"/>
+                    </linearGradient>
+                    <!-- River Gradient -->
+                    <linearGradient id="riverGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stop-color="#29b6f6"/>
+                        <stop offset="100%" stop-color="#0288d1"/>
+                    </linearGradient>
+                    <!-- Hill 1 Gradient -->
+                    <linearGradient id="hillGrad1" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#a5d6a7"/>
+                        <stop offset="100%" stop-color="#66bb6a"/>
+                    </linearGradient>
+                    <!-- Hill 2 Gradient -->
+                    <linearGradient id="hillGrad2" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#81c784"/>
+                        <stop offset="100%" stop-color="#388e3c"/>
+                    </linearGradient>
+                    <!-- Gold Trophy Gradient -->
+                    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stop-color="#fff59d"/>
+                        <stop offset="30%" stop-color="#ffd54f"/>
+                        <stop offset="70%" stop-color="#ffb300"/>
+                        <stop offset="100%" stop-color="#ff6f00"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Sky background -->
+                <rect width="1000" height="600" fill="url(#skyGrad)"/>
+
+                <!-- Clouds -->
+                <g class="intro-cloud intro-cloud-1">
+                    <path d="M120 100 Q140 70 170 80 Q200 60 230 80 Q260 70 280 100 Q290 120 270 135 Q250 145 120 145 Q100 130 120 100 Z" fill="#ffffff" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+                </g>
+                <g class="intro-cloud intro-cloud-2">
+                    <path d="M680 90 Q700 65 730 75 Q755 55 785 75 Q810 65 830 90 Q840 110 820 125 Q800 135 680 135 Q660 120 680 90 Z" fill="#ffffff" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+                </g>
+
+                <!-- Distant Back Mountains -->
+                <path d="M-50 450 L120 280 L280 450 Z" fill="url(#mountainGrad)" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+                <path d="M180 460 L350 240 L500 460 Z" fill="url(#mountainGrad)" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+
+                <!-- Central Summit Mountain -->
+                <path d="M520 500 L750 150 L980 500 Z" fill="url(#summitGrad)" stroke="#1a1a24" stroke-width="5" stroke-linejoin="round"/>
+                <!-- Summit Snow/Glow Cap -->
+                <path d="M750 150 L715 205 Q735 220 750 210 Q765 220 785 205 Z" fill="#ffffff" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+
+                <!-- Winding River -->
+                <path d="M320 440 C350 470 380 480 340 520 C300 560 280 580 220 600 L420 600 C460 560 440 520 410 490 Q380 460 360 440 Z" fill="url(#riverGrad)" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+
+                <!-- Midground Rolling Hills -->
+                <path d="M-20 600 Q180 380 420 480 Q620 560 720 450 L1020 600 Z" fill="url(#hillGrad1)" stroke="#1a1a24" stroke-width="5" stroke-linejoin="round"/>
+
+                <!-- Foreground Green Hills -->
+                <path d="M-20 600 Q220 450 480 540 Q750 620 1020 500 L1020 650 L-20 650 Z" fill="url(#hillGrad2)" stroke="#1a1a24" stroke-width="5" stroke-linejoin="round"/>
+
+                <!-- Small Cartoon Trees on Hills -->
+                <g class="intro-tree-1">
+                    <rect x="150" y="440" width="12" height="24" rx="4" fill="#795548" stroke="#1a1a24" stroke-width="3"/>
+                    <circle cx="156" cy="430" r="22" fill="#81c784" stroke="#1a1a24" stroke-width="4"/>
+                    <circle cx="146" cy="425" r="14" fill="#a5d6a7"/>
+                </g>
+                <g class="intro-tree-2">
+                    <rect x="420" y="470" width="14" height="28" rx="4" fill="#795548" stroke="#1a1a24" stroke-width="3"/>
+                    <circle cx="427" cy="458" r="25" fill="#66bb6a" stroke="#1a1a24" stroke-width="4"/>
+                    <circle cx="417" cy="452" r="16" fill="#81c784"/>
+                </g>
+
+                <!-- Adventure Winding Path Line (Dotted) -->
+                <path id="adventure-path" class="adventure-path-line" d="M 80 510 C 200 450, 320 490, 440 430 C 560 370, 620 320, 680 260 C 710 230, 730 190, 750 170" fill="none" stroke="#ffd54f" stroke-width="6" stroke-dasharray="10 10" stroke-linecap="round"/>
+
+                <!-- Summit Trophy Reveal Group -->
+                <g id="intro-trophy-group" class="intro-trophy-group">
+                    <!-- Subtle Golden Glow Halo -->
+                    <circle cx="750" cy="125" r="50" fill="url(#goldGrad)" opacity="0.3" class="trophy-halo"/>
+                    <!-- Celebratory Sparkles -->
+                    <g class="trophy-sparkle trophy-sparkle-1">
+                        <path d="M710 95 L714 105 L724 109 L714 113 L710 123 L706 113 L696 109 L706 105 Z" fill="#fff59d"/>
+                    </g>
+                    <g class="trophy-sparkle trophy-sparkle-2">
+                        <path d="M790 90 L793 98 L801 101 L793 104 L790 112 L787 104 L779 101 L787 98 Z" fill="#fff59d"/>
+                    </g>
+                    <!-- Trophy Base -->
+                    <rect x="730" y="145" width="40" height="12" rx="4" fill="#3e2723" stroke="#1a1a24" stroke-width="3"/>
+                    <rect x="736" y="137" width="28" height="10" rx="2" fill="#d7ccc8" stroke="#1a1a24" stroke-width="3"/>
+                    <!-- Trophy Stem & Cup -->
+                    <path d="M744 137 L744 130 Q740 126 732 122 L730 92 Q750 90 770 92 L768 122 Q760 126 756 130 L756 137 Z" fill="url(#goldGrad)" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+                    <!-- Trophy Handles -->
+                    <path d="M730 96 C714 96 714 116 731 118" fill="none" stroke="#ffb300" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M730 96 C714 96 714 116 731 118" fill="none" stroke="#1a1a24" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M770 96 C786 96 786 116 769 118" fill="none" stroke="#ffb300" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M770 96 C786 96 786 116 769 118" fill="none" stroke="#1a1a24" stroke-width="3" stroke-linecap="round"/>
+                    <!-- Trophy Star Emblem -->
+                    <path d="M750 98 L753 105 L760 106 L755 111 L756 118 L750 114 L744 118 L745 111 L740 106 L747 105 Z" fill="#ffffff" stroke="#1a1a24" stroke-width="2"/>
+                </g>
+
+                <!-- Stylized ORIXA Adventure Arrow -->
+                <g id="intro-arrow-group" class="intro-arrow-group">
+                    <!-- Trailing Motion Lines -->
+                    <path d="M -30 4 L -10 2" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M -26 -6 L -8 -3" stroke="#ffd54f" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+                    <!-- Arrow Body -->
+                    <path d="M -18 -12 L 18 0 L -18 12 L -8 0 Z" fill="#ffd54f" stroke="#1a1a24" stroke-width="4" stroke-linejoin="round"/>
+                    <!-- Arrow Inner Highlight -->
+                    <path d="M -12 -6 L 10 0 L -12 6 L -6 0 Z" fill="#fff59d"/>
+                </g>
+            </svg>
+
+            <!-- Scene 6 & 7: Final Logo Overlay Reveal -->
+            <div id="intro-logo-container" class="intro-logo-container">
+                <div class="intro-logo-card cartoon-panel">
+                    <h1 class="cartoon-logo intro-logo-text">ORIXA</h1>
+                    <p class="cartoon-subtitle intro-tagline-text">Choose Your Adventure</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <canvas id="particles-canvas"></canvas>
 
     <div class="teacher-page">
@@ -151,6 +288,7 @@
     </div>
 
     <script src="teacher.js"></script>
+    <script src="intro.js"></script>
 </body>
 
 </html>

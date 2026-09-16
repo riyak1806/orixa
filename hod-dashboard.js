@@ -200,7 +200,7 @@ function renderStudentList() {
     tableBody.innerHTML = HOD_MOCK_DATA.students.map(student => `
         <tr>
             <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(student.name)}</td>
-            <td><code class="hod-code-badge">${escapeHtml(student.studentId)}</code></td>
+            <td style="white-space: nowrap;"><code class="hod-code-badge">${escapeHtml(student.studentId)}</code></td>
             <td><span class="hod-badge hod-badge-yellow">${escapeHtml(student.year)}</span></td>
             <td><span class="hod-badge hod-badge-green">${escapeHtml(student.subject)}</span></td>
             <td><span class="hod-badge hod-badge-purple">${escapeHtml(student.teacher)}</span></td>

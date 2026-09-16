@@ -2986,9 +2986,6 @@ function renderStudentsPage() {
                     <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Students</h2>
                     <p class="cartoon-subtitle" style="margin-top: 4px;">View and manage your students</p>
                 </div>
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" id="students-add-btn" style="padding: 10px 20px; font-size: 1rem; border-radius: 12px; height: 44px; display: inline-flex; align-items: center; gap: 8px;">
-                    <span data-icon="plus"></span> <span>+ Add Student</span>
-                </button>
             </div>
 
             <!-- Statistics Row (Dynamic) -->
@@ -3120,10 +3117,12 @@ function renderStudentsPage() {
         });
     }
 
-    addBtn.addEventListener('click', () => {
-        studentsPageState.formMode = 'add';
-        renderStudentsPage();
-    });
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            studentsPageState.formMode = 'add';
+            renderStudentsPage();
+        });
+    }
 }
 
 function renderStudentsList() {

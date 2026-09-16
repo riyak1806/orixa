@@ -754,6 +754,610 @@ function initHodPerformanceFilters() {
     }
 }
 
+/* ==========================================================================
+   EXCEL BULK UPLOAD & TEMPLATE FUNCTIONS (FACULTY & STUDENTS)
+   ========================================================================== */
+
+let parsedTeacherRecords = [];
+let parsedStudentRecords = [];
+
+function initUploadTogglesAndEvents() {
+    // Faculty Upload Toggles
+    const toggleTeacherUploadBtn = document.getElementById('toggle-upload-teacher-btn');
+    const uploadTeacherDrawer = document.getElementById('upload-teacher-drawer');
+    const closeTeacherUploadBtn = document.getElementById('close-upload-teacher-btn');
+    const cancelTeacherUploadBtn = document.getElementById('cancel-upload-teacher-btn');
+    const downloadTeacherTemplateBtn = document.getElementById('download-teacher-template-btn');
+    const teacherExcelInput = document.getElementById('teacher-excel-input');
+    const resetTeacherUploadBtn = document.getElementById('reset-upload-teacher-btn');
+    const confirmTeacherUploadBtn = document.getElementById('confirm-upload-teacher-btn');
+
+    // Student Upload Toggles
+    const toggleStudentUploadBtn = document.getElementById('toggle-upload-student-btn');
+    const uploadStudentDrawer = document.getElementById('upload-student-drawer');
+    const closeStudentUploadBtn = document.getElementById('close-upload-student-btn');
+    const cancelStudentUploadBtn = document.getElementById('cancel-upload-student-btn');
+    const downloadStudentTemplateBtn = document.getElementById('download-student-template-btn');
+    const studentExcelInput = document.getElementById('student-excel-input');
+    const resetStudentUploadBtn = document.getElementById('reset-upload-student-btn');
+    const confirmStudentUploadBtn = document.getElementById('confirm-upload-student-btn');
+
+    // Faculty Modal Show / Hide
+    if (toggleTeacherUploadBtn && uploadTeacherDrawer) {
+        toggleTeacherUploadBtn.addEventListener('click', () => {
+            uploadTeacherDrawer.style.display = 'flex';
+            resetTeacherUploadState();
+        });
+    }
+
+    if (closeTeacherUploadBtn && uploadTeacherDrawer) {
+        closeTeacherUploadBtn.addEventListener('click', () => {
+            uploadTeacherDrawer.style.display = 'none';
+            resetTeacherUploadState();
+        });
+    }
+
+    if (cancelTeacherUploadBtn && uploadTeacherDrawer) {
+        cancelTeacherUploadBtn.addEventListener('click', () => {
+            uploadTeacherDrawer.style.display = 'none';
+            resetTeacherUploadState();
+        });
+    }
+
+    if (uploadTeacherDrawer) {
+        uploadTeacherDrawer.addEventListener('click', (e) => {
+            if (e.target === uploadTeacherDrawer) {
+                uploadTeacherDrawer.style.display = 'none';
+                resetTeacherUploadState();
+            }
+        });
+    }
+
+    if (downloadTeacherTemplateBtn) {
+        downloadTeacherTemplateBtn.addEventListener('click', downloadFacultyTemplate);
+    }
+
+    if (teacherExcelInput) {
+        teacherExcelInput.addEventListener('change', handleTeacherExcelFileSelect);
+    }
+
+    if (resetTeacherUploadBtn) {
+        resetTeacherUploadBtn.addEventListener('click', resetTeacherUploadState);
+    }
+
+    if (confirmTeacherUploadBtn) {
+        confirmTeacherUploadBtn.addEventListener('click', confirmTeacherImport);
+    }
+
+    // Student Modal Show / Hide
+    if (toggleStudentUploadBtn && uploadStudentDrawer) {
+        toggleStudentUploadBtn.addEventListener('click', () => {
+            uploadStudentDrawer.style.display = 'flex';
+            resetStudentUploadState();
+        });
+    }
+
+    if (closeStudentUploadBtn && uploadStudentDrawer) {
+        closeStudentUploadBtn.addEventListener('click', () => {
+            uploadStudentDrawer.style.display = 'none';
+            resetStudentUploadState();
+        });
+    }
+
+    if (cancelStudentUploadBtn && uploadStudentDrawer) {
+        cancelStudentUploadBtn.addEventListener('click', () => {
+            uploadStudentDrawer.style.display = 'none';
+            resetStudentUploadState();
+        });
+    }
+
+    if (uploadStudentDrawer) {
+        uploadStudentDrawer.addEventListener('click', (e) => {
+            if (e.target === uploadStudentDrawer) {
+                uploadStudentDrawer.style.display = 'none';
+                resetStudentUploadState();
+            }
+        });
+    }
+
+    if (downloadStudentTemplateBtn) {
+        downloadStudentTemplateBtn.addEventListener('click', downloadStudentTemplate);
+    }
+
+    if (studentExcelInput) {
+        studentExcelInput.addEventListener('change', handleStudentExcelFileSelect);
+    }
+
+    if (resetStudentUploadBtn) {
+        resetStudentUploadBtn.addEventListener('click', resetStudentUploadState);
+    }
+
+    if (confirmStudentUploadBtn) {
+        confirmStudentUploadBtn.addEventListener('click', confirmStudentImport);
+    }
+}
+
+// Download Templates
+function downloadFacultyTemplate() {
+    if (typeof XLSX === 'undefined') {
+        alert('SheetJS library is not loaded.');
+        return;
+    }
+    const templateData = [
+        ['Faculty Name', 'Employee ID', 'Subjects', 'Classes/Years'],
+        ['Prof. Sarah Jenkins', 'EMP-CS-01', 'Data Structures, Web Technologies', '1st Year, 3rd Year'],
+        ['Prof. Alan Turing', 'EMP-CS-02', 'Cloud Computing, Database Management', '2nd Year, 4th Year']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Faculty_Template');
+    XLSX.writeFile(wb, 'Faculty_Import_Template.xlsx');
+}
+
+function downloadStudentTemplate() {
+    if (typeof XLSX === 'undefined') {
+        alert('SheetJS library is not loaded.');
+        return;
+    }
+    const templateData = [
+        ['Student Name', 'Student ID', 'Year/Class', 'Teacher', 'Subject'],
+        ['Aarav Sharma', 'STU-CS-101', '1st Year', 'Prof. Sarah Jenkins', 'Data Structures'],
+        ['Ananya Deshmukh', 'STU-CS-102', '2nd Year', 'Prof. Alan Turing', 'Database Management']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Student_Template');
+    XLSX.writeFile(wb, 'Student_Import_Template.xlsx');
+}
+
+// Reset Upload States
+function resetTeacherUploadState() {
+    parsedTeacherRecords = [];
+    const input = document.getElementById('teacher-excel-input');
+    if (input) input.value = '';
+    const dropzone = document.getElementById('teacher-file-dropzone');
+    if (dropzone) dropzone.style.display = 'block';
+    const previewContainer = document.getElementById('teacher-preview-container');
+    if (previewContainer) previewContainer.style.display = 'none';
+    const resetBtn = document.getElementById('reset-upload-teacher-btn');
+    if (resetBtn) resetBtn.style.display = 'none';
+    const confirmBtn = document.getElementById('confirm-upload-teacher-btn');
+    if (confirmBtn) confirmBtn.style.display = 'none';
+}
+
+function resetStudentUploadState() {
+    parsedStudentRecords = [];
+    const input = document.getElementById('student-excel-input');
+    if (input) input.value = '';
+    const dropzone = document.getElementById('student-file-dropzone');
+    if (dropzone) dropzone.style.display = 'block';
+    const previewContainer = document.getElementById('student-preview-container');
+    if (previewContainer) previewContainer.style.display = 'none';
+    const resetBtn = document.getElementById('reset-upload-student-btn');
+    if (resetBtn) resetBtn.style.display = 'none';
+    const confirmBtn = document.getElementById('confirm-upload-student-btn');
+    if (confirmBtn) confirmBtn.style.display = 'none';
+}
+
+// Handle Faculty Excel Selection
+function handleTeacherExcelFileSelect(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+            parseAndValidateTeacherRows(rawRows);
+        } catch (err) {
+            console.error('Error reading Faculty Excel:', err);
+            alert('Failed to parse Excel file. Please ensure it is a valid .xlsx, .xls, or .csv file.');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function parseAndValidateTeacherRows(rawRows) {
+    if (!rawRows || rawRows.length === 0) {
+        alert('Uploaded Excel file is empty.');
+        resetTeacherUploadState();
+        return;
+    }
+
+    let startIndex = 0;
+    // Check if row 0 is header row
+    const firstRowStr = rawRows[0].map(c => String(c).toLowerCase()).join(' ');
+    if (firstRowStr.includes('faculty') || firstRowStr.includes('employee') || firstRowStr.includes('teacher') || firstRowStr.includes('subject')) {
+        startIndex = 1;
+    }
+
+    const existingEmpIds = new Set(HOD_MOCK_DATA.teachers.map(t => String(t.empId).trim().toLowerCase()));
+    const fileEmpIds = new Set();
+
+    parsedTeacherRecords = [];
+
+    for (let i = startIndex; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        if (!row || row.every(cell => String(cell).trim() === '')) {
+            continue; // Skip empty rows
+        }
+
+        const name = String(row[0] || '').trim();
+        const empId = String(row[1] || '').trim();
+        const subjectsRaw = String(row[2] || '').trim();
+        const yearsRaw = String(row[3] || '').trim();
+
+        const errors = [];
+
+        if (!name) errors.push('Faculty Name is empty');
+        if (!empId) {
+            errors.push('Employee ID is empty');
+        } else {
+            const empIdLower = empId.toLowerCase();
+            if (existingEmpIds.has(empIdLower)) {
+                errors.push(`Employee ID "${empId}" already exists in faculty list`);
+            } else if (fileEmpIds.has(empIdLower)) {
+                errors.push(`Duplicate Employee ID "${empId}" in file`);
+            } else {
+                fileEmpIds.add(empIdLower);
+            }
+        }
+
+        if (!subjectsRaw) errors.push('Subjects is empty');
+        if (!yearsRaw) errors.push('Classes/Years is empty');
+
+        const subjects = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
+        const years = yearsRaw.split(',').map(y => y.trim()).filter(Boolean);
+
+        parsedTeacherRecords.push({
+            rowNum: i + 1,
+            name,
+            empId,
+            subjects,
+            years,
+            subjectsStr: subjectsRaw,
+            yearsStr: yearsRaw,
+            isValid: errors.length === 0,
+            errors
+        });
+    }
+
+    renderTeacherPreview();
+}
+
+function renderTeacherPreview() {
+    const dropzone = document.getElementById('teacher-file-dropzone');
+    const previewContainer = document.getElementById('teacher-preview-container');
+    const summaryEl = document.getElementById('teacher-preview-summary');
+    const tbody = document.getElementById('teacher-preview-tbody');
+    const resetBtn = document.getElementById('reset-upload-teacher-btn');
+    const confirmBtn = document.getElementById('confirm-upload-teacher-btn');
+
+    if (!previewContainer || !tbody || !summaryEl) return;
+
+    if (dropzone) dropzone.style.display = 'none';
+    previewContainer.style.display = 'flex';
+    if (resetBtn) resetBtn.style.display = 'inline-flex';
+
+    const total = parsedTeacherRecords.length;
+    const validCount = parsedTeacherRecords.filter(r => r.isValid).length;
+    const invalidCount = total - validCount;
+
+    if (total === 0) {
+        summaryEl.innerHTML = `<span style="color: var(--color-red-dark);">No valid data rows found in uploaded file.</span>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="hod-no-results">No records to preview</td></tr>`;
+        if (confirmBtn) confirmBtn.style.display = 'none';
+        return;
+    }
+
+    if (invalidCount > 0) {
+        summaryEl.style.background = '#fff8e1';
+        summaryEl.style.borderColor = 'var(--border-dark)';
+        summaryEl.innerHTML = `
+            <div>
+                <span style="color: var(--border-dark); font-weight: 700;">${total} records found</span> &bull;
+                <span style="color: #2e7d32; font-weight: 700;">${validCount} valid</span> &bull;
+                <span style="color: #c62828; font-weight: 700;">${invalidCount} need attention</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #546e7a;">Only valid records will be imported upon confirmation</div>
+        `;
+    } else {
+        summaryEl.style.background = '#e8f5e9';
+        summaryEl.style.borderColor = 'var(--border-dark)';
+        summaryEl.innerHTML = `
+            <div style="color: #2e7d32; font-weight: 700;">
+                ${validCount} valid records ready to import
+            </div>
+        `;
+    }
+
+    tbody.innerHTML = parsedTeacherRecords.map(r => `
+        <tr style="${r.isValid ? '' : 'background: rgba(255, 82, 82, 0.08);'}">
+            <td>${r.rowNum}</td>
+            <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(r.name || '—')}</td>
+            <td><code class="hod-code-badge">${escapeHtml(r.empId || '—')}</code></td>
+            <td>${escapeHtml(r.subjectsStr || '—')}</td>
+            <td>${escapeHtml(r.yearsStr || '—')}</td>
+            <td>
+                ${r.isValid ? `
+                    <span class="hod-badge hod-badge-green">Valid</span>
+                ` : `
+                    <span class="hod-badge" style="background: var(--color-red); color: white;">Invalid</span>
+                    <div style="font-size: 0.76rem; color: #c62828; margin-top: 3px; font-weight: 600;">
+                        ${r.errors.map(err => escapeHtml(err)).join('; ')}
+                    </div>
+                `}
+            </td>
+        </tr>
+    `).join('');
+
+    if (confirmBtn) {
+        if (validCount > 0) {
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.textContent = validCount === total ? `Import ${validCount} Records` : `Import ${validCount} Valid Records`;
+        } else {
+            confirmBtn.style.display = 'none';
+        }
+    }
+}
+
+function confirmTeacherImport() {
+    const validRecords = parsedTeacherRecords.filter(r => r.isValid);
+    if (validRecords.length === 0) return;
+
+    validRecords.forEach(r => {
+        const newTeacher = {
+            id: `T-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 100)}`,
+            name: r.name,
+            empId: r.empId,
+            subjects: r.subjects,
+            years: r.years
+        };
+        HOD_MOCK_DATA.teachers.push(newTeacher);
+    });
+
+    saveHodMockData();
+
+    renderHodStats();
+    renderTeacherList();
+    updateStudentFormDropdowns();
+    renderHodTeacherAndSubjectFilters();
+    renderHodPerformanceTable();
+
+    const drawer = document.getElementById('upload-teacher-drawer');
+    if (drawer) drawer.style.display = 'none';
+    resetTeacherUploadState();
+}
+
+// Handle Student Excel Selection
+function handleStudentExcelFileSelect(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+            parseAndValidateStudentRows(rawRows);
+        } catch (err) {
+            console.error('Error reading Student Excel:', err);
+            alert('Failed to parse Excel file. Please ensure it is a valid .xlsx, .xls, or .csv file.');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function parseAndValidateStudentRows(rawRows) {
+    if (!rawRows || rawRows.length === 0) {
+        alert('Uploaded Excel file is empty.');
+        resetStudentUploadState();
+        return;
+    }
+
+    let startIndex = 0;
+    // Check if row 0 is header row
+    const firstRowStr = rawRows[0].map(c => String(c).toLowerCase()).join(' ');
+    if (firstRowStr.includes('student') || firstRowStr.includes('id') || firstRowStr.includes('teacher') || firstRowStr.includes('subject') || firstRowStr.includes('year') || firstRowStr.includes('class')) {
+        startIndex = 1;
+    }
+
+    const existingStudentIds = new Set(HOD_MOCK_DATA.students.map(s => String(s.studentId).trim().toLowerCase()));
+    const fileStudentIds = new Set();
+
+    parsedStudentRecords = [];
+
+    for (let i = startIndex; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        if (!row || row.every(cell => String(cell).trim() === '')) {
+            continue; // Skip empty rows
+        }
+
+        const name = String(row[0] || '').trim();
+        const studentId = String(row[1] || '').trim();
+        const year = String(row[2] || '').trim();
+        const teacher = String(row[3] || '').trim();
+        const subject = String(row[4] || '').trim();
+
+        const errors = [];
+
+        if (!name) errors.push('Student Name is empty');
+        if (!studentId) {
+            errors.push('Student ID is empty');
+        } else {
+            const idLower = studentId.toLowerCase();
+            if (existingStudentIds.has(idLower)) {
+                errors.push(`Student ID "${studentId}" already exists`);
+            } else if (fileStudentIds.has(idLower)) {
+                errors.push(`Duplicate Student ID "${studentId}" in file`);
+            } else {
+                fileStudentIds.add(idLower);
+            }
+        }
+
+        if (!year) errors.push('Year/Class is empty');
+
+        let matchedTeacherName = teacher;
+        if (!teacher) {
+            errors.push('Assigned Teacher is empty');
+        } else {
+            // Check against existing teachers in HOD_MOCK_DATA
+            const teacherMatch = HOD_MOCK_DATA.teachers.find(t =>
+                t.name.toLowerCase().trim() === teacher.toLowerCase().trim() ||
+                t.name.toLowerCase().includes(teacher.toLowerCase()) ||
+                teacher.toLowerCase().includes(t.name.toLowerCase()) ||
+                t.empId.toLowerCase().trim() === teacher.toLowerCase().trim()
+            );
+
+            if (!teacherMatch) {
+                errors.push(`Teacher "${teacher}" not found in faculty list`);
+            } else {
+                matchedTeacherName = teacherMatch.name; // Normalize to exact teacher name
+                if (subject) {
+                    const subjectMatch = teacherMatch.subjects.some(sub =>
+                        sub.toLowerCase().trim() === subject.toLowerCase().trim() ||
+                        sub.toLowerCase().includes(subject.toLowerCase()) ||
+                        subject.toLowerCase().includes(sub.toLowerCase())
+                    );
+                    if (!subjectMatch) {
+                        errors.push(`Subject "${subject}" is not taught by ${matchedTeacherName}`);
+                    }
+                }
+            }
+        }
+
+        if (!subject) errors.push('Subject is empty');
+
+        parsedStudentRecords.push({
+            rowNum: i + 1,
+            name,
+            studentId,
+            year,
+            teacher: matchedTeacherName,
+            subject,
+            isValid: errors.length === 0,
+            errors
+        });
+    }
+
+    renderStudentPreview();
+}
+
+function renderStudentPreview() {
+    const dropzone = document.getElementById('student-file-dropzone');
+    const previewContainer = document.getElementById('student-preview-container');
+    const summaryEl = document.getElementById('student-preview-summary');
+    const tbody = document.getElementById('student-preview-tbody');
+    const resetBtn = document.getElementById('reset-upload-student-btn');
+    const confirmBtn = document.getElementById('confirm-upload-student-btn');
+
+    if (!previewContainer || !tbody || !summaryEl) return;
+
+    if (dropzone) dropzone.style.display = 'none';
+    previewContainer.style.display = 'flex';
+    if (resetBtn) resetBtn.style.display = 'inline-flex';
+
+    const total = parsedStudentRecords.length;
+    const validCount = parsedStudentRecords.filter(r => r.isValid).length;
+    const invalidCount = total - validCount;
+
+    if (total === 0) {
+        summaryEl.innerHTML = `<span style="color: var(--color-red-dark);">No valid data rows found in uploaded file.</span>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="hod-no-results">No records to preview</td></tr>`;
+        if (confirmBtn) confirmBtn.style.display = 'none';
+        return;
+    }
+
+    if (invalidCount > 0) {
+        summaryEl.style.background = '#fff8e1';
+        summaryEl.style.borderColor = 'var(--border-dark)';
+        summaryEl.innerHTML = `
+            <div>
+                <span style="color: var(--border-dark); font-weight: 700;">${total} records found</span> &bull;
+                <span style="color: #2e7d32; font-weight: 700;">${validCount} valid</span> &bull;
+                <span style="color: #c62828; font-weight: 700;">${invalidCount} need attention</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #546e7a;">Only valid records will be imported upon confirmation</div>
+        `;
+    } else {
+        summaryEl.style.background = '#e8f5e9';
+        summaryEl.style.borderColor = 'var(--border-dark)';
+        summaryEl.innerHTML = `
+            <div style="color: #2e7d32; font-weight: 700;">
+                ${validCount} valid records ready to import
+            </div>
+        `;
+    }
+
+    tbody.innerHTML = parsedStudentRecords.map(r => `
+        <tr style="${r.isValid ? '' : 'background: rgba(255, 82, 82, 0.08);'}">
+            <td>${r.rowNum}</td>
+            <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(r.name || '—')}</td>
+            <td><code class="hod-code-badge">${escapeHtml(r.studentId || '—')}</code></td>
+            <td><span class="hod-badge hod-badge-yellow">${escapeHtml(r.year || '—')}</span></td>
+            <td><span class="hod-badge hod-badge-purple">${escapeHtml(r.teacher || '—')}</span></td>
+            <td><span class="hod-badge hod-badge-green">${escapeHtml(r.subject || '—')}</span></td>
+            <td>
+                ${r.isValid ? `
+                    <span class="hod-badge hod-badge-green">Valid</span>
+                ` : `
+                    <span class="hod-badge" style="background: var(--color-red); color: white;">Invalid</span>
+                    <div style="font-size: 0.76rem; color: #c62828; margin-top: 3px; font-weight: 600;">
+                        ${r.errors.map(err => escapeHtml(err)).join('; ')}
+                    </div>
+                `}
+            </td>
+        </tr>
+    `).join('');
+
+    if (confirmBtn) {
+        if (validCount > 0) {
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.textContent = validCount === total ? `Import ${validCount} Records` : `Import ${validCount} Valid Records`;
+        } else {
+            confirmBtn.style.display = 'none';
+        }
+    }
+}
+
+function confirmStudentImport() {
+    const validRecords = parsedStudentRecords.filter(r => r.isValid);
+    if (validRecords.length === 0) return;
+
+    validRecords.forEach(r => {
+        const newStudent = {
+            id: r.studentId,
+            name: r.name,
+            studentId: r.studentId,
+            year: r.year,
+            subject: r.subject,
+            teacher: r.teacher
+        };
+        HOD_MOCK_DATA.students.push(newStudent);
+    });
+
+    saveHodMockData();
+
+    renderHodStats();
+    renderStudentList();
+    updateStudentFormDropdowns();
+    renderHodTeacherAndSubjectFilters();
+    renderHodPerformanceTable();
+
+    const drawer = document.getElementById('upload-student-drawer');
+    if (drawer) drawer.style.display = 'none';
+    resetStudentUploadState();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     renderHodStats();
     renderTeacherList();
@@ -766,4 +1370,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initAddStudentForm();
     initDrawerToggles();
     initHodPerformanceFilters();
+    initUploadTogglesAndEvents();
 });

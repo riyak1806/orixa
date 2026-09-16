@@ -171,7 +171,7 @@ function renderTeacherList() {
     tableBody.innerHTML = HOD_MOCK_DATA.teachers.map(teacher => `
         <tr>
             <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(teacher.name)}</td>
-            <td><code class="hod-code-badge">${escapeHtml(teacher.empId)}</code></td>
+            <td class="hod-empid-col"><code class="hod-code-badge">${escapeHtml(teacher.empId)}</code></td>
             <td>
                 ${teacher.subjects.map(s => `<span class="hod-badge hod-badge-green" style="margin: 2px;">${escapeHtml(s.trim())}</span>`).join('')}
             </td>
@@ -189,7 +189,7 @@ function renderStudentList() {
     if (HOD_MOCK_DATA.students.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="hod-no-results">
+                <td colspan="5" class="hod-no-results">
                     No students added or assigned yet. Use the form above to add student data.
                 </td>
             </tr>
@@ -204,17 +204,6 @@ function renderStudentList() {
             <td><span class="hod-badge hod-badge-yellow">${escapeHtml(student.year)}</span></td>
             <td><span class="hod-badge hod-badge-green">${escapeHtml(student.subject)}</span></td>
             <td><span class="hod-badge hod-badge-purple">${escapeHtml(student.teacher)}</span></td>
-            <td>
-                <div class="assignment-rel-card">
-                    <span>${escapeHtml(student.name)}</span>
-                    <span class="rel-arrow">&rarr;</span>
-                    <span style="color: #1976d2;">${escapeHtml(student.year)}</span>
-                    <span class="rel-arrow">&rarr;</span>
-                    <span style="color: #388e3c;">${escapeHtml(student.subject)}</span>
-                    <span class="rel-arrow">&rarr;</span>
-                    <span style="color: #7b1fa2;">${escapeHtml(student.teacher)}</span>
-                </div>
-            </td>
         </tr>
     `).join('');
 }
@@ -383,7 +372,12 @@ function initAddTeacherForm() {
             setTimeout(() => {
                 formMsg.textContent = '';
                 formMsg.className = 'teacher-form-msg';
-            }, 3000);
+                const drawer = document.getElementById('add-teacher-drawer');
+                if (drawer) drawer.style.display = 'none';
+            }, 1200);
+        } else {
+            const drawer = document.getElementById('add-teacher-drawer');
+            if (drawer) drawer.style.display = 'none';
         }
 
         renderHodStats();
@@ -498,7 +492,12 @@ function initAddStudentForm() {
             setTimeout(() => {
                 formMsg.textContent = '';
                 formMsg.className = 'teacher-form-msg';
-            }, 4000);
+                const drawer = document.getElementById('add-student-drawer');
+                if (drawer) drawer.style.display = 'none';
+            }, 1200);
+        } else {
+            const drawer = document.getElementById('add-student-drawer');
+            if (drawer) drawer.style.display = 'none';
         }
 
         renderHodStats();
@@ -516,20 +515,49 @@ function initAddStudentForm() {
 function initDrawerToggles() {
     const toggleTeacherBtn = document.getElementById('toggle-add-teacher-btn');
     const teacherDrawer = document.getElementById('add-teacher-drawer');
+    const closeTeacherBtn = document.getElementById('close-add-teacher-btn');
+
     const toggleStudentBtn = document.getElementById('toggle-add-student-btn');
     const studentDrawer = document.getElementById('add-student-drawer');
+    const closeStudentBtn = document.getElementById('close-add-student-btn');
 
     if (toggleTeacherBtn && teacherDrawer) {
         toggleTeacherBtn.addEventListener('click', () => {
-            const isHidden = teacherDrawer.style.display === 'none' || !teacherDrawer.style.display;
-            teacherDrawer.style.display = isHidden ? 'block' : 'none';
+            teacherDrawer.style.display = 'flex';
+        });
+    }
+
+    if (closeTeacherBtn && teacherDrawer) {
+        closeTeacherBtn.addEventListener('click', () => {
+            teacherDrawer.style.display = 'none';
+        });
+    }
+
+    if (teacherDrawer) {
+        teacherDrawer.addEventListener('click', (e) => {
+            if (e.target === teacherDrawer) {
+                teacherDrawer.style.display = 'none';
+            }
         });
     }
 
     if (toggleStudentBtn && studentDrawer) {
         toggleStudentBtn.addEventListener('click', () => {
-            const isHidden = studentDrawer.style.display === 'none' || !studentDrawer.style.display;
-            studentDrawer.style.display = isHidden ? 'block' : 'none';
+            studentDrawer.style.display = 'flex';
+        });
+    }
+
+    if (closeStudentBtn && studentDrawer) {
+        closeStudentBtn.addEventListener('click', () => {
+            studentDrawer.style.display = 'none';
+        });
+    }
+
+    if (studentDrawer) {
+        studentDrawer.addEventListener('click', (e) => {
+            if (e.target === studentDrawer) {
+                studentDrawer.style.display = 'none';
+            }
         });
     }
 }

@@ -84,9 +84,9 @@
             box-shadow: var(--shadow-chunky-pressed);
         }
 
-        .hod-grid-dual {
+        .hod-bottom-grid {
             display: grid;
-            grid-template-columns: 380px minmax(0, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: var(--t-space-2);
             align-items: start;
         }
@@ -213,8 +213,18 @@
             font-weight: 900;
         }
 
+        .form-drawer-panel {
+            padding: var(--t-space-2);
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 16px;
+            margin-bottom: var(--t-space-2);
+            box-shadow: var(--shadow-chunky-pressed);
+            transition: all 0.25s ease;
+        }
+
         @media (max-width: 960px) {
-            .hod-grid-dual {
+            .hod-bottom-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -251,7 +261,7 @@
             </button>
         </header>
 
-        <!-- HOD Overview Stats -->
+        <!-- 1. FOUR TOP BOXES (Unchanged) -->
         <section class="stats-grid" aria-label="HOD statistics overview">
             <div class="stat-card is-purple cartoon-panel" style="border-color: var(--border-dark);">
                 <div class="stat-topline">
@@ -314,110 +324,7 @@
             </div>
         </section>
 
-        <!-- SECTION 1: TEACHER MANAGEMENT -->
-        <section class="hod-grid-dual" aria-labelledby="teacher-management-heading">
-            <!-- Form Card: Add Teacher -->
-            <div class="dashboard-panel cartoon-panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">Faculty Administration</p>
-                        <h3 id="teacher-management-heading">Add Teacher</h3>
-                    </div>
-                </div>
-
-                <form id="add-teacher-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
-                    <div class="form-field">
-                        <label for="teacher-name" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
-                            </svg>
-                            <span>TEACHER NAME</span>
-                        </label>
-                        <div class="input-shell">
-                            <input type="text" id="teacher-name" name="teacher_name" class="cartoon-input"
-                                placeholder="e.g. Teacher A" autocomplete="off">
-                        </div>
-                        <span class="field-error" id="teacher-name-error"></span>
-                    </div>
-
-                    <div class="form-field">
-                        <label for="teacher-empid" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5zm10 15H4V9h16v11z" fill="currentColor" />
-                            </svg>
-                            <span>EMPLOYEE ID</span>
-                        </label>
-                        <div class="input-shell">
-                            <input type="text" id="teacher-empid" name="teacher_empid" class="cartoon-input"
-                                placeholder="e.g. EMP-CS-101" autocomplete="off">
-                        </div>
-                        <span class="field-error" id="teacher-empid-error"></span>
-                    </div>
-
-                    <div class="form-field">
-                        <label for="teacher-subjects" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor" />
-                            </svg>
-                            <span>SUBJECTS TAUGHT</span>
-                        </label>
-                        <div class="input-shell">
-                            <input type="text" id="teacher-subjects" name="teacher_subjects" class="cartoon-input"
-                                placeholder="e.g. DBMS, Data Structures (comma separated)" autocomplete="off">
-                        </div>
-                        <span class="field-error" id="teacher-subjects-error"></span>
-                    </div>
-
-                    <div class="form-field">
-                        <label for="teacher-years" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="currentColor" />
-                            </svg>
-                            <span>CLASSES / YEARS TAUGHT</span>
-                        </label>
-                        <div class="input-shell">
-                            <input type="text" id="teacher-years" name="teacher_years" class="cartoon-input"
-                                placeholder="e.g. 2nd Year, 3rd Year" autocomplete="off">
-                        </div>
-                        <span class="field-error" id="teacher-years-error"></span>
-                    </div>
-
-                    <button type="submit" class="cartoon-action-btn primary-yellow-btn teacher-submit-btn" style="padding: 12px 24px; font-size: 1.1rem; margin-top: 4px;">
-                        <span>ADD TEACHER</span>
-                    </button>
-
-                    <p class="teacher-form-msg" id="teacher-form-msg" role="status" aria-live="polite"></p>
-                </form>
-            </div>
-
-            <!-- Table Card: Teacher List -->
-            <div class="dashboard-panel cartoon-panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">Faculty List</p>
-                        <h3>Computer Dept Teachers</h3>
-                    </div>
-                </div>
-
-                <div class="hod-table-wrapper">
-                    <table class="hod-data-table">
-                        <thead>
-                            <tr>
-                                <th>Teacher Name</th>
-                                <th>Employee ID</th>
-                                <th>Subjects Taught</th>
-                                <th>Classes / Years</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teacher-table-body">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 2: DEPARTMENT STUDENT PERFORMANCE ANALYTICS -->
+        <!-- 2. DEPARTMENT ANALYTICS (Full Available Width directly below stat boxes) -->
         <section class="dashboard-panel cartoon-panel" aria-labelledby="hod-perf-heading">
             <div class="panel-header">
                 <div>
@@ -471,110 +378,202 @@
             </div>
         </section>
 
-        <!-- SECTION 3: STUDENT MANAGEMENT & ASSIGNMENT -->
-        <section class="hod-grid-dual" aria-labelledby="student-management-heading">
-            <!-- Form Card: Add & Assign Student -->
-            <div class="dashboard-panel cartoon-panel">
-                <div class="panel-header">
+        <!-- 3. FACULTY LIST + STUDENT LIST (Side by Side Bottom Section) -->
+        <section class="hod-bottom-grid">
+            <!-- LEFT CARD: FACULTY LIST -->
+            <div class="dashboard-panel cartoon-panel" aria-labelledby="teacher-management-heading">
+                <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p class="panel-kicker">Student Administration</p>
-                        <h3 id="student-management-heading">Add & Assign Student</h3>
+                        <p class="panel-kicker">Faculty Administration</p>
+                        <h3 id="teacher-management-heading">Faculty List</h3>
                     </div>
+                    <button type="button" id="toggle-add-teacher-btn" class="cartoon-action-btn primary-yellow-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                        <span>+ ADD</span>
+                    </button>
                 </div>
 
-                <form id="add-student-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
-                    <div class="form-field">
-                        <label for="student-name" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
-                            </svg>
-                            <span>STUDENT NAME</span>
-                        </label>
-                        <div class="input-shell">
-                            <input type="text" id="student-name" name="student_name" class="cartoon-input"
-                                placeholder="e.g. Rahul" autocomplete="off">
+                <!-- Collapsible Form Drawer for Adding Teacher -->
+                <div id="add-teacher-drawer" class="form-drawer-panel" style="display: none;">
+                    <form id="add-teacher-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
+                        <div class="form-field">
+                            <label for="teacher-name" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                                </svg>
+                                <span>TEACHER NAME</span>
+                            </label>
+                            <div class="input-shell">
+                                <input type="text" id="teacher-name" name="teacher_name" class="cartoon-input"
+                                    placeholder="e.g. Teacher A" autocomplete="off">
+                            </div>
+                            <span class="field-error" id="teacher-name-error"></span>
                         </div>
-                        <span class="field-error" id="student-name-error"></span>
-                    </div>
 
-                    <div class="form-field">
-                        <label for="student-id" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5zm10 15H4V9h16v11z" fill="currentColor" />
-                            </svg>
-                            <span>STUDENT ID</span>
-                        </label>
-                        <div class="input-shell">
-                            <input type="text" id="student-id" name="student_id" class="cartoon-input"
-                                placeholder="e.g. STU-CS-201" autocomplete="off">
+                        <div class="form-field">
+                            <label for="teacher-empid" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5zm10 15H4V9h16v11z" fill="currentColor" />
+                                </svg>
+                                <span>EMPLOYEE ID</span>
+                            </label>
+                            <div class="input-shell">
+                                <input type="text" id="teacher-empid" name="teacher_empid" class="cartoon-input"
+                                    placeholder="e.g. EMP-CS-101" autocomplete="off">
+                            </div>
+                            <span class="field-error" id="teacher-empid-error"></span>
                         </div>
-                        <span class="field-error" id="student-id-error"></span>
-                    </div>
 
-                    <div class="form-field">
-                        <label for="student-year" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="currentColor" />
-                            </svg>
-                            <span>YEAR / CLASS</span>
-                        </label>
-                        <div class="input-shell">
-                            <select id="student-year" name="student_year" class="cartoon-select">
-                                <option value="">-- Select Year / Class --</option>
-                                <option value="1st Year">1st Year (FE)</option>
-                                <option value="2nd Year">2nd Year (SE)</option>
-                                <option value="3rd Year">3rd Year (TE)</option>
-                                <option value="4th Year">4th Year (BE)</option>
-                            </select>
+                        <div class="form-field">
+                            <label for="teacher-subjects" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor" />
+                                </svg>
+                                <span>SUBJECTS TAUGHT</span>
+                            </label>
+                            <div class="input-shell">
+                                <input type="text" id="teacher-subjects" name="teacher_subjects" class="cartoon-input"
+                                    placeholder="e.g. DBMS, Data Structures" autocomplete="off">
+                            </div>
+                            <span class="field-error" id="teacher-subjects-error"></span>
                         </div>
-                        <span class="field-error" id="student-year-error"></span>
-                    </div>
 
-                    <div class="form-field">
-                        <label for="student-subject" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor" />
-                            </svg>
-                            <span>SUBJECT</span>
-                        </label>
-                        <div class="input-shell">
-                            <select id="student-subject" name="student_subject" class="cartoon-select">
-                                <option value="">-- Select Subject --</option>
-                            </select>
+                        <div class="form-field">
+                            <label for="teacher-years" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="currentColor" />
+                                </svg>
+                                <span>CLASSES / YEARS TAUGHT</span>
+                            </label>
+                            <div class="input-shell">
+                                <input type="text" id="teacher-years" name="teacher_years" class="cartoon-input"
+                                    placeholder="e.g. 2nd Year, 3rd Year" autocomplete="off">
+                            </div>
+                            <span class="field-error" id="teacher-years-error"></span>
                         </div>
-                        <span class="field-error" id="student-subject-error"></span>
-                    </div>
 
-                    <div class="form-field">
-                        <label for="student-teacher" class="field-label">
-                            <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
-                            </svg>
-                            <span>ASSIGNED TEACHER</span>
-                        </label>
-                        <div class="input-shell">
-                            <select id="student-teacher" name="student_teacher" class="cartoon-select">
-                                <option value="">-- Select Teacher --</option>
-                            </select>
-                        </div>
-                        <span class="field-error" id="student-teacher-error"></span>
-                    </div>
+                        <button type="submit" class="cartoon-action-btn primary-yellow-btn teacher-submit-btn" style="padding: 10px 20px; font-size: 1rem; margin-top: 4px;">
+                            <span>ADD TEACHER</span>
+                        </button>
 
-                    <button type="submit" class="cartoon-action-btn primary-yellow-btn teacher-submit-btn" style="background: var(--color-green); padding: 12px 24px; font-size: 1.1rem; margin-top: 4px;">
-                        <span>ASSIGN STUDENT</span>
-                    </button>
+                        <p class="teacher-form-msg" id="teacher-form-msg" role="status" aria-live="polite"></p>
+                    </form>
+                </div>
 
-                    <p class="teacher-form-msg" id="student-form-msg" role="status" aria-live="polite"></p>
-                </form>
+                <div class="hod-table-wrapper">
+                    <table class="hod-data-table">
+                        <thead>
+                            <tr>
+                                <th>Teacher Name</th>
+                                <th>Employee ID</th>
+                                <th>Subjects Taught</th>
+                                <th>Classes / Years</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacher-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <!-- Table Card: Student List & Assignment Relationship -->
-            <div class="dashboard-panel cartoon-panel">
-                <div class="panel-header">
+            <!-- RIGHT CARD: STUDENT LIST -->
+            <div class="dashboard-panel cartoon-panel" aria-labelledby="student-management-heading">
+                <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
                         <p class="panel-kicker">Student Roster</p>
-                        <h3>Assigned Student List</h3>
+                        <h3 id="student-management-heading">Student List</h3>
                     </div>
+                    <button type="button" id="toggle-add-student-btn" class="cartoon-action-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; background: var(--color-green); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                        <span>+ ADD</span>
+                    </button>
+                </div>
+
+                <!-- Collapsible Form Drawer for Adding & Assigning Student -->
+                <div id="add-student-drawer" class="form-drawer-panel" style="display: none;">
+                    <form id="add-student-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
+                        <div class="form-field">
+                            <label for="student-name" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                                </svg>
+                                <span>STUDENT NAME</span>
+                            </label>
+                            <div class="input-shell">
+                                <input type="text" id="student-name" name="student_name" class="cartoon-input"
+                                    placeholder="e.g. Rahul" autocomplete="off">
+                            </div>
+                            <span class="field-error" id="student-name-error"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="student-id" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5zm10 15H4V9h16v11z" fill="currentColor" />
+                                </svg>
+                                <span>STUDENT ID</span>
+                            </label>
+                            <div class="input-shell">
+                                <input type="text" id="student-id" name="student_id" class="cartoon-input"
+                                    placeholder="e.g. STU-CS-201" autocomplete="off">
+                            </div>
+                            <span class="field-error" id="student-id-error"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="student-year" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="currentColor" />
+                                </svg>
+                                <span>YEAR / CLASS</span>
+                            </label>
+                            <div class="input-shell">
+                                <select id="student-year" name="student_year" class="cartoon-select">
+                                    <option value="">-- Select Year / Class --</option>
+                                    <option value="1st Year">1st Year (FE)</option>
+                                    <option value="2nd Year">2nd Year (SE)</option>
+                                    <option value="3rd Year">3rd Year (TE)</option>
+                                    <option value="4th Year">4th Year (BE)</option>
+                                </select>
+                            </div>
+                            <span class="field-error" id="student-year-error"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="student-subject" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor" />
+                                </svg>
+                                <span>SUBJECT</span>
+                            </label>
+                            <div class="input-shell">
+                                <select id="student-subject" name="student_subject" class="cartoon-select">
+                                    <option value="">-- Select Subject --</option>
+                                </select>
+                            </div>
+                            <span class="field-error" id="student-subject-error"></span>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="student-teacher" class="field-label">
+                                <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                                </svg>
+                                <span>ASSIGNED TEACHER</span>
+                            </label>
+                            <div class="input-shell">
+                                <select id="student-teacher" name="student_teacher" class="cartoon-select">
+                                    <option value="">-- Select Teacher --</option>
+                                </select>
+                            </div>
+                            <span class="field-error" id="student-teacher-error"></span>
+                        </div>
+
+                        <button type="submit" class="cartoon-action-btn teacher-submit-btn" style="background: var(--color-green); padding: 10px 20px; font-size: 1rem; margin-top: 4px;">
+                            <span>ASSIGN STUDENT</span>
+                        </button>
+
+                        <p class="teacher-form-msg" id="student-form-msg" role="status" aria-live="polite"></p>
+                    </form>
                 </div>
 
                 <div class="hod-table-wrapper">

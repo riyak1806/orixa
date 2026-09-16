@@ -513,6 +513,27 @@ function initAddStudentForm() {
     });
 }
 
+function initDrawerToggles() {
+    const toggleTeacherBtn = document.getElementById('toggle-add-teacher-btn');
+    const teacherDrawer = document.getElementById('add-teacher-drawer');
+    const toggleStudentBtn = document.getElementById('toggle-add-student-btn');
+    const studentDrawer = document.getElementById('add-student-drawer');
+
+    if (toggleTeacherBtn && teacherDrawer) {
+        toggleTeacherBtn.addEventListener('click', () => {
+            const isHidden = teacherDrawer.style.display === 'none' || !teacherDrawer.style.display;
+            teacherDrawer.style.display = isHidden ? 'block' : 'none';
+        });
+    }
+
+    if (toggleStudentBtn && studentDrawer) {
+        toggleStudentBtn.addEventListener('click', () => {
+            const isHidden = studentDrawer.style.display === 'none' || !studentDrawer.style.display;
+            studentDrawer.style.display = isHidden ? 'block' : 'none';
+        });
+    }
+}
+
 function setFieldInvalid(input, msg) {
     if (!input) return;
     input.classList.add('input-invalid');
@@ -715,5 +736,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initAddTeacherForm();
     initAddStudentForm();
+    initDrawerToggles();
     initHodPerformanceFilters();
 });

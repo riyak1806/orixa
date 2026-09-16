@@ -226,11 +226,26 @@ function escapeHtml(str) {
 function initAddDepartmentDrawer() {
     const toggleBtn = document.getElementById('toggle-add-dept-btn');
     const drawer = document.getElementById('add-dept-drawer');
+    const closeBtn = document.getElementById('close-add-dept-btn');
 
     if (toggleBtn && drawer) {
         toggleBtn.addEventListener('click', () => {
-            const isHidden = drawer.style.display === 'none' || !drawer.style.display;
-            drawer.style.display = isHidden ? 'block' : 'none';
+            const isHidden = drawer.style.display === 'none' || drawer.style.display === '';
+            drawer.style.display = isHidden ? 'flex' : 'none';
+        });
+    }
+
+    if (closeBtn && drawer) {
+        closeBtn.addEventListener('click', () => {
+            drawer.style.display = 'none';
+        });
+    }
+
+    if (drawer) {
+        drawer.addEventListener('click', (e) => {
+            if (e.target === drawer) {
+                drawer.style.display = 'none';
+            }
         });
     }
 }
@@ -299,7 +314,9 @@ function initAddDepartmentForm() {
             setTimeout(() => {
                 formMsg.textContent = '';
                 formMsg.className = 'teacher-form-msg';
-            }, 3000);
+                const drawer = document.getElementById('add-dept-drawer');
+                if (drawer) drawer.style.display = 'none';
+            }, 1500);
         }
 
         // Re-render UI

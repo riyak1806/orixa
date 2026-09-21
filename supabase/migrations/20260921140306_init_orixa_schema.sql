@@ -21,42 +21,9 @@ BEGIN
 END$$;
 
 -- -----------------------------------------------------------------------------
--- 2. PRIVATE AUTH SCHEMA & SECURITY HELPER FUNCTIONS
+-- 2. SCHEMA CREATION
 -- -----------------------------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS private_auth;
-
-CREATE OR REPLACE FUNCTION private_auth.get_auth_role()
-RETURNS public.app_role
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-  SELECT role FROM public.profiles WHERE id = auth.uid();
-$$;
-
-CREATE OR REPLACE FUNCTION private_auth.get_auth_college_id()
-RETURNS UUID
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-  SELECT college_id FROM public.profiles WHERE id = auth.uid();
-$$;
-
-CREATE OR REPLACE FUNCTION private_auth.get_auth_department_id()
-RETURNS UUID
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-  SELECT department_id FROM public.profiles WHERE id = auth.uid();
-$$;
-
-GRANT USAGE ON SCHEMA private_auth TO authenticated;
-REVOKE USAGE ON SCHEMA private_auth FROM anon, PUBLIC;
 
 -- -----------------------------------------------------------------------------
 -- 3. CORE PLATFORM TABLES (16 TABLES)
@@ -345,10 +312,46 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 );
 
 -- -----------------------------------------------------------------------------
--- 4. VALIDATION & IMMUTABILITY TRIGGERS
+-- 4. PRIVATE AUTH SECURITY HELPER FUNCTIONS
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION private_auth.get_auth_role()
+RETURNS public.app_role
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION private_auth.get_auth_college_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT college_id FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION private_auth.get_auth_department_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT department_id FROM public.profiles WHERE id = auth.uid();
+$$;
+
+GRANT USAGE ON SCHEMA private_auth TO authenticated;
+REVOKE USAGE ON SCHEMA private_auth FROM anon, PUBLIC;
+
+-- -----------------------------------------------------------------------------
+-- 5. VALIDATION & IMMUTABILITY TRIGGERS
 -- -----------------------------------------------------------------------------
 
--- 4.1 Active Teaching Assignment Trigger Function & Triggers
+-- 5.1 Active Teaching Assignment Trigger Function & Triggers
 CREATE OR REPLACE FUNCTION public.fn_verify_active_teaching_assignment()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -379,7 +382,7 @@ CREATE TRIGGER trg_verify_active_quiz_assignment
   BEFORE INSERT OR UPDATE OF teacher_assignment_id ON public.quizzes
   FOR EACH ROW EXECUTE FUNCTION public.fn_verify_active_teaching_assignment();
 
--- 4.2 Completed Attempt Write-Blocking Trigger Function & Trigger
+-- 5.2 Completed Attempt Write-Blocking Trigger Function & Trigger
 CREATE OR REPLACE FUNCTION public.fn_block_completed_attempt_edits()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -404,10 +407,10 @@ CREATE TRIGGER trg_block_completed_attempt_edits
   FOR EACH ROW EXECUTE FUNCTION public.fn_block_completed_attempt_edits();
 
 -- -----------------------------------------------------------------------------
--- 5. GAMEPLAY SERVER-SIDE RPC FUNCTIONS
+-- 6. GAMEPLAY SERVER-SIDE RPC FUNCTIONS
 -- -----------------------------------------------------------------------------
 
--- 5.1 fn_start_quiz_attempt
+-- 6.1 fn_start_quiz_attempt
 CREATE OR REPLACE FUNCTION public.fn_start_quiz_attempt(p_quiz_id UUID)
 RETURNS UUID
 LANGUAGE plpgsql
@@ -507,7 +510,7 @@ BEGIN
 END;
 $$;
 
--- 5.2 fn_get_attempt_questions (Sanitized question retrieval for students)
+-- 6.2 fn_get_attempt_questions (Sanitized question retrieval for students)
 CREATE OR REPLACE FUNCTION public.fn_get_attempt_questions(p_attempt_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -589,7 +592,7 @@ BEGIN
 END;
 $$;
 
--- 5.3 fn_submit_question_answer
+-- 6.3 fn_submit_question_answer
 CREATE OR REPLACE FUNCTION public.fn_submit_question_answer(
   p_attempt_id UUID,
   p_question_id UUID,
@@ -729,7 +732,7 @@ BEGIN
 END;
 $$;
 
--- 5.4 fn_complete_quiz_attempt
+-- 6.4 fn_complete_quiz_attempt
 CREATE OR REPLACE FUNCTION public.fn_complete_quiz_attempt(p_attempt_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -867,7 +870,7 @@ END;
 $$;
 
 -- -----------------------------------------------------------------------------
--- 6. ROW LEVEL SECURITY (RLS) POLICIES
+-- 7. ROW LEVEL SECURITY (RLS) POLICIES
 -- -----------------------------------------------------------------------------
 
 ALTER TABLE public.colleges ENABLE ROW LEVEL SECURITY;
@@ -887,12 +890,12 @@ ALTER TABLE public.quiz_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.question_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- 6.1 colleges
+-- 7.1 colleges
 CREATE POLICY colleges_select ON public.colleges
   FOR SELECT TO authenticated
   USING (id = (SELECT private_auth.get_auth_college_id()));
 
--- 6.2 departments
+-- 7.2 departments
 CREATE POLICY departments_select ON public.departments
   FOR SELECT TO authenticated
   USING (college_id = (SELECT private_auth.get_auth_college_id()));
@@ -902,7 +905,7 @@ CREATE POLICY departments_all_admin ON public.departments
   USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
   WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
--- 6.3 academic_levels
+-- 7.3 academic_levels
 CREATE POLICY academic_levels_select ON public.academic_levels
   FOR SELECT TO authenticated
   USING (college_id = (SELECT private_auth.get_auth_college_id()));
@@ -912,7 +915,7 @@ CREATE POLICY academic_levels_all_admin ON public.academic_levels
   USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
   WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
--- 6.4 academic_sessions
+-- 7.4 academic_sessions
 CREATE POLICY academic_sessions_select ON public.academic_sessions
   FOR SELECT TO authenticated
   USING (college_id = (SELECT private_auth.get_auth_college_id()));
@@ -922,7 +925,7 @@ CREATE POLICY academic_sessions_all_admin ON public.academic_sessions
   USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
   WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
--- 6.5 subjects
+-- 7.5 subjects
 CREATE POLICY subjects_select ON public.subjects
   FOR SELECT TO authenticated
   USING (department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())));
@@ -940,7 +943,7 @@ CREATE POLICY subjects_write ON public.subjects
     ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
--- 6.6 profiles
+-- 7.6 profiles
 CREATE POLICY profiles_select ON public.profiles
   FOR SELECT TO authenticated
   USING (
@@ -977,7 +980,7 @@ CREATE POLICY profiles_delete ON public.profiles
   FOR DELETE TO authenticated
   USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
--- 6.7 hod_assignments
+-- 7.7 hod_assignments
 CREATE POLICY hod_assignments_select ON public.hod_assignments
   FOR SELECT TO authenticated
   USING (department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())));
@@ -987,7 +990,7 @@ CREATE POLICY hod_assignments_write ON public.hod_assignments
   USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())))
   WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())));
 
--- 6.8 teacher_profiles
+-- 7.8 teacher_profiles
 CREATE POLICY teacher_profiles_select ON public.teacher_profiles
   FOR SELECT TO authenticated
   USING (
@@ -1010,7 +1013,7 @@ CREATE POLICY teacher_profiles_write ON public.teacher_profiles
     ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
--- 6.9 student_profiles
+-- 7.9 student_profiles
 CREATE POLICY student_profiles_select ON public.student_profiles
   FOR SELECT TO authenticated
   USING (
@@ -1033,7 +1036,7 @@ CREATE POLICY student_profiles_write ON public.student_profiles
     ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
--- 6.10 teacher_subject_class_assignments
+-- 7.10 teacher_subject_class_assignments
 CREATE POLICY teacher_subject_class_assignments_select ON public.teacher_subject_class_assignments
   FOR SELECT TO authenticated
   USING (
@@ -1056,7 +1059,7 @@ CREATE POLICY teacher_subject_class_assignments_write ON public.teacher_subject_
     ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
--- 6.11 student_subject_assignments
+-- 7.11 student_subject_assignments
 CREATE POLICY student_subject_assignments_select ON public.student_subject_assignments
   FOR SELECT TO authenticated
   USING (
@@ -1079,7 +1082,7 @@ CREATE POLICY student_subject_assignments_write ON public.student_subject_assign
     ((SELECT private_auth.get_auth_role()) = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
--- 6.12 quizzes
+-- 7.12 quizzes
 CREATE POLICY quizzes_select ON public.quizzes
   FOR SELECT TO authenticated
   USING (
@@ -1108,7 +1111,7 @@ CREATE POLICY quizzes_write ON public.quizzes
     OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
--- 6.13 quiz_questions (Excludes STUDENT from direct row access to protect canonical answers)
+-- 7.13 quiz_questions (Excludes STUDENT from direct row access to protect canonical answers)
 CREATE POLICY quiz_questions_select ON public.quiz_questions
   FOR SELECT TO authenticated
   USING (
@@ -1126,7 +1129,7 @@ CREATE POLICY quiz_questions_write ON public.quiz_questions
     quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid() OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
--- 6.14 quiz_attempts
+-- 7.14 quiz_attempts
 CREATE POLICY quiz_attempts_select ON public.quiz_attempts
   FOR SELECT TO authenticated
   USING (
@@ -1137,7 +1140,7 @@ CREATE POLICY quiz_attempts_select ON public.quiz_attempts
   );
 -- Direct client INSERT/UPDATE/DELETE denied via RLS (RPC-only gameplay writes)
 
--- 6.15 question_attempts
+-- 7.15 question_attempts
 CREATE POLICY question_attempts_select ON public.question_attempts
   FOR SELECT TO authenticated
   USING (
@@ -1151,7 +1154,7 @@ CREATE POLICY question_attempts_select ON public.question_attempts
   );
 -- Direct client INSERT/UPDATE/DELETE denied via RLS (RPC-only gameplay writes)
 
--- 6.16 notifications
+-- 7.16 notifications
 CREATE POLICY notifications_select ON public.notifications
   FOR SELECT TO authenticated
   USING (user_id = auth.uid());
@@ -1175,10 +1178,10 @@ CREATE POLICY notifications_delete ON public.notifications
   USING (user_id = auth.uid());
 
 -- -----------------------------------------------------------------------------
--- 7. ANALYTICS REPORTING VIEWS (security_invoker = true)
+-- 8. ANALYTICS REPORTING VIEWS (security_invoker = true)
 -- -----------------------------------------------------------------------------
 
--- 7.1 vw_college_analytics
+-- 8.1 vw_college_analytics
 CREATE OR REPLACE VIEW public.vw_college_analytics WITH (security_invoker = true) AS
 WITH student_counts AS (
   SELECT college_id, COUNT(*) AS total_students
@@ -1223,7 +1226,7 @@ LEFT JOIN teacher_counts tc ON tc.college_id = c.id
 LEFT JOIN quiz_counts qc ON qc.college_id = c.id
 LEFT JOIN attempt_stats ast ON ast.college_id = c.id;
 
--- 7.2 vw_department_analytics
+-- 8.2 vw_department_analytics
 CREATE OR REPLACE VIEW public.vw_department_analytics WITH (security_invoker = true) AS
 WITH student_counts AS (
   SELECT department_id, COUNT(*) AS total_students
@@ -1268,7 +1271,7 @@ LEFT JOIN teacher_counts tc ON tc.department_id = d.id
 LEFT JOIN quiz_counts qc ON qc.department_id = d.id
 LEFT JOIN attempt_stats ast ON ast.department_id = d.id;
 
--- 7.3 vw_teacher_performance
+-- 8.3 vw_teacher_performance
 CREATE OR REPLACE VIEW public.vw_teacher_performance WITH (security_invoker = true) AS
 WITH quiz_counts AS (
   SELECT teacher_id, COUNT(*) AS total_quizzes_created
@@ -1300,7 +1303,7 @@ LEFT JOIN quiz_counts qc ON qc.teacher_id = p.id
 LEFT JOIN attempt_stats ast ON ast.teacher_id = p.id
 WHERE p.role = 'TEACHER';
 
--- 7.4 vw_student_leaderboard
+-- 8.4 vw_student_leaderboard
 CREATE OR REPLACE VIEW public.vw_student_leaderboard WITH (security_invoker = true) AS
 WITH attempt_stats AS (
   SELECT
@@ -1329,7 +1332,7 @@ LEFT JOIN attempt_stats ast ON ast.student_id = p.id
 WHERE p.role = 'STUDENT';
 
 -- -----------------------------------------------------------------------------
--- 8. GRANTS & PRIVILEGE MANAGEMENT
+-- 9. GRANTS & PRIVILEGE MANAGEMENT
 -- -----------------------------------------------------------------------------
 
 -- Revoke all default privileges from PUBLIC and anon

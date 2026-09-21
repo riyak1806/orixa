@@ -1338,7 +1338,7 @@ WHERE p.role = 'STUDENT';
 -- Revoke all default privileges from PUBLIC and anon
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon;
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
-REVOKE ALL ON ALL SCHEMAS FROM anon;
+REVOKE ALL ON SCHEMA public FROM anon;
 GRANT USAGE ON SCHEMA public TO authenticated;
 
 -- Table DML privileges for authenticated users (controlled by RLS)

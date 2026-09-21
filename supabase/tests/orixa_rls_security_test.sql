@@ -7,7 +7,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-SELECT plan(19);
+SELECT plan(21);
 
 -- Helper function to simulate authenticated role & user ID in Supabase RLS context
 CREATE OR REPLACE FUNCTION set_test_auth_context(p_user_id UUID)
@@ -47,6 +47,7 @@ INSERT INTO public.academic_sessions (id, college_id, code, start_date, end_date
 -- Create Subjects
 INSERT INTO public.subjects (id, department_id, code, name) VALUES
   ('11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-222222222222', 'CS101', 'Intro to CS'),
+  ('11111111-1111-1111-1111-777777777777', '11111111-1111-1111-1111-333333333333', 'ME101', 'Intro to Mechanical'),
   ('22222222-2222-2222-2222-666666666666', '22222222-2222-2222-2222-333333333333', 'CS101', 'Intro to CS Beta');
 
 -- Mock auth.users & public.profiles
@@ -188,7 +189,7 @@ SELECT is(
   'J. Teacher A1 cannot read Teacher A2 quiz questions'
 );
 
--- K. Student quiz_questions direct SELECT denial & RPC sanitization
+-- K1. Student quiz_questions direct SELECT denial
 SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.quiz_questions),
@@ -196,7 +197,7 @@ SELECT is(
   'K1. Student A1 direct SELECT on quiz_questions yields 0 rows'
 );
 
--- RPC Start attempt + question sanitization verification
+-- K2. RPC Start attempt + question sanitization verification
 SELECT set_config('role', 'postgres', true);
 INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES
   ('11111111-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS');
@@ -256,15 +257,16 @@ SELECT throws_ok(
 );
 
 -- Q. Cross-department record rejection
+-- Uses Subject ME101 (in Mechanical Dept ME-A) to ensure Teacher A1 (CS Dept) assignment is rejected strictly by cross-department FK fk_tsca_teacher_org (23503) rather than active unique index collision (23505)
 SELECT set_config('role', 'postgres', true);
 SELECT throws_ok(
-  $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-333333333333', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
+  $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-333333333333', '11111111-1111-1111-1111-777777777777', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
   '23503',
   NULL,
   'Q. Cross-department teacher assignment rejected by FK'
 );
 
--- R. Completed attempt immutability
+-- R1. Completed attempt UPDATE immutability
 SELECT set_config('role', 'postgres', true);
 UPDATE public.quiz_attempts SET status = 'COMPLETED' WHERE id = '11111111-7777-7777-7777-111111111111';
 
@@ -272,7 +274,15 @@ SELECT throws_ok(
   $$ UPDATE public.quiz_attempts SET final_earned_xp = 500 WHERE id = '11111111-7777-7777-7777-111111111111' $$,
   'P0001',
   NULL,
-  'R. Modifying completed attempt throws exception'
+  'R1. Modifying completed attempt throws exception'
+);
+
+-- R2. Completed attempt DELETE immutability
+SELECT throws_ok(
+  $$ DELETE FROM public.quiz_attempts WHERE id = '11111111-7777-7777-7777-111111111111' $$,
+  'P0001',
+  NULL,
+  'R2. Deleting completed attempt throws exception'
 );
 
 -- S. Incomplete attempt completion rejection

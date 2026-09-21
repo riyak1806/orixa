@@ -2182,25 +2182,47 @@ function confirmStudentLogout(event) {
             </header>
             <div class="orixa-modal-body" style="padding: var(--t-space-3);">
                 <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark); margin: 0;">Are you sure you want to log out?</p>
-                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px; margin-bottom: 0;">You will be redirected back to the ORIXA home screen.</p>
+                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px; margin-bottom: 0;">You will be redirected back to the student login screen.</p>
             </div>
             <footer class="orixa-modal-footer">
                 <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
                     Cancel
                 </button>
-                <a href="index.html" class="cartoon-action-btn" style="padding: 10px 24px; font-size: 0.95rem; background: var(--color-red); color: var(--border-dark); text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+                <button type="button" class="cartoon-action-btn" id="confirm-student-logout-btn" style="padding: 10px 24px; font-size: 0.95rem; background: var(--color-red); color: var(--border-dark); border-width: 3px; font-family: var(--font-header); font-weight: 700; cursor: pointer;">
                     Logout
-                </a>
+                </button>
             </footer>
         </div>
     `);
+
+    const confirmBtn = document.getElementById('confirm-student-logout-btn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async () => {
+            if (window.OrixaAuth) {
+                await window.OrixaAuth.signOut();
+            }
+            window.location.replace('student-login.html');
+        });
+    }
 }
 
 window.openOrixaModal = openOrixaModal;
 window.closeOrixaModal = closeOrixaModal;
 window.confirmStudentLogout = confirmStudentLogout;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (window.OrixaAuth) {
+        const profile = await window.OrixaAuth.requireRole(['STUDENT'], 'student-login.html');
+        if (!profile) return;
+
+        if (profile.full_name) {
+            const profileNameEls = document.querySelectorAll('.profile-name, #student-modal-name');
+            profileNameEls.forEach(el => {
+                el.textContent = profile.full_name;
+            });
+        }
+    }
+
     loadCompletedQuizzesFromStorage();
     hideCompletedQuizzes();
 });

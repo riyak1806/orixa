@@ -427,12 +427,24 @@ function confirmCollegeLogout(event) {
         modal.remove();
     });
 
-    document.getElementById('logout-confirm-btn').addEventListener('click', () => {
-        window.location.href = 'college-login.html';
+    document.getElementById('logout-confirm-btn').addEventListener('click', async () => {
+        if (window.OrixaAuth) {
+            await window.OrixaAuth.signOut();
+        }
+        window.location.replace('college-login.html');
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (window.OrixaAuth) {
+        const profile = await window.OrixaAuth.requireRole(['COLLEGE_ADMIN'], 'college-login.html');
+        if (!profile) return;
+
+        if (profile.full_name) {
+            MOCK_COLLEGE_DATA.collegeInfo.adminName = profile.full_name;
+        }
+    }
+
     renderCollegeStats();
     renderDepartmentList();
     renderTeacherAndSubjectFilterOptions();

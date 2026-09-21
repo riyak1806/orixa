@@ -606,8 +606,11 @@ function confirmHodLogout(event) {
         modal.remove();
     });
 
-    document.getElementById('logout-confirm-btn').addEventListener('click', () => {
-        window.location.href = 'hod-login.html';
+    document.getElementById('logout-confirm-btn').addEventListener('click', async () => {
+        if (window.OrixaAuth) {
+            await window.OrixaAuth.signOut();
+        }
+        window.location.replace('hod-login.html');
     });
 }
 
@@ -1358,7 +1361,16 @@ function confirmStudentImport() {
     resetStudentUploadState();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (window.OrixaAuth) {
+        const profile = await window.OrixaAuth.requireRole(['HOD'], 'hod-login.html');
+        if (!profile) return;
+
+        if (profile.full_name) {
+            HOD_MOCK_DATA.deptInfo.hodName = profile.full_name;
+        }
+    }
+
     renderHodStats();
     renderTeacherList();
     renderStudentList();

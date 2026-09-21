@@ -210,10 +210,7 @@ function initTeacherLoginForm() {
         setFormMessage('', null);
 
         if (!email) {
-            setFieldState(emailInput, emailError, 'Email is required.');
-            isValid = false;
-        } else if (!emailPattern.test(email)) {
-            setFieldState(emailInput, emailError, 'Enter a valid email address.');
+            setFieldState(emailInput, emailError, 'Teacher ID or Email is required.');
             isValid = false;
         }
 
@@ -242,48 +239,44 @@ function initTeacherLoginForm() {
         });
     }
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
 
         if (!validate()) {
             return;
         }
 
-        const emailVal = emailInput.value.trim().toLowerCase();
-        let teacherName = 'Professor Riley';
-        let teacherEmpId = 'EMP-7392';
-
-        if (emailVal.includes('teachera') || emailVal.includes('teacher-a') || emailVal === 'a@school.edu') {
-            teacherName = 'Teacher A';
-            teacherEmpId = 'EMP-CS-03';
-        } else if (emailVal.includes('teacherb') || emailVal.includes('teacher-b') || emailVal === 'b@school.edu') {
-            teacherName = 'Teacher B';
-            teacherEmpId = 'EMP-CS-04';
-        } else if (emailVal.includes('sarah')) {
-            teacherName = 'Prof. Sarah Jenkins';
-            teacherEmpId = 'EMP-CS-01';
-        } else if (emailVal.includes('alan')) {
-            teacherName = 'Prof. Alan Turing';
-            teacherEmpId = 'EMP-CS-02';
-        }
-
-        try {
-            localStorage.setItem('orixa_current_teacher', JSON.stringify({
-                name: teacherName,
-                email: emailVal,
-                empId: teacherEmpId
-            }));
-        } catch (e) {
-            console.warn('Could not save current teacher login to localStorage:', e);
-        }
+        const idVal = emailInput.value.trim();
+        const passwordVal = passwordInput.value.trim();
 
         setSubmitting(true);
 
-        window.setTimeout(() => {
+        try {
+            const result = await window.OrixaAuth.signInWithOrixaId(idVal, passwordVal);
+
+            if (!result.success) {
+                setSubmitting(false);
+                setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
+                return;
+            }
+
+            const profile = result.profile;
+            if (profile.role !== 'TEACHER') {
+                await window.OrixaAuth.signOut();
+                setSubmitting(false);
+                setFormMessage('Unauthorized role for Teacher Login. Please use your assigned portal.', 'error');
+                return;
+            }
+
+            setFormMessage('Opening teacher dashboard...', 'success');
+            window.setTimeout(() => {
+                window.location.href = 'teacher-dashboard.html';
+            }, 400);
+        } catch (err) {
+            console.error('Teacher login submission error:', err);
             setSubmitting(false);
-            setFormMessage('Opening teacher dashboard.', 'success');
-            window.location.href = 'teacher-dashboard.html';
-        }, 500);
+            setFormMessage('An unexpected authentication error occurred.', 'error');
+        }
     });
 }
 
@@ -360,31 +353,44 @@ function initCollegeLoginForm() {
         setFormMessage('', null);
     });
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
 
         if (!validate()) {
             return;
         }
 
-        const collegeId = codeInput.value.trim().toLowerCase();
+        const codeVal = codeInput.value.trim();
+        const passwordVal = passwordInput.value.trim();
 
         setSubmitting(true);
 
-        window.setTimeout(() => {
-            setSubmitting(false);
+        try {
+            const result = await window.OrixaAuth.signInWithOrixaId(codeVal, passwordVal);
 
-            if (collegeId === 'jspmntc') {
-                setFormMessage('Redirecting to General College Dashboard...', 'success');
-                window.location.href = 'college-dashboard.html';
-            } else if (collegeId === 'jspmntccs') {
-                setFormMessage('Redirecting to Computer Department HOD Login...', 'success');
-                window.location.href = 'hod-login.html';
-            } else {
-                setFormMessage('Invalid College ID. Please enter a valid registered College ID.', 'error');
-                setFieldState(codeInput, codeError, 'Unrecognized College ID.');
+            if (!result.success) {
+                setSubmitting(false);
+                setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
+                return;
             }
-        }, 500);
+
+            const profile = result.profile;
+            if (profile.role !== 'COLLEGE_ADMIN') {
+                await window.OrixaAuth.signOut();
+                setSubmitting(false);
+                setFormMessage('Unauthorized role for College Admin Login.', 'error');
+                return;
+            }
+
+            setFormMessage('Redirecting to General College Dashboard...', 'success');
+            window.setTimeout(() => {
+                window.location.href = 'college-dashboard.html';
+            }, 400);
+        } catch (err) {
+            console.error('College login submission error:', err);
+            setSubmitting(false);
+            setFormMessage('An unexpected authentication error occurred.', 'error');
+        }
     });
 }
 
@@ -461,40 +467,44 @@ function initHodLoginForm() {
         setFormMessage('', null);
     });
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
 
         if (!validate()) {
             return;
         }
 
-        const empId = empIdInput.value.trim().toUpperCase();
-        const password = passwordInput.value.trim();
+        const empIdVal = empIdInput.value.trim();
+        const passwordVal = passwordInput.value.trim();
 
         setSubmitting(true);
 
-        window.setTimeout(() => {
-            setSubmitting(false);
+        try {
+            const result = await window.OrixaAuth.signInWithOrixaId(empIdVal, passwordVal);
 
-            const validEmpIds = ['HOD-CS-01', 'HOD-CS-02', 'HOD-CS-03', 'HOD-CS-04', 'HOD-CS', 'HOD-101', 'HOD01'];
-            const validPasswords = ['password123', 'hod123', 'password', 'admin123', 'jspmntccs', 'hod-cs-01'];
-
-            const isValidEmpId = validEmpIds.includes(empId) || (empId.startsWith('HOD-') && empId.length > 4);
-            const isValidPassword = validPasswords.includes(password) || password === 'hod123' || password === 'password123';
-
-            if (isValidEmpId && isValidPassword) {
-                setFormMessage('Opening Computer Department HOD Dashboard...', 'success');
-                window.location.href = 'hod-dashboard.html';
-            } else {
-                setFormMessage('Invalid HOD Employee ID or Password. Please try again.', 'error');
-                if (!isValidEmpId) {
-                    setFieldState(empIdInput, empIdError, 'Unrecognized HOD Employee ID.');
-                }
-                if (!isValidPassword) {
-                    setFieldState(passwordInput, passwordError, 'Incorrect password.');
-                }
+            if (!result.success) {
+                setSubmitting(false);
+                setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
+                return;
             }
-        }, 500);
+
+            const profile = result.profile;
+            if (profile.role !== 'HOD') {
+                await window.OrixaAuth.signOut();
+                setSubmitting(false);
+                setFormMessage('Unauthorized role for HOD Login.', 'error');
+                return;
+            }
+
+            setFormMessage('Opening Computer Department HOD Dashboard...', 'success');
+            window.setTimeout(() => {
+                window.location.href = 'hod-dashboard.html';
+            }, 400);
+        } catch (err) {
+            console.error('HOD login submission error:', err);
+            setSubmitting(false);
+            setFormMessage('An unexpected authentication error occurred.', 'error');
+        }
     });
 }
 

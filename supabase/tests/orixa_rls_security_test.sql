@@ -125,7 +125,7 @@ SELECT is(
 );
 
 -- C. Student profile self-only access check
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.profiles WHERE id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
   0,
@@ -133,7 +133,7 @@ SELECT is(
 );
 
 -- D. Student assignments self-only check
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.student_subject_assignments WHERE student_id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
   0,
@@ -141,7 +141,7 @@ SELECT is(
 );
 
 -- E. Teacher cannot read unrelated student profile
-PERFORM set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
+SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.profiles WHERE id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
   0,
@@ -149,7 +149,7 @@ SELECT is(
 );
 
 -- F. Teacher cannot read unrelated student assignment
-PERFORM set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
+SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.student_subject_assignments WHERE student_id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
   0,
@@ -157,7 +157,7 @@ SELECT is(
 );
 
 -- G. Teacher can read assigned student profile
-PERFORM set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
+SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.profiles WHERE id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'),
   1,
@@ -165,7 +165,7 @@ SELECT is(
 );
 
 -- H. Student can read own profile
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.profiles WHERE id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'),
   1,
@@ -173,7 +173,7 @@ SELECT is(
 );
 
 -- I. Student accesses only assigned published quizzes
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.quizzes),
   1,
@@ -181,7 +181,7 @@ SELECT is(
 );
 
 -- J. Teacher cannot read another teacher's quiz questions
-PERFORM set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
+SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.quiz_questions WHERE quiz_id = '22222222-5555-5555-5555-111111111111'),
   0,
@@ -189,7 +189,7 @@ SELECT is(
 );
 
 -- K. Student quiz_questions direct SELECT denial & RPC sanitization
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.quiz_questions),
   0,
@@ -197,11 +197,11 @@ SELECT is(
 );
 
 -- RPC Start attempt + question sanitization verification
-PERFORM set_config('role', 'postgres', true);
+SELECT set_config('role', 'postgres', true);
 INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES
   ('11111111-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS');
 
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (public.fn_get_attempt_questions('11111111-7777-7777-7777-111111111111')->0->'game_payload'->>'correct_boolean'),
   NULL,
@@ -209,7 +209,7 @@ SELECT is(
 );
 
 -- L. Student quiz_attempts direct write denial
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT throws_ok(
   $$ INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES ('99999999-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS') $$,
   '42501',
@@ -218,7 +218,7 @@ SELECT throws_ok(
 );
 
 -- M. Student question_attempts direct write denial
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT throws_ok(
   $$ INSERT INTO public.question_attempts (attempt_id, quiz_id, question_id, is_solved) VALUES ('11111111-7777-7777-7777-111111111111', '11111111-5555-5555-5555-111111111111', '11111111-6666-6666-6666-111111111111', true) $$,
   '42501',
@@ -227,11 +227,11 @@ SELECT throws_ok(
 );
 
 -- N. HOD can access department question attempts
-PERFORM set_config('role', 'postgres', true);
+SELECT set_config('role', 'postgres', true);
 INSERT INTO public.question_attempts (attempt_id, quiz_id, question_id, is_solved, mistakes_count, chances_used) VALUES
   ('11111111-7777-7777-7777-111111111111', '11111111-5555-5555-5555-111111111111', '11111111-6666-6666-6666-111111111111', false, 1, 1);
 
-PERFORM set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
 SELECT is(
   (SELECT count(*)::int FROM public.question_attempts),
   1,
@@ -239,7 +239,7 @@ SELECT is(
 );
 
 -- O. Teacher can access own quiz attempts
-PERFORM set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
+SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.quiz_attempts),
   1,
@@ -247,7 +247,7 @@ SELECT is(
 );
 
 -- P. Cross-college record rejection
-PERFORM set_config('role', 'postgres', true);
+SELECT set_config('role', 'postgres', true);
 SELECT throws_ok(
   $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', '22222222-2222-2222-2222-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
   '23503',
@@ -256,7 +256,7 @@ SELECT throws_ok(
 );
 
 -- Q. Cross-department record rejection
-PERFORM set_config('role', 'postgres', true);
+SELECT set_config('role', 'postgres', true);
 SELECT throws_ok(
   $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-333333333333', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
   '23503',
@@ -265,7 +265,7 @@ SELECT throws_ok(
 );
 
 -- R. Completed attempt immutability
-PERFORM set_config('role', 'postgres', true);
+SELECT set_config('role', 'postgres', true);
 UPDATE public.quiz_attempts SET status = 'COMPLETED' WHERE id = '11111111-7777-7777-7777-111111111111';
 
 SELECT throws_ok(
@@ -276,13 +276,13 @@ SELECT throws_ok(
 );
 
 -- S. Incomplete attempt completion rejection
-PERFORM set_config('role', 'postgres', true);
+SELECT set_config('role', 'postgres', true);
 INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES
   ('22222222-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS');
 INSERT INTO public.question_attempts (attempt_id, quiz_id, question_id, is_solved, mistakes_count, chances_used) VALUES
   ('22222222-7777-7777-7777-111111111111', '11111111-5555-5555-5555-111111111111', '11111111-6666-6666-6666-111111111111', false, 1, 1);
 
-PERFORM set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT throws_ok(
   $$ SELECT public.fn_complete_quiz_attempt('22222222-7777-7777-7777-111111111111') $$,
   'P0001',

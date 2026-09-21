@@ -55,8 +55,8 @@ AS $$
   SELECT department_id FROM public.profiles WHERE id = auth.uid();
 $$;
 
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA private_auth FROM PUBLIC;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA private_auth TO authenticated;
+GRANT USAGE ON SCHEMA private_auth TO authenticated;
+REVOKE USAGE ON SCHEMA private_auth FROM anon, PUBLIC;
 
 -- -----------------------------------------------------------------------------
 -- 3. CORE PLATFORM TABLES (16 TABLES)
@@ -199,13 +199,19 @@ CREATE TABLE IF NOT EXISTS public.teacher_subject_class_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   role public.app_role NOT NULL DEFAULT 'TEACHER',
+  college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE RESTRICT,
+  department_id UUID NOT NULL REFERENCES public.departments(id) ON DELETE RESTRICT,
   subject_id UUID NOT NULL REFERENCES public.subjects(id) ON DELETE RESTRICT,
   academic_level_id UUID NOT NULL REFERENCES public.academic_levels(id) ON DELETE RESTRICT,
   academic_session_id UUID NOT NULL REFERENCES public.academic_sessions(id) ON DELETE RESTRICT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_tsca_role CHECK (role = 'TEACHER'),
-  CONSTRAINT fk_tsca_teacher_role FOREIGN KEY (teacher_id, role) REFERENCES public.profiles (id, role) ON DELETE CASCADE,
+  CONSTRAINT fk_tsca_teacher_org FOREIGN KEY (teacher_id, college_id, department_id) REFERENCES public.profiles (id, college_id, department_id) ON DELETE CASCADE,
+  CONSTRAINT fk_tsca_subject_dept FOREIGN KEY (subject_id, department_id) REFERENCES public.subjects (id, department_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_tsca_dept_college FOREIGN KEY (department_id, college_id) REFERENCES public.departments (id, college_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_tsca_level_college FOREIGN KEY (academic_level_id, college_id) REFERENCES public.academic_levels (id, college_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_tsca_session_college FOREIGN KEY (academic_session_id, college_id) REFERENCES public.academic_sessions (id, college_id) ON DELETE RESTRICT,
   CONSTRAINT uq_tsca_composite_target UNIQUE (id, teacher_id, subject_id, academic_level_id, academic_session_id)
 );
 
@@ -218,6 +224,7 @@ CREATE TABLE IF NOT EXISTS public.student_subject_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   student_role public.app_role NOT NULL DEFAULT 'STUDENT',
+  college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE RESTRICT,
   subject_id UUID NOT NULL REFERENCES public.subjects(id) ON DELETE RESTRICT,
   academic_level_id UUID NOT NULL REFERENCES public.academic_levels(id) ON DELETE RESTRICT,
   academic_session_id UUID NOT NULL REFERENCES public.academic_sessions(id) ON DELETE RESTRICT,
@@ -227,7 +234,9 @@ CREATE TABLE IF NOT EXISTS public.student_subject_assignments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_ssa_student_role CHECK (student_role = 'STUDENT'),
   CONSTRAINT uq_ssa_student_subject_level_session UNIQUE (student_id, subject_id, academic_level_id, academic_session_id),
-  CONSTRAINT fk_ssa_student_role FOREIGN KEY (student_id, student_role) REFERENCES public.profiles (id, role) ON DELETE CASCADE,
+  CONSTRAINT fk_ssa_student_college FOREIGN KEY (student_id, college_id) REFERENCES public.profiles (id, college_id) ON DELETE CASCADE,
+  CONSTRAINT fk_ssa_level_college FOREIGN KEY (academic_level_id, college_id) REFERENCES public.academic_levels (id, college_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_ssa_session_college FOREIGN KEY (academic_session_id, college_id) REFERENCES public.academic_sessions (id, college_id) ON DELETE RESTRICT,
   CONSTRAINT fk_ssa_teacher_assignment FOREIGN KEY (teacher_assignment_id, teacher_id, subject_id, academic_level_id, academic_session_id) REFERENCES public.teacher_subject_class_assignments (id, teacher_id, subject_id, academic_level_id, academic_session_id) ON DELETE RESTRICT
 );
 
@@ -255,6 +264,7 @@ CREATE TABLE IF NOT EXISTS public.quizzes (
   CONSTRAINT chk_quizzes_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED')),
   CONSTRAINT chk_quizzes_game_type CHECK (game_type IN ('TILE_PUZZLE', 'MATCH_FOLLOWING', 'FILL_BLANKS', 'TRUE_FALSE')),
   CONSTRAINT chk_quizzes_default_max_chances CHECK (default_max_chances BETWEEN 1 AND 10),
+  CONSTRAINT chk_quizzes_total_xp CHECK (total_possible_xp > 0),
   CONSTRAINT fk_quizzes_teacher_role FOREIGN KEY (teacher_id, teacher_role) REFERENCES public.profiles (id, role) ON DELETE RESTRICT,
   CONSTRAINT fk_quizzes_teacher_dept FOREIGN KEY (teacher_id, department_id) REFERENCES public.profiles (id, department_id) ON DELETE RESTRICT,
   CONSTRAINT fk_quizzes_subject_dept FOREIGN KEY (subject_id, department_id) REFERENCES public.subjects (id, department_id) ON DELETE RESTRICT,
@@ -272,6 +282,7 @@ CREATE TABLE IF NOT EXISTS public.quiz_questions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT uq_quiz_questions_order UNIQUE (quiz_id, question_order),
   CONSTRAINT uq_quiz_questions_id_quiz UNIQUE (id, quiz_id),
+  CONSTRAINT chk_quiz_questions_order CHECK (question_order > 0),
   CONSTRAINT chk_quiz_questions_max_chances CHECK (max_chances IS NULL OR (max_chances BETWEEN 1 AND 10))
 );
 
@@ -290,6 +301,7 @@ CREATE TABLE IF NOT EXISTS public.quiz_attempts (
   CONSTRAINT chk_quiz_attempts_student_role CHECK (student_role = 'STUDENT'),
   CONSTRAINT chk_quiz_attempts_status CHECK (status IN ('IN_PROGRESS', 'COMPLETED', 'ABANDONED')),
   CONSTRAINT chk_quiz_attempts_stars CHECK (final_stars IS NULL OR (final_stars BETWEEN 0 AND 3)),
+  CONSTRAINT chk_quiz_attempts_accuracy CHECK (final_accuracy_pct IS NULL OR (final_accuracy_pct BETWEEN 0 AND 100)),
   CONSTRAINT uq_quiz_attempts_id_quiz UNIQUE (id, quiz_id),
   CONSTRAINT fk_quiz_attempts_student_role FOREIGN KEY (student_id, student_role) REFERENCES public.profiles (id, role) ON DELETE CASCADE
 );
@@ -311,6 +323,7 @@ CREATE TABLE IF NOT EXISTS public.question_attempts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT uq_question_attempts_attempt_question UNIQUE (attempt_id, question_id),
   CONSTRAINT chk_question_attempts_mistakes CHECK (mistakes_count >= 0),
+  CONSTRAINT chk_question_attempts_chances CHECK (chances_used >= 1),
   CONSTRAINT fk_question_attempts_quiz_attempt FOREIGN KEY (attempt_id, quiz_id) REFERENCES public.quiz_attempts (id, quiz_id) ON DELETE CASCADE,
   CONSTRAINT fk_question_attempts_quiz_question FOREIGN KEY (question_id, quiz_id) REFERENCES public.quiz_questions (id, quiz_id) ON DELETE CASCADE
 );
@@ -492,7 +505,89 @@ BEGIN
 END;
 $$;
 
--- 5.2 fn_submit_question_answer
+-- 5.2 fn_get_attempt_questions (Sanitized question retrieval for students)
+CREATE OR REPLACE FUNCTION public.fn_get_attempt_questions(p_attempt_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_student_id UUID;
+  v_attempt RECORD;
+  v_quiz RECORD;
+  v_questions JSONB;
+BEGIN
+  v_student_id := auth.uid();
+  IF v_student_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required.';
+  END IF;
+
+  SELECT * INTO v_attempt
+  FROM public.quiz_attempts
+  WHERE id = p_attempt_id;
+
+  IF v_attempt.id IS NULL THEN
+    RAISE EXCEPTION 'Attempt not found.';
+  END IF;
+
+  IF v_attempt.student_id != v_student_id THEN
+    RAISE EXCEPTION 'Unauthorized attempt access.';
+  END IF;
+
+  SELECT * INTO v_quiz
+  FROM public.quizzes
+  WHERE id = v_attempt.quiz_id;
+
+  IF v_quiz.id IS NULL THEN
+    RAISE EXCEPTION 'Quiz not found.';
+  END IF;
+
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'id', qq.id,
+      'question_order', qq.question_order,
+      'question_text', qq.question_text,
+      'max_chances', COALESCE(qq.max_chances, v_quiz.default_max_chances),
+      'game_payload', CASE
+        WHEN v_quiz.game_type = 'TILE_PUZZLE' THEN
+          jsonb_build_object(
+            'question_text', qq.game_payload->'question_text',
+            'options', qq.game_payload->'options'
+          )
+        WHEN v_quiz.game_type = 'MATCH_FOLLOWING' THEN
+          jsonb_build_object(
+            'prompts', (
+              SELECT jsonb_agg(jsonb_build_object('id', pair->>'id', 'prompt', pair->>'prompt'))
+              FROM jsonb_array_elements(qq.game_payload->'pairs') AS pair
+            ),
+            'choices', (
+              SELECT jsonb_agg(jsonb_build_object('id', pair->>'id', 'choice', pair->>'correct_match'))
+              FROM jsonb_array_elements(qq.game_payload->'pairs') AS pair
+            )
+          )
+        WHEN v_quiz.game_type = 'FILL_BLANKS' THEN
+          jsonb_build_object(
+            'sentence_tokens', qq.game_payload->'sentence_tokens',
+            'options', qq.game_payload->'options',
+            'distractors', qq.game_payload->'distractors'
+          )
+        WHEN v_quiz.game_type = 'TRUE_FALSE' THEN
+          jsonb_build_object(
+            'statement', qq.game_payload->'statement'
+          )
+        ELSE qq.game_payload
+      END
+    ) ORDER BY qq.question_order ASC
+  ) INTO v_questions
+  FROM public.quiz_questions qq
+  WHERE qq.quiz_id = v_quiz.id;
+
+  RETURN COALESCE(v_questions, '[]'::jsonb);
+END;
+$$;
+
+-- 5.3 fn_submit_question_answer
 CREATE OR REPLACE FUNCTION public.fn_submit_question_answer(
   p_attempt_id UUID,
   p_question_id UUID,
@@ -578,7 +673,9 @@ BEGIN
   IF v_quiz.game_type = 'TILE_PUZZLE' THEN
     v_is_correct := (p_answer_json->>'selected_option_index' = v_question.game_payload->>'correct_option_index');
   ELSIF v_quiz.game_type = 'MATCH_FOLLOWING' THEN
-    v_is_correct := (p_answer_json->'pairs' = v_question.game_payload->'pairs');
+    v_is_correct := (jsonb_array_length(p_answer_json->'pairs') = jsonb_array_length(v_question.game_payload->'pairs'))
+                AND (p_answer_json->'pairs' @> v_question.game_payload->'pairs')
+                AND (v_question.game_payload->'pairs' @> p_answer_json->'pairs');
   ELSIF v_quiz.game_type = 'FILL_BLANKS' THEN
     v_is_correct := (p_answer_json->'submitted_words' = v_question.game_payload->'correct_words');
   ELSIF v_quiz.game_type = 'TRUE_FALSE' THEN
@@ -630,7 +727,7 @@ BEGIN
 END;
 $$;
 
--- 5.3 fn_complete_quiz_attempt
+-- 5.4 fn_complete_quiz_attempt
 CREATE OR REPLACE FUNCTION public.fn_complete_quiz_attempt(p_attempt_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -907,14 +1004,14 @@ CREATE POLICY teacher_subject_class_assignments_select ON public.teacher_subject
 CREATE POLICY teacher_subject_class_assignments_write ON public.teacher_subject_class_assignments
   FOR ALL TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
     OR
-    (private_auth.get_auth_role() = 'HOD' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
   )
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
     OR
-    (private_auth.get_auth_role() = 'HOD' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
   );
 
 -- 6.11 student_subject_assignments
@@ -942,8 +1039,14 @@ CREATE POLICY quizzes_select ON public.quizzes
     (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
     OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
     OR (private_auth.get_auth_role() = 'TEACHER' AND teacher_id = auth.uid())
-    OR (private_auth.get_auth_role() = 'STUDENT' AND status = 'PUBLISHED' AND subject_id IN (
-          SELECT subject_id FROM public.student_subject_assignments WHERE student_id = auth.uid() AND is_active = true
+    OR (private_auth.get_auth_role() = 'STUDENT' AND status = 'PUBLISHED' AND college_id = private_auth.get_auth_college_id() AND teacher_assignment_id IN (
+          SELECT teacher_assignment_id FROM public.student_subject_assignments
+          WHERE student_id = auth.uid()
+            AND is_active = true
+            AND subject_id = quizzes.subject_id
+            AND academic_level_id = quizzes.academic_level_id
+            AND academic_session_id = quizzes.academic_session_id
+            AND teacher_id = quizzes.teacher_id
         ))
   );
 
@@ -958,10 +1061,14 @@ CREATE POLICY quizzes_write ON public.quizzes
     OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
   );
 
--- 6.13 quiz_questions
+-- 6.13 quiz_questions (Excludes STUDENT from direct row access to protect canonical answers)
 CREATE POLICY quiz_questions_select ON public.quiz_questions
   FOR SELECT TO authenticated
-  USING (quiz_id IN (SELECT id FROM public.quizzes WHERE college_id = private_auth.get_auth_college_id()));
+  USING (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND quiz_id IN (SELECT id FROM public.quizzes WHERE college_id = private_auth.get_auth_college_id()))
+    OR (private_auth.get_auth_role() = 'HOD' AND quiz_id IN (SELECT id FROM public.quizzes WHERE department_id = private_auth.get_auth_department_id()))
+    OR (private_auth.get_auth_role() = 'TEACHER' AND quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid()))
+  );
 
 CREATE POLICY quiz_questions_write ON public.quiz_questions
   FOR ALL TO authenticated
@@ -1023,87 +1130,177 @@ CREATE POLICY notifications_delete ON public.notifications
 
 -- 7.1 vw_college_analytics
 CREATE OR REPLACE VIEW public.vw_college_analytics WITH (security_invoker = true) AS
+WITH student_counts AS (
+  SELECT college_id, COUNT(*) AS total_students
+  FROM public.profiles
+  WHERE role = 'STUDENT'
+  GROUP BY college_id
+),
+teacher_counts AS (
+  SELECT college_id, COUNT(*) AS total_teachers
+  FROM public.profiles
+  WHERE role = 'TEACHER'
+  GROUP BY college_id
+),
+quiz_counts AS (
+  SELECT college_id, COUNT(*) AS total_quizzes
+  FROM public.quizzes
+  GROUP BY college_id
+),
+attempt_stats AS (
+  SELECT
+    q.college_id,
+    COUNT(qa.id) AS total_completed_attempts,
+    COALESCE(ROUND(AVG(qa.final_accuracy_pct)), 0) AS avg_accuracy_pct,
+    COALESCE(SUM(qa.final_earned_xp), 0) AS total_xp_earned
+  FROM public.quiz_attempts qa
+  JOIN public.quizzes q ON q.id = qa.quiz_id
+  WHERE qa.status = 'COMPLETED'
+  GROUP BY q.college_id
+)
 SELECT
   c.id AS college_id,
   c.name AS college_name,
-  COUNT(DISTINCT p.id) FILTER (WHERE p.role = 'STUDENT') AS total_students,
-  COUNT(DISTINCT p.id) FILTER (WHERE p.role = 'TEACHER') AS total_teachers,
-  COUNT(DISTINCT q.id) AS total_quizzes,
-  COUNT(DISTINCT qa.id) FILTER (WHERE qa.status = 'COMPLETED') AS total_completed_attempts,
-  COALESCE(ROUND(AVG(qa.final_accuracy_pct) FILTER (WHERE qa.status = 'COMPLETED')), 0) AS avg_accuracy_pct,
-  COALESCE(SUM(qa.final_earned_xp) FILTER (WHERE qa.status = 'COMPLETED'), 0) AS total_xp_earned
+  COALESCE(sc.total_students, 0) AS total_students,
+  COALESCE(tc.total_teachers, 0) AS total_teachers,
+  COALESCE(qc.total_quizzes, 0) AS total_quizzes,
+  COALESCE(ast.total_completed_attempts, 0) AS total_completed_attempts,
+  COALESCE(ast.avg_accuracy_pct, 0) AS avg_accuracy_pct,
+  COALESCE(ast.total_xp_earned, 0) AS total_xp_earned
 FROM public.colleges c
-LEFT JOIN public.profiles p ON p.college_id = c.id
-LEFT JOIN public.quizzes q ON q.college_id = c.id
-LEFT JOIN public.quiz_attempts qa ON qa.quiz_id = q.id
-GROUP BY c.id, c.name;
+LEFT JOIN student_counts sc ON sc.college_id = c.id
+LEFT JOIN teacher_counts tc ON tc.college_id = c.id
+LEFT JOIN quiz_counts qc ON qc.college_id = c.id
+LEFT JOIN attempt_stats ast ON ast.college_id = c.id;
 
 -- 7.2 vw_department_analytics
 CREATE OR REPLACE VIEW public.vw_department_analytics WITH (security_invoker = true) AS
+WITH student_counts AS (
+  SELECT department_id, COUNT(*) AS total_students
+  FROM public.profiles
+  WHERE role = 'STUDENT'
+  GROUP BY department_id
+),
+teacher_counts AS (
+  SELECT department_id, COUNT(*) AS total_teachers
+  FROM public.profiles
+  WHERE role = 'TEACHER'
+  GROUP BY department_id
+),
+quiz_counts AS (
+  SELECT department_id, COUNT(*) AS total_quizzes
+  FROM public.quizzes
+  GROUP BY department_id
+),
+attempt_stats AS (
+  SELECT
+    q.department_id,
+    COUNT(qa.id) AS total_completed_attempts,
+    COALESCE(ROUND(AVG(qa.final_accuracy_pct)), 0) AS avg_accuracy_pct
+  FROM public.quiz_attempts qa
+  JOIN public.quizzes q ON q.id = qa.quiz_id
+  WHERE qa.status = 'COMPLETED'
+  GROUP BY q.department_id
+)
 SELECT
   d.id AS department_id,
   d.college_id,
   d.code AS department_code,
   d.name AS department_name,
-  COUNT(DISTINCT p.id) FILTER (WHERE p.role = 'STUDENT') AS total_students,
-  COUNT(DISTINCT p.id) FILTER (WHERE p.role = 'TEACHER') AS total_teachers,
-  COUNT(DISTINCT q.id) AS total_quizzes,
-  COUNT(DISTINCT qa.id) FILTER (WHERE qa.status = 'COMPLETED') AS total_completed_attempts,
-  COALESCE(ROUND(AVG(qa.final_accuracy_pct) FILTER (WHERE qa.status = 'COMPLETED')), 0) AS avg_accuracy_pct
+  COALESCE(sc.total_students, 0) AS total_students,
+  COALESCE(tc.total_teachers, 0) AS total_teachers,
+  COALESCE(qc.total_quizzes, 0) AS total_quizzes,
+  COALESCE(ast.total_completed_attempts, 0) AS total_completed_attempts,
+  COALESCE(ast.avg_accuracy_pct, 0) AS avg_accuracy_pct
 FROM public.departments d
-LEFT JOIN public.profiles p ON p.department_id = d.id
-LEFT JOIN public.quizzes q ON q.department_id = d.id
-LEFT JOIN public.quiz_attempts qa ON qa.quiz_id = q.id
-GROUP BY d.id, d.college_id, d.code, d.name;
+LEFT JOIN student_counts sc ON sc.department_id = d.id
+LEFT JOIN teacher_counts tc ON tc.department_id = d.id
+LEFT JOIN quiz_counts qc ON qc.department_id = d.id
+LEFT JOIN attempt_stats ast ON ast.department_id = d.id;
 
 -- 7.3 vw_teacher_performance
 CREATE OR REPLACE VIEW public.vw_teacher_performance WITH (security_invoker = true) AS
+WITH quiz_counts AS (
+  SELECT teacher_id, COUNT(*) AS total_quizzes_created
+  FROM public.quizzes
+  GROUP BY teacher_id
+),
+attempt_stats AS (
+  SELECT
+    q.teacher_id,
+    COUNT(qa.id) AS total_student_attempts,
+    COALESCE(ROUND(AVG(qa.final_accuracy_pct)), 0) AS avg_quiz_accuracy_pct,
+    COALESCE(ROUND(AVG(qa.final_earned_xp)), 0) AS avg_xp_per_attempt
+  FROM public.quiz_attempts qa
+  JOIN public.quizzes q ON q.id = qa.quiz_id
+  WHERE qa.status = 'COMPLETED'
+  GROUP BY q.teacher_id
+)
 SELECT
   p.id AS teacher_id,
   p.full_name AS teacher_name,
   p.department_id,
   p.college_id,
-  COUNT(DISTINCT q.id) AS total_quizzes_created,
-  COUNT(DISTINCT qa.id) FILTER (WHERE qa.status = 'COMPLETED') AS total_student_attempts,
-  COALESCE(ROUND(AVG(qa.final_accuracy_pct) FILTER (WHERE qa.status = 'COMPLETED')), 0) AS avg_quiz_accuracy_pct,
-  COALESCE(ROUND(AVG(qa.final_earned_xp) FILTER (WHERE qa.status = 'COMPLETED')), 0) AS avg_xp_per_attempt
+  COALESCE(qc.total_quizzes_created, 0) AS total_quizzes_created,
+  COALESCE(ast.total_student_attempts, 0) AS total_student_attempts,
+  COALESCE(ast.avg_quiz_accuracy_pct, 0) AS avg_quiz_accuracy_pct,
+  COALESCE(ast.avg_xp_per_attempt, 0) AS avg_xp_per_attempt
 FROM public.profiles p
-LEFT JOIN public.quizzes q ON q.teacher_id = p.id
-LEFT JOIN public.quiz_attempts qa ON qa.quiz_id = q.id
-WHERE p.role = 'TEACHER'
-GROUP BY p.id, p.full_name, p.department_id, p.college_id;
+LEFT JOIN quiz_counts qc ON qc.teacher_id = p.id
+LEFT JOIN attempt_stats ast ON ast.teacher_id = p.id
+WHERE p.role = 'TEACHER';
 
 -- 7.4 vw_student_leaderboard
 CREATE OR REPLACE VIEW public.vw_student_leaderboard WITH (security_invoker = true) AS
+WITH attempt_stats AS (
+  SELECT
+    qa.student_id,
+    COALESCE(SUM(qa.final_earned_xp), 0) AS total_xp,
+    COALESCE(SUM(qa.final_stars), 0) AS total_stars,
+    COUNT(qa.id) AS completed_quizzes_count,
+    COALESCE(ROUND(AVG(qa.final_accuracy_pct)), 0) AS overall_accuracy_pct
+  FROM public.quiz_attempts qa
+  WHERE qa.status = 'COMPLETED'
+  GROUP BY qa.student_id
+)
 SELECT
   p.id AS student_id,
   p.full_name AS student_name,
   p.department_id,
   p.college_id,
   sp.student_id AS institutional_student_id,
-  COALESCE(SUM(qa.final_earned_xp) FILTER (WHERE qa.status = 'COMPLETED'), 0) AS total_xp,
-  COALESCE(SUM(qa.final_stars) FILTER (WHERE qa.status = 'COMPLETED'), 0) AS total_stars,
-  COUNT(DISTINCT qa.id) FILTER (WHERE qa.status = 'COMPLETED') AS completed_quizzes_count,
-  COALESCE(ROUND(AVG(qa.final_accuracy_pct) FILTER (WHERE qa.status = 'COMPLETED')), 0) AS overall_accuracy_pct
+  COALESCE(ast.total_xp, 0) AS total_xp,
+  COALESCE(ast.total_stars, 0) AS total_stars,
+  COALESCE(ast.completed_quizzes_count, 0) AS completed_quizzes_count,
+  COALESCE(ast.overall_accuracy_pct, 0) AS overall_accuracy_pct
 FROM public.profiles p
 JOIN public.student_profiles sp ON sp.profile_id = p.id
-LEFT JOIN public.quiz_attempts qa ON qa.student_id = p.id
-WHERE p.role = 'STUDENT'
-GROUP BY p.id, p.full_name, p.department_id, p.college_id, sp.student_id;
+LEFT JOIN attempt_stats ast ON ast.student_id = p.id
+WHERE p.role = 'STUDENT';
 
 -- -----------------------------------------------------------------------------
 -- 8. GRANTS & PRIVILEGE MANAGEMENT
 -- -----------------------------------------------------------------------------
-GRANT USAGE ON SCHEMA public TO authenticated, anon;
+
+-- Revoke all default privileges from PUBLIC and anon
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
+REVOKE ALL ON ALL SCHEMAS FROM anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+
+-- Table DML privileges for authenticated users (controlled by RLS)
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.quiz_attempts FROM authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.question_attempts FROM authenticated;
 
+-- Views SELECT access for authenticated
 GRANT SELECT ON public.vw_college_analytics TO authenticated;
 GRANT SELECT ON public.vw_department_analytics TO authenticated;
 GRANT SELECT ON public.vw_teacher_performance TO authenticated;
 GRANT SELECT ON public.vw_student_leaderboard TO authenticated;
 
+-- Gameplay RPC privileges exclusively for authenticated users
 GRANT EXECUTE ON FUNCTION public.fn_start_quiz_attempt(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_get_attempt_questions(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.fn_submit_question_answer(UUID, UUID, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.fn_complete_quiz_attempt(UUID) TO authenticated;

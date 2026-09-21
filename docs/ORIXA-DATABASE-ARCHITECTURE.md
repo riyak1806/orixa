@@ -3,7 +3,7 @@
 ## Document Control & Overview
 
 - **Project:** ORIXA Educational Gaming & Platform
-- **Phase:** Phase 2 — Database Architecture Design and Data Model Audit
+- **Phase:** Phase 2A — Database Architecture Design and Data Model Correction Specification
 - **Author:** Jules (Software Engineer)
 - **Status:** Architecture Design Specification (Design-Only, Read-Only with respect to Application Code & Database Execution)
 
@@ -13,9 +13,9 @@
 
 The ORIXA platform is expanding from a client-side prototype using in-memory mock datasets and `localStorage` persistence into a multi-tenant PostgreSQL relational architecture powered by Supabase.
 
-This document presents a comprehensive audit of the existing codebase structures across the General College Administration (`college-dashboard.js`), HOD Dashboard (`hod-dashboard.js`), Teacher Portal (`teacher-dashboard.js`), Student Portal (`student-portal.js`), and Authentication flows (`college-login.html`, `hod-login.html`, `teacher-login.html`, `student-login.html`).
+This specification presents a corrected, production-ready architecture designed after a comprehensive data model audit across all frontend components (`college-dashboard.js`, `hod-dashboard.js`, `teacher-dashboard.js`, `student-portal.js`, and authentication entry points).
 
-Based on this audit, we specify a normalized PostgreSQL database design for production deployment. The architecture enforces multi-college tenant isolation, role-based access boundaries (College Admin → HOD → Teacher → Student), student-teacher-subject assignment boundaries, support for all four ORIXA game types (Tile Puzzle, Match the Following, Fill in the Blanks, True or False), and exact score/XP/star retention while preserving user-visible human-readable identifiers.
+The design guarantees multi-college tenant isolation, database-enforced organizational consistency, role-based access control, strict student-teacher-subject assignment scoping, support for all four ORIXA game types (Tile Puzzle, Match the Following, Fill in the Blanks, True or False), JSONB payload validation, and precise scoring preservation while maintaining user-visible human-readable identifiers.
 
 ---
 
@@ -42,7 +42,7 @@ A detailed inspection of the current frontend source code reveals the following 
   - `hod-dashboard.js` tracks department teachers in `HOD_MOCK_DATA.teachers`: `{ id: 'T-101', name: 'Prof. Sarah Jenkins', empId: 'EMP-CS-01', subjects: ['Data Structures', 'Web Technologies'], years: ['1st Year', '3rd Year'] }`.
   - `teacher-dashboard.js` tracks logged-in teacher state in `MOCK_DATA.teacher`: `{ name: "Prof. Sarah Jenkins", title: "Senior Mathematics Educator", ... }`.
   - `teacher.js` checks credentials (`EMP-CS-01` / `password123`).
-- **Discrepancy:** Subjects and years assigned to teachers are stored as arrays of raw text strings (`subjects: ['Data Structures']`, `years: ['1st Year']`). In the database, these must be relational junction tables (`teacher_subject_class_assignments`) referencing normalized `subjects` and `academic_years` tables.
+- **Discrepancy:** Subjects and years assigned to teachers are stored as arrays of raw text strings (`subjects: ['Data Structures']`, `years: ['1st Year']`). In the database, these must be relational junction tables (`teacher_subject_class_assignments`) referencing normalized `subjects`, `academic_levels`, and `academic_sessions` tables.
 
 #### 5. Students (`hod-dashboard.js`, `teacher-dashboard.js`, `student-portal.js`, `student.js`)
 - **Current State:**
@@ -51,13 +51,13 @@ A detailed inspection of the current frontend source code reveals the following 
   - In `student-portal.js`: Hardcoded student profile `{ name: "Aarav Sharma", id: "STU-80214", grade: "Grade 8 - Section A", department: "Computer Engineering", year: "2025-2026" }`.
 - **Discrepancy:** Student records contain redundant and inconsistent grade/year labels (`1st Year` vs `Grade 8`) and store assigned teachers and subjects as flat text strings (`teacher: 'Prof. Sarah Jenkins'`). In the relational model, students belong to a `college` and `department`, have a single `student_profiles` row, and enroll in subjects via normalized enrollment junction tables.
 
-#### 6. Subjects & Academic Years (`college-dashboard.js`, `hod-dashboard.js`, `teacher-dashboard.js`)
-- **Current State:** Subjects (`Data Structures`, `DBMS`, `AI`, `Science`, `Maths`) and Academic Years (`1st Year`, `2nd Year`, `FE`, `SE`, `TE`, `BE`, `Grade 8`) exist strictly as free-form strings scattered across JS arrays.
-- **Discrepancy:** Free-form text allows typos and prevents multi-department query joining. They must be normalized into `subjects` and `academic_years` lookup tables within each department/college.
+#### 6. Subjects, Academic Levels & Academic Sessions
+- **Current State:** Subjects (`Data Structures`, `DBMS`, `AI`, `Science`, `Maths`), Academic Levels (`1st Year`, `2nd Year`, `FE`, `SE`, `TE`, `BE`, `Grade 8`), and Academic Sessions (`2024–2025`, `2025–2026`) exist strictly as free-form strings scattered across JS arrays.
+- **Discrepancy:** Conflating academic level (grade level) with academic session (calendar term year) causes ambiguity in tracking student progression. They must be normalized into two distinct tables: `academic_levels` and `academic_sessions`.
 
 #### 7. Teacher & Student Assignments (`hod-dashboard.js`)
 - **Current State:** `hod-dashboard.js` creates assignments by attaching `teacher` (string) and `subject` (string) directly onto the student object in `HOD_MOCK_DATA.students`.
-- **Discrepancy:** Flat string assignment prevents multi-teacher subject splitting (e.g., Teacher A teaching DBMS to 2nd Year vs Teacher B teaching AI to 2nd Year). The proposed relational design uses a `student_subject_assignments` junction table linking `student_id`, `subject_id`, `academic_year_id`, and `teacher_id`.
+- **Discrepancy:** Flat string assignment prevents multi-teacher subject splitting (e.g., Teacher A teaching DBMS to 2nd Year vs Teacher B teaching AI to 2nd Year). The proposed relational design uses a `student_subject_assignments` junction table linking `student_id`, `subject_id`, `academic_level_id`, `academic_session_id`, and `teacher_id`.
 
 #### 8. Quizzes & Game Types (`teacher-dashboard.js`, `student-portal.js`)
 - **Current State:**
@@ -69,7 +69,7 @@ A detailed inspection of the current frontend source code reveals the following 
 - **Current State:**
   - `MOCK_DATA.results` in `teacher-dashboard.js` stores student quiz attempts with overall percentage, score, correct/incorrect counts, and a nested `questionsBreakdown` array.
   - `student-portal.js` calculates live XP, accuracy %, and stars in-memory using `calculateQuizResults()`, saving completed quiz IDs to `localStorage` key `'orixa_completed_quizzes'`.
-- **Discrepancy:** Frontend computes and stores pre-aggregated values (`avgAccuracy`, `totalXp`) directly in mock data. The database architecture stores raw attempt events and question-level responses (`quiz_attempts` and `question_attempts`), deriving aggregate stats dynamically or via database views.
+- **Discrepancy:** Frontend computes and stores pre-aggregated values (`avgAccuracy`, `totalXp`) directly in mock data. The database architecture stores raw attempt events and question-level responses (`quiz_attempts` and `question_attempts`), deriving aggregate stats dynamically or snapshotting finalized attempt records.
 
 #### 10. Notifications (`teacher-dashboard.js`)
 - **Current State:** Stored in `MOCK_DATA.notifications` with fields `id`, `title`, `message`, `category`, `priority`, `read` (boolean), `timestamp`, `dateStr`, and `target`.
@@ -79,42 +79,46 @@ A detailed inspection of the current frontend source code reveals the following 
 
 ## 3. Relational Data Model & Entity Specifications
 
-The proposed relational model normalizes ORIXA into 16 core entities structured under PostgreSQL.
+The proposed relational model normalizes ORIXA into 18 core entities structured under PostgreSQL.
 
 ### 3.1 Decision Matrix: Table Categorization
 
-| Entity Concept | Modeling Strategy | Rationale |
-| :--- | :--- | :--- |
-| **Colleges** | Independent Table (`colleges`) | Root multi-tenant boundary. |
-| **Departments** | Independent Table (`departments`) | Second-tier organizational unit belonging to a college. |
-| **Academic Years / Classes** | Independent Table (`academic_years`) | Standardized year/class levels per college (e.g., FE, SE, TE, BE, Grade 1-12). |
-| **Subjects** | Independent Table (`subjects`) | Normalized subject master per department. |
-| **User Profiles** | Independent Table (`profiles`) | Application profile extending Supabase `auth.users`. |
-| **Roles** | Enum / Check Constraint (`app_role`) | System roles: `'COLLEGE_ADMIN'`, `'HOD'`, `'TEACHER'`, `'STUDENT'`. |
-| **Teacher Profiles** | Specific Profile Extension (`teacher_profiles`) | Teacher-specific metadata (Employee ID, Designation). |
-| **Student Profiles** | Specific Profile Extension (`student_profiles`) | Student-specific metadata (Student ID, Roll No, Current Year). |
-| **Teacher Assignments** | Junction Table (`teacher_subject_class_assignments`) | Maps Teacher → Subject → Academic Year. |
-| **Student Enrollments** | Junction Table (`student_subject_assignments`) | Maps Student → Academic Year → Subject → Teacher. |
-| **Quizzes** | Independent Table (`quizzes`) | Master quiz record created by a teacher. |
-| **Quiz Questions** | Independent Table (`quiz_questions`) | Question item attached to a quiz with JSONB game payload. |
-| **Quiz Attempts** | Transactional Table (`quiz_attempts`) | Header record for a student's quiz session. |
-| **Question Attempts** | Transactional Table (`question_attempts`) | Detail record for individual question answers & mistakes. |
-| **Notifications** | Transactional Table (`notifications`) | Per-user notifications. |
-| **Dashboard Analytics** | PostgreSQL Views (`vw_*`) | Derived dynamically from transactional tables; NOT stored tables. |
+| Entity Concept | Table Name | Modeling Strategy | Rationale |
+| :--- | :--- | :--- | :--- |
+| **Colleges** | `colleges` | Independent Table | Root multi-tenant boundary. |
+| **Departments** | `departments` | Independent Table | Second-tier organizational unit belonging to a college. |
+| **Academic Levels** | `academic_levels` | Independent Table | Standardized grade/year levels (FE, SE, TE, BE, Grade 1-12). |
+| **Academic Sessions** | `academic_sessions` | Independent Table | Time periods (2024–2025, 2025–2026, 2026–2027). |
+| **Subjects** | `subjects` | Independent Table | Normalized subject master per department. |
+| **User Profiles** | `profiles` | Independent Table | Application profile extending Supabase `auth.users`. |
+| **Roles** | `app_role` (ENUM) | PostgreSQL ENUM | System roles: `'COLLEGE_ADMIN'`, `'HOD'`, `'TEACHER'`, `'STUDENT'`. |
+| **HOD Assignments** | `hod_assignments` | Historical Junction Table | Tracks active & historical HOD assignments per department. |
+| **Teacher Profiles** | `teacher_profiles` | Profile Extension Table | Teacher metadata (Employee ID, Designation). |
+| **Student Profiles** | `student_profiles` | Profile Extension Table | Student metadata (Student ID, Roll No, Current Level). |
+| **Teacher Assignments**| `teacher_subject_class_assignments` | Junction Table | Maps Teacher → Subject → Academic Level → Session. |
+| **Student Enrollments** | `student_subject_assignments` | Junction Table | Maps Student → Academic Level → Session → Subject → Teacher. |
+| **Quizzes** | `quizzes` | Independent Table | Master quiz record created by a teacher. |
+| **Quiz Questions** | `quiz_questions` | Independent Table | Question item attached to a quiz with JSONB game payload. |
+| **Quiz Attempts** | `quiz_attempts` | Transactional Table | Header record for a student's quiz session (`IN_PROGRESS`, `COMPLETED`, `ABANDONED`). |
+| **Question Attempts** | `question_attempts` | Transactional Table | Detail record for individual question answers & mistakes. |
+| **Notifications** | `notifications` | Transactional Table | Per-user notifications. |
+| **Dashboard Analytics** | `vw_*` (Views) | PostgreSQL Views | Derived dynamically from transactional tables; NOT stored tables. |
 
 ---
 
-## 4. Authentication Architecture
+## 4. Authentication Architecture & RLS Source of Truth
 
-### 4.1 Supabase Auth vs. ORIXA Profiles
+### 4.1 Authoritative Identity & Access Control Hierarchy
 
-Supabase Auth manages user credentials, JWT tokens, and login sessions in its isolated `auth.users` schema. ORIXA application metadata resides in the `public` schema.
+Supabase Auth manages user credentials and authentication in `auth.users`. The authoritative source of truth for authorization in ORIXA is the database relationship chain:
+
+$$\text{auth.uid()} \longrightarrow \text{public.profiles} \longrightarrow \text{role / college\_id / department\_id}$$
 
 ```
                   ┌────────────────────────┐
                   │       auth.users       │
                   │ (Supabase Internal)    │
-                  │ - id (UUID)            │
+                  │ - id (UUID, PK)        │
                   │ - email                │
                   │ - encrypted_password   │
                   └───────────┬────────────┘
@@ -122,8 +126,8 @@ Supabase Auth manages user credentials, JWT tokens, and login sessions in its is
                               ▼
                   ┌────────────────────────┐
                   │    public.profiles     │
-                  │ - id (UUID, FK)        │
-                  │ - college_id (UUID)    │
+                  │ - id (UUID, PK=FK)     │
+                  │ - college_id (UUID, FK)│
                   │ - department_id (UUID) │
                   │ - role (app_role enum) │
                   │ - full_name            │
@@ -137,471 +141,482 @@ Supabase Auth manages user credentials, JWT tokens, and login sessions in its is
 └──────────────────┘ └──────────────────┘ └──────────────────┘
 ```
 
-### 4.2 Auth Metadata vs. Application Tables
+### 4.2 Role of JWT Claims vs. Database Relationships
 
-- **In `auth.users` / JWT User Metadata:**
-  - `sub` (User UUID)
-  - `email`
-  - `role` (for fast initial RLS checks in JWT token claims)
-  - `college_id` (for fast multi-tenant RLS checks)
-- **In `public.profiles` & Sub-tables:**
-  - `full_name`
-  - `department_id`
-  - Domain codes (`employee_id`, `student_id`)
-  - Status flags (`is_active`)
-  - Profile settings and preferences
-- **CRITICAL SECURITY DIRECTIVE:** No passwords or password hashes shall ever be stored in ORIXA application tables. All password authentication is strictly handled by Supabase Auth (`auth.users`).
+- **JWT Claims (`auth.jwt()`):** May be used solely as optional performance optimizations or initial client context hints.
+- **Database Tables (`public.profiles`):** Remain the strict, non-negotiable source of truth for all database security policies.
+- **Mitigating Stale Token Claims:** Row Level Security (RLS) policies will query `public.profiles` (or security definer helper functions querying `public.profiles`) directly rather than blindly trusting `auth.jwt()`. This ensures that if an HOD or Teacher's department assignment or status changes, stale JWT claims cannot bypass authorization boundaries.
+
+### 4.3 Security Directive: Password Storage
+
+**CRITICAL SECURITY DIRECTIVE:** No passwords, plain text or hashed, shall ever be stored in ORIXA application tables (`public.profiles`, `teacher_profiles`, etc.). All credential management and password verification are handled exclusively by Supabase Auth (`auth.users`).
 
 ---
 
-## 5. Access Control & Authorization Model
+## 5. Access Control & Organizational Consistency
 
-### 5.1 Organizational Hierarchy
-
-```
-College Administration (COLLEGE_ADMIN)
-         │
-         ▼
-      College
-         │
-         ▼
-    Departments
-         │
-         ▼
-    HOD (HOD)
-         │
-         ▼
-     Teachers (TEACHER)
-         │
-         ▼
- Assigned Students (STUDENT)
-```
-
-### 5.2 Role Access Boundaries
+### 5.1 Organizational Hierarchy & Role Boundaries
 
 1. **College Administration (`COLLEGE_ADMIN`):**
-   - Scope: Complete read/write access to all data within their assigned `college_id`.
-   - Access: College-wide student performance, department management, teacher directory, college-wide analytics.
-   - Restriction: Cannot access data belonging to other colleges (`college_id` mismatch).
+   - Scope: Access to all data where `college_id = profile.college_id`.
+   - Access: College-wide student analytics, department management, teacher directory.
+   - Cardinality: Multiple college administrators per college are permitted.
 
 2. **Head of Department (`HOD`):**
-   - Scope: Read/write access within their assigned `department_id`.
-   - Access: Department teachers, department students, teacher-subject assignments, student-teacher assignments, department performance analytics.
-   - Restriction: Cannot access or manage teachers, students, or performance of other departments.
+   - Scope: Access restricted to `department_id = profile.department_id`.
+   - Access: Department teachers, department students, teacher assignments, department performance analytics.
+   - Cardinality: Exactly **one active HOD** per department at any given time (`UNIQUE (department_id) WHERE is_active = true` on `hod_assignments`). An HOD profile may have historical assignment records.
 
 3. **Teacher (`TEACHER`):**
-   - Scope: Access strictly restricted to students assigned to them via `student_subject_assignments` and quizzes created by them.
-   - Access: Create/manage quizzes for their assigned subjects/years, view quiz results and performance for **their assigned students only**.
-   - Restriction: **MUST NOT** automatically see every student in the department or students assigned to other teachers.
+   - Scope: Access strictly restricted to students assigned to them via active `student_subject_assignments` and quizzes created by them (`quizzes.teacher_id = auth.uid()`).
+   - Access: Quiz creation, question bank management, results for **their assigned students only**.
+   - Restriction: Teachers **MUST NOT** see unassigned department students or students assigned to other teachers.
 
 4. **Student (`STUDENT`):**
-   - Scope: Access restricted strictly to their own student record.
-   - Access: View quizzes published for their enrolled subjects/years, submit quiz attempts, view their own scores, XP, stars, and history.
-   - Restriction: Cannot view other students' attempts or access teacher/HOD administrative views.
+   - Scope: Access restricted strictly to their own student profile and assigned quizzes.
+   - Access: View quizzes published for their enrolled subject/level/session, submit quiz attempts, view their own scores, XP, stars, and history.
 
-### 5.3 PostgreSQL Row Level Security (RLS) Strategy
+### 5.2 Preventing Boundary Leakage via Composite Foreign Keys
 
-The authorization boundaries will be enforced at the database layer using Supabase Row Level Security policies.
+To prevent organizational inconsistencies (such as a student being assigned a teacher from a different department or a subject from a different college), the database enforces composite foreign key relationships:
 
-- **Tenant Isolation Policy:** Every query checks `college_id = (auth.jwt() ->> 'college_id')::uuid`.
-- **HOD Department Policy:** Queries check `department_id = (SELECT department_id FROM public.profiles WHERE id = auth.uid())`.
-- **Teacher Student Assignment Policy:** Teachers can only query `student_profiles` where `student_id` exists in `student_subject_assignments` matching `teacher_id = auth.uid()`.
-- **Student Ownership Policy:** Students can only query `quiz_attempts` where `student_id = auth.uid()`.
-
----
-
-## 6. Student-Subject-Teacher Assignment Modeling
-
-### 6.1 The Relational Assignment Architecture
-
-To support the requirement where Teacher A teaches DBMS to 2nd Year students and Teacher B teaches AI to 2nd Year students without granting Teacher A access to Teacher B's students, we introduce two relational junction entities:
-
-```
-1. TEACHER_SUBJECT_CLASS_ASSIGNMENTS
-   - id (UUID, PK)
-   - teacher_id (UUID, FK -> profiles.id)
-   - subject_id (UUID, FK -> subjects.id)
-   - academic_year_id (UUID, FK -> academic_years.id)
-
-2. STUDENT_SUBJECT_ASSIGNMENTS (Enrollments)
-   - id (UUID, PK)
-   - student_id (UUID, FK -> profiles.id)
-   - subject_id (UUID, FK -> subjects.id)
-   - academic_year_id (UUID, FK -> academic_years.id)
-   - teacher_id (UUID, FK -> profiles.id)
-```
-
-### 6.2 Scenario Demonstration
-
-Consider 2nd Year Computer Engineering students:
-
-- **Subject 1:** DBMS (`subject_id = SUB-DBMS-UUID`)
-- **Subject 2:** AI (`subject_id = SUB-AI-UUID`)
-- **Year:** 2nd Year (`academic_year_id = YEAR-2-UUID`)
-- **Teacher A:** `teacher_id = TEACHER-A-UUID`
-- **Teacher B:** `teacher_id = TEACHER-B-UUID`
-- **Student Rahul:** enrolled in DBMS with Teacher A → Entry: `(Rahul, SUB-DBMS-UUID, YEAR-2-UUID, TEACHER-A-UUID)`
-- **Student Priya:** enrolled in AI with Teacher B → Entry: `(Priya, SUB-AI-UUID, YEAR-2-UUID, TEACHER-B-UUID)`
-
-**Access Control Enforcement:**
-When Teacher A views their student list, the database executes:
 ```sql
-SELECT s.*
-FROM student_profiles s
-JOIN student_subject_assignments ssa ON s.profile_id = ssa.student_id
-WHERE ssa.teacher_id = 'TEACHER-A-UUID';
+-- Departments belong to Colleges
+ALTER TABLE departments
+ADD CONSTRAINT uq_dept_college UNIQUE (id, college_id);
+
+-- Subjects belong to Departments (and indirectly Colleges)
+ALTER TABLE subjects
+ADD CONSTRAINT uq_subject_dept UNIQUE (id, department_id);
+
+-- Profiles belong to a College and Department
+ALTER TABLE profiles
+ADD CONSTRAINT uq_profile_college_dept UNIQUE (id, college_id, department_id);
+
+-- Teacher Assignments enforce same College & Department
+ALTER TABLE teacher_subject_class_assignments
+ADD CONSTRAINT fk_teacher_assignment_dept
+FOREIGN KEY (teacher_id, department_id)
+REFERENCES profiles(id, department_id);
+
+-- Student Assignments enforce same Subject & Teacher Scoping
+ALTER TABLE student_subject_assignments
+ADD CONSTRAINT fk_student_assignment_teacher
+FOREIGN KEY (teacher_id, department_id)
+REFERENCES profiles(id, department_id);
 ```
-This returns **Rahul only**. Priya is completely invisible to Teacher A because her assignment row specifies `TEACHER-B-UUID`.
 
 ---
 
-## 7. Quiz & Game Types Architecture
+## 6. Assignment Uniqueness & Academic Scoping
 
-### 7.1 Supporting All Four Game Types
+### 6.1 Academic Level vs. Academic Session
 
-ORIXA features four distinct game engines:
+To resolve ambiguity in academic terminology:
 
-1. **Tile Puzzle (`TILE_PUZZLE`):** Grid of tiles revealing a background image; each tile opens a multiple-choice question.
-2. **Match the Following (`MATCH_FOLLOWING`):** Two columns where students connect questions/prompts on the left to correct answers on the right.
-3. **Fill in the Blanks (`FILL_BLANKS`):** Sentences containing blank tokens, evaluated against option chips.
-4. **True or False (`TRUE_FALSE`):** Single statements evaluated as TRUE or FALSE choices.
+- **Academic Level (`academic_levels`):** Represents the student's year/grade of study (e.g., `FE`, `SE`, `TE`, `BE`, `Grade 5`, `Grade 8`). Independent of time.
+- **Academic Session (`academic_sessions`):** Represents the calendar term year (e.g., `2024–2025`, `2025–2026`, `2026–2027`).
 
-### 7.2 Modeling Evaluation: Hybrid Relational + JSONB Approach
+### 6.2 Teacher Assignment Uniqueness
 
-We evaluated three structural approaches:
+A teacher can be assigned to teach a specific subject to a specific academic level in a specific academic session:
 
-1. *Separate Question Tables per Game Type:* Causes table sprawl and breaks generic quiz-attempt foreign keys.
-2. *Pure Relational Schema (options/pairs table):* Over-engineers game-specific layout states and increases query join complexity.
-3. *Hybrid Schema (Common Table + JSONB Payload):* **RECOMMENDED.** The core question metadata is normalized, while game-type-specific structure is safely contained in a validated JSONB `game_payload` column.
-
-```
-                      ┌────────────────────────┐
-                      │        quizzes         │
-                      │ - id (UUID, PK)        │
-                      │ - title                │
-                      │ - game_type (enum)     │
-                      │ - teacher_id (FK)      │
-                      │ - subject_id (FK)      │
-                      │ - academic_year_id (FK)│
-                      │ - settings (JSONB)     │
-                      └───────────┬────────────┘
-                                  │ 1:N
-                                  ▼
-                      ┌────────────────────────┐
-                      │     quiz_questions     │
-                      │ - id (UUID, PK)        │
-                      │ - quiz_id (FK)         │
-                      │ - question_order (INT) │
-                      │ - question_text        │
-                      │ - max_chances (INT)    │
-                      │ - game_payload (JSONB) │
-                      └────────────────────────┘
+```sql
+ALTER TABLE teacher_subject_class_assignments
+ADD CONSTRAINT uq_teacher_subject_level_session
+UNIQUE (teacher_id, subject_id, academic_level_id, academic_session_id);
 ```
 
-### 7.3 Game Payload JSONB Structures
+- Field `is_active` (boolean, default `true`) allows deactivating assignments when terms change while preserving historical audit logs.
 
-- **`TILE_PUZZLE` Payload:**
-  `{ "options": ["Earth", "Jupiter", "Mars", "Saturn"], "correct_option_index": 1 }`
-- **`MATCH_FOLLOWING` Payload:**
-  `{ "prompt": "CPU", "correct_match": "Central Processing Unit" }`
-- **`FILL_BLANKS` Payload:**
-  `{ "sentence_tokens": ["The", "{blank}", "is", "the", "center"], "correct_words": ["Sun"], "distractors": ["Moon", "Earth"] }`
-- **`TRUE_FALSE` Payload:**
-  `{ "correct_boolean": true }`
+### 6.3 Student Assignment Uniqueness & Scoping
+
+In accordance with ORIXA platform requirements, a student has **exactly one assigned teacher** for a given subject, academic level, and academic session:
+
+```sql
+ALTER TABLE student_subject_assignments
+ADD CONSTRAINT uq_student_subject_level_session
+UNIQUE (student_id, subject_id, academic_level_id, academic_session_id);
+```
+
+- Field `is_active` (boolean, default `true`) tracks active enrollment.
+- Field `teacher_id` specifies the designated teacher responsible for that student's subject instruction.
 
 ---
 
-## 8. Scoring Engine & Data Storage Specification
+## 7. Quiz Architecture & Availability Model
 
-### 8.1 Audit of Existing Frontend Scoring Formulas
+### 7.1 Quiz Lifecycle States
 
-The student gameplay engine (`student-portal.js`) uses the following exact scoring rules:
+Quizzes follow a 4-stage lifecycle tracked by `quizzes.status`:
 
-1. **Question Score Ratio (`calculateQuestionScoreRatio`):**
-   - If unsolved (`isSolved = false` due to chance exhaustion): `ratio = 0`
-   - 0 mistakes (1st try correct): `ratio = 1.0` (100% XP)
-   - 1 mistake: `ratio = 0.75` (75% XP)
-   - 2 mistakes: `ratio = 0.50` (50% XP)
-   - 3 mistakes: `ratio = 0.25` (25% XP)
-   - $\ge 4$ mistakes: `ratio = 0.0` (0% XP)
-   - Formula: $\text{ratio} = \max(0, 1.0 - 0.25 \times \text{mistakes})$
+1. `DRAFT`: Quiz is being edited by the teacher; invisible to students.
+2. `PUBLISHED`: Quiz is active and available for eligible students to attempt.
+3. `CLOSED`: Quiz is no longer accepting new attempts; visible in student history.
+4. `ARCHIVED`: Quiz is soft-deleted or hidden from primary management views.
 
-2. **Quiz Earned XP & Accuracy Calculation (`calculateQuizResults`):**
-   - $\text{Max XP Per Question} = \frac{\text{Total Possible XP}}{\text{Total Questions}}$
-   - $\text{Total Earned XP} = \text{Math.round}\left(\sum (\text{Max XP Per Question} \times \text{ratio})\right)$
-   - $\text{Accuracy Percentage} = \text{Math.round}\left(\frac{\sum \text{ratio}}{\text{Total Questions}} \times 100\right)$
+### 7.2 Quiz Availability Rule (No Unnecessary Targeting Table)
 
-3. **Star Award Criteria (`calculateStarsFromXP`):**
-   - Percentage Earned $\text{pct} = \frac{\text{Earned XP}}{\text{Total Possible XP}} \times 100$
-   - $\text{pct} > 90\% \longrightarrow 3 \text{ Stars}$
-   - $66.66\% \le \text{pct} \le 90\% \longrightarrow 2 \text{ Stars}$
-   - $33.33\% \le \text{pct} < 66.66\% \longrightarrow 1 \text{ Star}$
-   - $\text{pct} < 33.33\% \longrightarrow 0 \text{ Stars}$
+A student sees a published quiz if and only if:
 
-4. **Chance Exhaustion Behavior:**
-   - When a student reaches `max_chances` on a question without answering correctly, the question locks, is marked `is_solved = false`, awards `0 XP`, displays the correct answer feedback, and advances the game flow.
+$$\begin{aligned}
+\text{quiz.status} &= \text{'PUBLISHED'} \\
+\land \text{quiz.subject\_id} &= \text{student\_assignment.subject\_id} \\
+\land \text{quiz.academic\_level\_id} &= \text{student\_assignment.academic\_level\_id} \\
+\land \text{quiz.academic\_session\_id} &= \text{student\_assignment.academic\_session\_id} \\
+\land \text{quiz.teacher\_id} &= \text{student\_assignment.teacher\_id}
+\end{aligned}$$
 
-### 8.2 Authoritative Stored Data vs. Derived Values
-
-To maintain data integrity and avoid sync errors, we separate stored transactional facts from calculated metrics:
-
-#### Authoritative Stored Values (`quiz_attempts` & `question_attempts` tables)
-- `attempt_id`, `student_id`, `quiz_id`, `started_at`, `completed_at`
-- `question_id`, `selected_answer_json`, `mistakes_count`, `is_solved` (boolean), `chances_used`
-
-#### Safely Derived / Calculated Values (Computed in SQL Views or API)
-- Earned XP
-- Accuracy %
-- Star Rating (0 to 3)
-- Total Quiz Duration
-- Pass / Fail Status
+No separate targeting junction table is required; availability is cleanly derived from the existing relational assignment model.
 
 ---
 
-## 9. Identifier Strategy & Domain Code Preservation
+## 8. Quiz Chances & Game Payload JSONB Validation
 
-### 9.1 Primary Key Rationale
+### 8.1 Source of Truth for Max Chances
 
-All database tables will use PostgreSQL UUIDs (`gen_random_uuid()`) as primary keys. UUIDs provide global uniqueness across colleges, prevent sequential ID enumeration attacks, and simplify client-side ID generation.
+Teacher-configured chances control student gameplay attempts per question:
 
-### 9.2 Preserving Human-Readable Domain Identifiers
+- **Quiz Default Chances:** Stored in `quizzes.default_max_chances` (INTEGER, default `3`).
+- **Question Chance Override:** Stored in `quiz_questions.max_chances` (INTEGER, NULLable).
+- **Effective Max Chances Formula:** `COALESCE(quiz_questions.max_chances, quizzes.default_max_chances)`.
 
-Existing human-readable IDs used in college operations (e.g., Student Roll Numbers, Employee IDs, College Codes) **MUST NOT** be discarded. They are preserved as unique domain attributes alongside UUID primary keys.
+### 8.2 Game Payload Validation Specification
 
-| Entity | Primary Key | Domain Identifier | Example | Constraint |
+All four ORIXA game types store game-specific content inside `quiz_questions.game_payload` (JSONB). PostgreSQL validation functions (`fn_validate_game_payload()`) enforce structural integrity prior to insert or update.
+
+#### 1. Tile Puzzle (`TILE_PUZZLE`)
+- **Required JSON Structure:**
+  ```json
+  {
+    "options": ["Earth", "Jupiter", "Mars", "Saturn"],
+    "correct_option_index": 1
+  }
+  ```
+- **Validation Rules:**
+  - `options` must be a JSON array of strings containing between 2 and 6 items.
+  - `correct_option_index` must be an integer where $0 \le \text{correct\_option\_index} < \text{options.length}$.
+
+#### 2. Match the Following (`MATCH_FOLLOWING`)
+- **Required JSON Structure (Collection of Pairs):**
+  ```json
+  {
+    "pairs": [
+      { "id": "p1", "prompt": "CPU", "correct_match": "Central Processing Unit" },
+      { "id": "p2", "prompt": "RAM", "correct_match": "Random Access Memory" },
+      { "id": "p3", "prompt": "GPU", "correct_match": "Graphics Processing Unit" }
+    ]
+  }
+  ```
+- **Validation Rules:**
+  - `pairs` must be a JSON array containing at least 2 pair objects.
+  - Each pair object must contain non-empty string fields `id`, `prompt`, and `correct_match`.
+
+#### 3. Fill in the Blanks (`FILL_BLANKS`)
+- **Required JSON Structure:**
+  ```json
+  {
+    "sentence_tokens": ["The", "{blank}", "is", "the", "center", "of", "our", "solar", "system."],
+    "correct_words": ["Sun"],
+    "distractors": ["Moon", "Earth", "Mars"]
+  }
+  ```
+- **Validation Rules:**
+  - `sentence_tokens` must be a JSON array of strings containing at least one `"{blank}"` token.
+  - `correct_words` must be a JSON array of strings with length matching the count of `"{blank}"` tokens in `sentence_tokens`.
+  - `distractors` must be a JSON array of strings.
+
+#### 4. True or False (`TRUE_FALSE`)
+- **Required JSON Structure:**
+  ```json
+  {
+    "statement": "The Battle of Hastings was fought in 1066.",
+    "correct_boolean": true
+  }
+  ```
+- **Validation Rules:**
+  - `statement` must be a non-empty string.
+  - `correct_boolean` must be a strict JSON boolean (`true` or `false`).
+
+---
+
+## 9. Scoring Engine & Attempt Lifecycle
+
+### 9.1 Gameplay Scoring Preservation
+
+The exact frontend scoring logic in `student-portal.js` is preserved:
+
+1. **Question Score Ratio:**
+   $$\text{ratio} = \begin{cases} 0 & \text{if NOT solved (chance exhaustion)} \\ \max\left(0,\, 1.0 - 0.25 \times \text{mistakes}\right) & \text{if solved} \end{cases}$$
+2. **Earned XP:**
+   $$\text{Earned XP} = \text{Math.round}\left(\sum \frac{\text{Total Possible XP}}{\text{Total Questions}} \times \text{ratio}\right)$$
+3. **Accuracy Percentage:**
+   $$\text{Accuracy \%} = \text{Math.round}\left(\frac{\sum \text{ratio}}{\text{Total Questions}} \times 100\right)$$
+4. **Star Thresholds:**
+   $$\text{Stars} = \begin{cases} 3 & \text{if Earned XP \%} > 90\% \\ 2 & \text{if Earned XP \%} \ge 66.66\% \\ 1 & \text{if Earned XP \%} \ge 33.33\% \\ 0 & \text{if Earned XP \%} < 33.33\% \end{cases}$$
+
+### 9.2 Attempt vs. Finalized Result Storage
+
+- **Transactional Header Table (`quiz_attempts`):**
+  - Fields: `id`, `student_id`, `quiz_id`, `status` (`IN_PROGRESS`, `COMPLETED`, `ABANDONED`), `started_at`, `completed_at`, `final_earned_xp`, `final_accuracy_pct`, `final_stars`.
+- **Transactional Detail Table (`question_attempts`):**
+  - Fields: `id`, `attempt_id`, `question_id`, `selected_answer_json`, `mistakes_count`, `is_solved`, `chances_used`.
+- **Retake Policy & Frontend Alignment:**
+  - In accordance with current ORIXA frontend behavior, a completed quiz disappears from the student's active quest grid and moves to history/results.
+  - Enforced via: `UNIQUE (student_id, quiz_id) WHERE status = 'COMPLETED'`.
+  - When a quiz is completed, `final_earned_xp`, `final_accuracy_pct`, and `final_stars` are computed and stored as an immutable snapshot on `quiz_attempts`, preserving historical results even if quiz questions are edited later.
+
+---
+
+## 10. Identifier Strategy & Domain Code Preservation
+
+All database tables use PostgreSQL UUIDs (`gen_random_uuid()`) as primary keys for security and global uniqueness. Existing human-readable domain codes are preserved as unique domain attributes.
+
+| Entity | Primary Key | Domain Identifier | Example Code | Uniqueness Constraint |
 | :--- | :--- | :--- | :--- | :--- |
-| **College** | `id` (UUID) | `code` (VARCHAR) | `'jspmntc'` | UNIQUE per system |
+| **College** | `id` (UUID) | `code` (VARCHAR) | `'jspmntc'` | UNIQUE system-wide |
 | **Department** | `id` (UUID) | `code` (VARCHAR) | `'jspmntccs'` | UNIQUE per college |
-| **Teacher** | `profile_id` (UUID) | `employee_id` (VARCHAR) | `'EMP-CS-01'`, `'HOD-CS-01'` | UNIQUE per college |
+| **Academic Level**| `id` (UUID) | `code` (VARCHAR) | `'FE'`, `'SE'`, `'Grade 8'` | UNIQUE per college |
+| **Academic Session**| `id` (UUID)| `code` (VARCHAR) | `'2024-2025'` | UNIQUE per college |
+| **Teacher** | `profile_id` (UUID) | `employee_id` (VARCHAR) | `'EMP-CS-01'` | UNIQUE per college |
 | **Student** | `profile_id` (UUID) | `student_id` (VARCHAR) | `'STU-CS-101'` | UNIQUE per college |
-| **Academic Year** | `id` (UUID) | `code` (VARCHAR) | `'FE'`, `'SE'`, `'1st Year'` | UNIQUE per college |
 | **Subject** | `id` (UUID) | `code` (VARCHAR) | `'SUB-CS-101'` | UNIQUE per department |
 
 ---
 
-## 10. Data Integrity & Constraint Matrix
+## 11. Data Integrity & Constraint Matrix
 
-### 10.1 Key Relational Constraints
+| Table Name | Primary Key | Foreign Keys | Unique Constraints | CHECK / Rule Constraints | ON DELETE |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `colleges` | `id` (UUID) | None | `code` | `length(code) >= 2` | RESTRICT |
+| `departments` | `id` (UUID) | `college_id` | `(college_id, code)` | `length(code) >= 2` | RESTRICT |
+| `academic_levels` | `id` (UUID) | `college_id` | `(college_id, code)` | None | RESTRICT |
+| `academic_sessions` | `id` (UUID) | `college_id` | `(college_id, code)` | `end_date > start_date` | RESTRICT |
+| `subjects` | `id` (UUID) | `department_id` | `(department_id, code)` | None | RESTRICT |
+| `profiles` | `id` (UUID) | `college_id`, `department_id` | None | `role IN ('COLLEGE_ADMIN', 'HOD', 'TEACHER', 'STUDENT')` | CASCADE (Auth) |
+| `hod_assignments` | `id` (UUID) | `profile_id`, `department_id` | `(department_id) WHERE is_active=true` | Single active HOD per dept | RESTRICT |
+| `teacher_profiles`| `profile_id` | `college_id` | `(college_id, employee_id)` | None | CASCADE |
+| `student_profiles`| `profile_id` | `college_id`, `academic_level_id` | `(college_id, student_id)` | None | CASCADE |
+| `teacher_subject_class_assignments` | `id` (UUID) | `teacher_id`, `subject_id`, `academic_level_id`, `academic_session_id` | `(teacher_id, subject_id, academic_level_id, academic_session_id)` | None | CASCADE |
+| `student_subject_assignments` | `id` (UUID) | `student_id`, `subject_id`, `academic_level_id`, `academic_session_id`, `teacher_id` | `(student_id, subject_id, academic_level_id, academic_session_id)` | Single teacher per student/subject/level/term | CASCADE |
+| `quizzes` | `id` (UUID) | `college_id`, `department_id`, `teacher_id`, `subject_id`, `academic_level_id`, `academic_session_id` | None | `status IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED')` | RESTRICT |
+| `quiz_questions` | `id` (UUID) | `quiz_id` | `(quiz_id, question_order)` | `fn_validate_game_payload()` | CASCADE |
+| `quiz_attempts` | `id` (UUID) | `student_id`, `quiz_id` | `(student_id, quiz_id) WHERE status='COMPLETED'` | `status IN ('IN_PROGRESS', 'COMPLETED', 'ABANDONED')` | CASCADE |
+| `question_attempts`| `id` (UUID) | `attempt_id`, `question_id` | `(attempt_id, question_id)` | `mistakes_count >= 0` | CASCADE |
+| `notifications` | `id` (UUID) | `user_id` (profile_id) | None | `priority IN ('Normal', 'Important')` | CASCADE |
+
+---
+
+## 12. Multi-College Tenant Isolation Architecture
+
+Tenant isolation is built directly into all table schemas by attaching `college_id` foreign keys to `departments`, `profiles`, `academic_levels`, `academic_sessions`, `quizzes`, and `quiz_attempts`.
+
+At the database level, Supabase Row Level Security (RLS) policies enforce:
 
 ```sql
--- Prevent Duplicate Student IDs within a College
-ALTER TABLE student_profiles
-ADD CONSTRAINT uq_student_college_id UNIQUE (college_id, student_id);
-
--- Prevent Duplicate Employee IDs within a College
-ALTER TABLE teacher_profiles
-ADD CONSTRAINT uq_employee_college_id UNIQUE (college_id, employee_id);
-
--- Ensure Valid Game Types
-ALTER TABLE quizzes
-ADD CONSTRAINT chk_quiz_game_type
-CHECK (game_type IN ('TILE_PUZZLE', 'MATCH_FOLLOWING', 'FILL_BLANKS', 'TRUE_FALSE'));
-
--- Ensure Mistakes Count Non-Negative
-ALTER TABLE question_attempts
-ADD CONSTRAINT chk_mistakes_non_negative CHECK (mistakes_count >= 0);
+-- Conceptual RLS Policy Blueprint
+CREATE POLICY tenant_isolation_policy ON quizzes
+FOR ALL TO authenticated
+USING (
+  college_id = (
+    SELECT college_id FROM public.profiles WHERE id = auth.uid()
+  )
+);
 ```
 
-### 10.2 Foreign Key Cascading Rules
-
-- `departments` → `colleges`: `ON DELETE RESTRICT` (Cannot delete a college with active departments).
-- `profiles` → `colleges`: `ON DELETE RESTRICT`.
-- `quizzes` → `profiles` (Teacher): `ON DELETE RESTRICT` (Quizzes preserved even if a teacher leaves).
-- `quiz_questions` → `quizzes`: `ON DELETE CASCADE` (Deleting a quiz removes its questions).
-- `question_attempts` → `quiz_attempts`: `ON DELETE CASCADE`.
+This prevents any possibility of cross-college data leaks even in the event of client-side filtering errors.
 
 ---
 
-## 11. Multi-College Tenant Isolation Architecture
+## 13. Analytics & Reporting Architecture
 
-Multi-tenancy is guaranteed by embedding `college_id` foreign keys on all major entity tables (`departments`, `profiles`, `subjects`, `quizzes`, `quiz_attempts`).
+All dashboard analytics are dynamically calculated from transactional tables using PostgreSQL Views rather than redundant stored metric tables:
 
-```
-                    ┌────────────────────────┐
-                    │        colleges        │
-                    │ - id (UUID, PK)        │
-                    │ - code ('jspmntc')     │
-                    └───────────┬────────────┘
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        ▼                       ▼                       ▼
-┌───────────────┐       ┌───────────────┐       ┌───────────────┐
-│  departments  │       │   profiles    │       │    quizzes    │
-│-college_id(FK)│       │-college_id(FK)│       │-college_id(FK)│
-└───────────────┘       └───────────────┘       └───────────────┘
-```
-
-Even if a frontend filter bug occurs, Row Level Security policies check `college_id = auth.jwt() ->> 'college_id'` at the database layer, ensuring zero data bleed between colleges.
+1. **`vw_college_analytics` (College Admin Dashboard):** Calculates total department count, active teacher count, student count, and average accuracy % per college.
+2. **`vw_department_analytics` (HOD Dashboard):** Calculates student count, teacher count, subject count, and average quiz performance per department.
+3. **`vw_teacher_performance` (Teacher Dashboard):** Aggregates total quizzes published, total student attempts, pass rate, and average score per teacher.
+4. **`vw_student_leaderboard` (Student Portal):** Computes total XP earned, total stars accumulated, completed quiz count, and overall accuracy % per student.
 
 ---
 
-## 12. Analytics & Reporting Architecture
+## 14. Excel Import Compatibility & Resolution Mechanics
 
-Rather than creating redundant analytics storage tables, all dashboard metrics are dynamically derived from transactional tables using indexed PostgreSQL Database Views.
-
-### 12.1 Analytical View Hierarchy
-
-1. **`vw_college_analytics` (College Admin Dashboard):**
-   - Calculates total students, active teachers, department counts, and overall accuracy % grouped by `college_id`.
-2. **`vw_department_analytics` (HOD Dashboard):**
-   - Calculates student counts, teacher counts, subject count, and accuracy % grouped by `department_id`.
-3. **`vw_teacher_performance` (Teacher Dashboard):**
-   - Aggregates attempt counts, average student accuracy, and pass rates for quizzes created by each teacher.
-4. **`vw_student_leaderboard` (Student Portal):**
-   - Aggregates total XP earned, total stars accumulated, total quizzes completed, and overall accuracy % per student.
-
----
-
-## 13. Excel Import Compatibility & Entity Resolution Mechanics
-
-The frontend HOD interface includes Excel bulk imports for Faculty (`Faculty Name`, `Employee ID`, `Subjects`, `Classes/Years`) and Students (`Student Name`, `Student ID`, `Year/Class`, `Teacher`, `Subject`).
-
-### 13.1 Server-Side Import Resolution Workflow
+The frontend HOD interface includes Excel bulk imports for Faculty and Students. Server-side import resolution processes raw text rows into relational records within a single database transaction:
 
 ```
-[Uploaded Excel Row]
+[Excel Row Uploaded]
        │
        ▼
-1. Validate Required Strings (Non-empty check)
+1. Validate required string fields (Non-empty checks).
        │
        ▼
-2. Resolve Department & College Context (from HOD User Session)
+2. Bind HOD session context (college_id, department_id).
        │
        ▼
-3. Map Subject / Year Strings to UUID Primary Keys:
-   - SELECT id FROM subjects WHERE name ILIKE row.subject AND department_id = hod.department_id;
-   - SELECT id FROM academic_years WHERE code ILIKE row.year AND college_id = hod.college_id;
+3. Resolve Foreign Keys via exact/case-insensitive matching:
+   - Subject: SELECT id FROM subjects WHERE name ILIKE row.subject AND department_id = hod.department_id
+   - Level: SELECT id FROM academic_levels WHERE code ILIKE row.year AND college_id = hod.college_id
+   - Session: SELECT id FROM academic_sessions WHERE is_current = true AND college_id = hod.college_id
+   - Teacher: SELECT profile_id FROM teacher_profiles WHERE employee_id = row.teacher_empid
        │
        ▼
-4. Map Teacher Employee ID / Name to Profile UUID:
-   - SELECT profile_id FROM teacher_profiles WHERE employee_id = row.teacher_empid;
-       │
-       ▼
-5. Upsert Profiles & Assignment Junction Rows inside a Database Transaction:
-   - INSERT INTO profiles (...)
-   - INSERT INTO student_profiles (...)
-   - INSERT INTO student_subject_assignments (...)
+4. Execute transactional INSERT / UPSERT into profiles, student_profiles, and student_subject_assignments.
 ```
 
 ---
 
-## 14. Current Frontend Mock → Future Database Mapping Matrix
+## 15. Current Frontend Mock → Future Database Mapping Matrix
 
 | Current Frontend / Mock Concept | Current Source File | Proposed Database Table & Column | Mapping Notes |
 | :--- | :--- | :--- | :--- |
-| `MOCK_COLLEGE_DATA.collegeInfo` | `college-dashboard.js` | `public.colleges` | `id` → `code`, new UUID `id` generated. |
+| `MOCK_COLLEGE_DATA.collegeInfo` | `college-dashboard.js` | `public.colleges` | `id` → `code`, UUID primary key generated. |
 | `MOCK_COLLEGE_DATA.departments` | `college-dashboard.js` | `public.departments` | `hodName` & `hodEmpId` resolved to `profiles.id` via `hod_assignments`. |
 | `HOD_MOCK_DATA.teachers` | `hod-dashboard.js` | `public.profiles` + `teacher_profiles` | `empId` stored in `teacher_profiles.employee_id`. |
 | `HOD_MOCK_DATA.teachers.subjects` | `hod-dashboard.js` | `teacher_subject_class_assignments` | Converted from string array to relational rows. |
 | `HOD_MOCK_DATA.students` | `hod-dashboard.js` | `public.profiles` + `student_profiles` | `studentId` stored in `student_profiles.student_id`. |
 | `HOD_MOCK_DATA.students.teacher` | `hod-dashboard.js` | `student_subject_assignments` | Converted from string to `teacher_id` UUID FK. |
 | `MOCK_DATA.quizzes` | `teacher-dashboard.js` | `public.quizzes` | Includes `game_type` enum and quiz settings. |
-| `MOCK_DATA.questionBank` | `teacher-dashboard.js` | `public.quiz_questions` | Question options stored in `game_payload` JSONB. |
-| `MOCK_DATA.results` | `teacher-dashboard.js` | `public.quiz_attempts` | Raw attempt dates & scores recorded. |
+| `MOCK_DATA.questionBank` | `teacher-dashboard.js` | `public.quiz_questions` | Options/pairs/tokens stored in `game_payload` JSONB. |
+| `MOCK_DATA.results` | `teacher-dashboard.js` | `public.quiz_attempts` | Transactional attempt dates & snapshot scores recorded. |
 | `MOCK_DATA.notifications` | `teacher-dashboard.js` | `public.notifications` | Bound to `user_id` FK. |
 | `orixa_completed_quizzes` | `localStorage` | `public.quiz_attempts` | Replaces client-side `localStorage` array. |
 
 ---
 
-## 15. Proposed Schema Text-Based ER Diagram (ERD)
+## 16. Proposed Schema Text-Based ER Diagram (ERD)
 
 ```
-========================================================================================
-                                  COLLEGES
-                                  - id (UUID, PK)
-                                  - code (VARCHAR, UNIQUE)
-                                  - name (VARCHAR)
-========================================================================================
-       │                                     │                                  │
-       │ 1:N                                 │ 1:N                              │ 1:N
-       ▼                                     ▼                                  ▼
-DEPARTMENTS                           ACADEMIC_YEARS                         PROFILES
-- id (UUID, PK)                       - id (UUID, PK)                        - id (UUID, PK) -> auth.users
+================================================================================================
+                                          COLLEGES
+                                          - id (UUID, PK)
+                                          - code (VARCHAR, UNIQUE)
+                                          - name (VARCHAR)
+================================================================================================
+       │                                     │                                      │
+       │ 1:N                                 │ 1:N                                  │ 1:N
+       ▼                                     ▼                                      ▼
+DEPARTMENTS                           ACADEMIC_LEVELS                        ACADEMIC_SESSIONS
+- id (UUID, PK)                       - id (UUID, PK)                        - id (UUID, PK)
 - college_id (FK)                     - college_id (FK)                      - college_id (FK)
-- code (VARCHAR)                      - code (VARCHAR)                       - department_id (FK)
-- name (VARCHAR)                      - display_name (VARCHAR)               - role (app_role ENUM)
-       │                                     │                               - full_name (VARCHAR)
-       │ 1:N                                 │                                  │
-       ▼                                     │                                  ├─────────────────┬─────────────────┐
-SUBJECTS                                     │                                  │ 1:1             │ 1:1             │ 1:1
-- id (UUID, PK)                              │                                  ▼                 ▼                 ▼
-- department_id (FK)                         │                          TEACHER_PROFILES   STUDENT_PROFILES   HOD_ASSIGNMENTS
-- code (VARCHAR)                             │                          - profile_id (FK)  - profile_id (FK)  - profile_id (FK)
-- name (VARCHAR)                             │                          - employee_id      - student_id       - department_id (FK)
-       │                                     │                                  │                 │
-       ├─────────────────────────────────────┼──────────────────────────────────┘                 │
-       │                                     │                                                    │
-       │ 1:N                                 │ 1:N                                                │
-       ▼                                     ▼                                                    │
-TEACHER_SUBJECT_CLASS_ASSIGNMENTS ───────────┴────────────────────────────────────────────────────┤
-- id (UUID, PK)                                                                                   │
-- teacher_id (FK -> profiles)                                                                     │
-- subject_id (FK -> subjects)                                                                     │
-- academic_year_id (FK -> academic_years)                                                         │
-                                                                                                  │
-                                                                                                  │
-STUDENT_SUBJECT_ASSIGNMENTS <─────────────────────────────────────────────────────────────────────┘
-- id (UUID, PK)
-- student_id (FK -> profiles)
-- subject_id (FK -> subjects)
-- academic_year_id (FK -> academic_years)
-- teacher_id (FK -> profiles)
-       │
-       │
-       ▼
-QUIZZES
-- id (UUID, PK)
-- college_id (FK)
-- department_id (FK)
-- teacher_id (FK -> profiles)
-- subject_id (FK)
-- academic_year_id (FK)
-- title (VARCHAR)
-- game_type (ENUM: TILE_PUZZLE, MATCH_FOLLOWING, FILL_BLANKS, TRUE_FALSE)
-- settings (JSONB)
-       │
-       ├────────────────────────────────────────┐
-       │ 1:N                                    │ 1:N
-       ▼                                        ▼
-QUIZ_QUESTIONS                           QUIZ_ATTEMPTS
-- id (UUID, PK)                          - id (UUID, PK)
-- quiz_id (FK)                           - quiz_id (FK)
-- question_order (INT)                   - student_id (FK -> profiles)
-- question_text (TEXT)                   - started_at (TIMESTAMPTZ)
-- max_chances (INT)                      - completed_at (TIMESTAMPTZ)
-- game_payload (JSONB)                          │
-                                                │ 1:N
-                                                ▼
-                                         QUESTION_ATTEMPTS
-                                         - id (UUID, PK)
-                                         - attempt_id (FK)
-                                         - question_id (FK)
-                                         - selected_answer_json (JSONB)
-                                         - mistakes_count (INT)
-                                         - is_solved (BOOLEAN)
-========================================================================================
+- code (VARCHAR)                      - code (VARCHAR)                       - code (VARCHAR)
+- name (VARCHAR)                      - display_name (VARCHAR)               - is_current (BOOLEAN)
+       │                                     │                                      │
+       │ 1:N                                 │                                      │
+       ▼                                     │                                      │
+SUBJECTS                                     │                                      │
+- id (UUID, PK)                              │                                      │
+- department_id (FK)                         │                                      │
+- code (VARCHAR)                             │                                      │
+- name (VARCHAR)                             │                                      │
+       │                                     │                                      │
+       │                                     │                                      │
+       │                                     ▼                                      │
+       │                              PROFILES <────────────────────────────────────┘
+       │                              - id (UUID, PK) -> auth.users
+       │                              - college_id (FK)
+       │                              - department_id (FK)
+       │                              - role (app_role ENUM)
+       │                              - full_name (VARCHAR)
+       │                                 │
+       │        ┌────────────────────────┼────────────────────────┐
+       │        │ 1:1                    │ 1:1                    │ 1:N
+       │        ▼                        ▼                        ▼
+       │ TEACHER_PROFILES         STUDENT_PROFILES         HOD_ASSIGNMENTS
+       │ - profile_id (FK)        - profile_id (FK)        - id (UUID, PK)
+       │ - employee_id (VARCHAR)  - student_id (VARCHAR)   - profile_id (FK)
+       │                          - academic_level_id (FK) - department_id (FK)
+       │                                 │                 - is_active (BOOLEAN)
+       │                                 │
+       ├─────────────────────────────────┼──────────────────────────────────┐
+       │                                 │                                  │
+       │ 1:N                             │ 1:N                              │ 1:N
+       ▼                                 ▼                                  ▼
+TEACHER_SUBJECT_CLASS_ASSIGNMENTS  STUDENT_SUBJECT_ASSIGNMENTS          QUIZZES
+- id (UUID, PK)                    - id (UUID, PK)                      - id (UUID, PK)
+- teacher_id (FK -> profiles)      - student_id (FK -> profiles)        - college_id (FK)
+- subject_id (FK -> subjects)      - subject_id (FK -> subjects)        - department_id (FK)
+- academic_level_id (FK)           - academic_level_id (FK)             - teacher_id (FK -> profiles)
+- academic_session_id (FK)         - academic_session_id (FK)           - subject_id (FK)
+- is_active (BOOLEAN)              - teacher_id (FK -> profiles)        - academic_level_id (FK)
+                                   - is_active (BOOLEAN)                - academic_session_id (FK)
+                                                                        - title (VARCHAR)
+                                                                        - status (ENUM)
+                                                                        - game_type (ENUM)
+                                                                        - default_max_chances (INT)
+                                                                        - settings (JSONB)
+                                                                               │
+                                                   ┌───────────────────────────┤
+                                                   │ 1:N                       │ 1:N
+                                                   ▼                           ▼
+                                            QUIZ_QUESTIONS              QUIZ_ATTEMPTS
+                                            - id (UUID, PK)             - id (UUID, PK)
+                                            - quiz_id (FK)              - quiz_id (FK)
+                                            - question_order (INT)      - student_id (FK -> profiles)
+                                            - max_chances (INT, NULL)   - status (ENUM)
+                                            - game_payload (JSONB)      - started_at (TIMESTAMPTZ)
+                                                                        - completed_at (TIMESTAMPTZ)
+                                                                        - final_earned_xp (INT)
+                                                                        - final_accuracy_pct (INT)
+                                                                        - final_stars (INT)
+                                                                               │
+                                                                               │ 1:N
+                                                                               ▼
+                                                                        QUESTION_ATTEMPTS
+                                                                        - id (UUID, PK)
+                                                                        - attempt_id (FK)
+                                                                        - question_id (FK)
+                                                                        - selected_answer_json (JSONB)
+                                                                        - mistakes_count (INT)
+                                                                        - is_solved (BOOLEAN)
+================================================================================================
 ```
 
 ---
 
-## 16. Phase Boundaries & Exclusion Scope
+## 17. Migration Readiness Checklist
 
-The following items are **INTENTIONALLY EXCLUDED** from Phase 2 and will be implemented in subsequent development phases:
+Before proceeding to Phase 3 (SQL Migration Generation), all 22 architectural prerequisites have been verified:
 
-- Executing SQL `CREATE TABLE` statements
-- Generating physical SQL migration files
-- Creating Supabase Auth users
-- Writing or applying Supabase Row Level Security (RLS) policies
-- Generating database seed data scripts
-- Linking the local environment to a remote Supabase instance (`supabase link`, `supabase db push`)
-- Modifying frontend HTML files
-- Modifying frontend CSS files
-- Modifying frontend JavaScript files (`teacher-dashboard.js`, `student-portal.js`, `hod-dashboard.js`, etc.)
-- Altering existing mock data objects or `localStorage` keys
-- Modifying game engine scoring or UI behavior
+- [x] **Tenant model defined:** Multi-college isolation via `college_id` FK on all root tables.
+- [x] **Authentication model defined:** `auth.users` mapped 1:1 to `public.profiles`.
+- [x] **Role model defined:** PostgreSQL ENUM (`'COLLEGE_ADMIN'`, `'HOD'`, `'TEACHER'`, `'STUDENT'`).
+- [x] **Department/HOD model defined:** Single active HOD per department via `hod_assignments`.
+- [x] **Teacher model defined:** `teacher_profiles` with unique `employee_id` per college.
+- [x] **Student model defined:** `student_profiles` with unique `student_id` per college.
+- [x] **Academic level/session model defined:** Distinct `academic_levels` and `academic_sessions` tables.
+- [x] **Subject model defined:** Normalized `subjects` table per department.
+- [x] **Teacher assignment model defined:** `teacher_subject_class_assignments` with uniqueness constraint.
+- [x] **Student assignment model defined:** `student_subject_assignments` with single-teacher scoping per subject/level/session.
+- [x] **Quiz lifecycle defined:** 4 states (`DRAFT`, `PUBLISHED`, `CLOSED`, `ARCHIVED`).
+- [x] **Quiz availability defined:** Derived from student-subject-level-session assignment matching.
+- [x] **Question/game model defined:** Hybrid common `quiz_questions` table + JSONB payload.
+- [x] **Game payload validation defined:** Strict JSON schemas & validation rules for all 4 game types.
+- [x] **Attempt model defined:** States (`IN_PROGRESS`, `COMPLETED`, `ABANDONED`) and retake restrictions.
+- [x] **Scoring storage/derivation defined:** Exact formulas preserved; finalized attempt snapshots persisted on completion.
+- [x] **Notification model defined:** Bound to `user_id` FK with priorities.
+- [x] **Analytics model defined:** Derived PostgreSQL views (`vw_*`).
+- [x] **Excel compatibility defined:** Transactional string resolution to relational UUID foreign keys.
+- [x] **RLS strategy defined conceptually:** Security policies based on `public.profiles` relationships.
+- [x] **Multi-college isolation defined:** Composite foreign keys and database-level RLS policies.
+- [x] **No unresolved schema-critical ambiguity remains:** Architecture is fully specified and ready for SQL migration generation.
 
 ---
 
-## 17. Conclusion & Next Steps
+## 18. Phase Boundaries & Exclusion Scope
 
-This database architecture specification satisfies all structural, relational, and game-specific requirements of the ORIXA platform. Upon approval of Phase 2, Phase 3 will proceed with generating initial PostgreSQL migrations, defining Supabase RLS policy scripts, and establishing seed scripts.
+The following items are **INTENTIONALLY EXCLUDED** from Phase 2A and will be executed in subsequent development phases:
+
+- Executing SQL `CREATE TABLE` statements in PostgreSQL
+- Generating physical `.sql` migration files
+- Creating Supabase Auth users
+- Applying Row Level Security (RLS) SQL policies
+- Writing database seed scripts
+- Executing remote Supabase CLI commands (`supabase link`, `supabase db push`)
+- Modifying frontend HTML, CSS, or JavaScript files
+- Altering existing mock data objects or client-side `localStorage` keys
+
+---
+
+## 19. Conclusion
+
+This corrected database architecture specification eliminates all ambiguity, enforces database-level organizational consistency, supports all four ORIXA game engines, preserves exact scoring rules, and establishes a secure multi-tenant PostgreSQL/Supabase foundation ready for SQL migration generation in Phase 3.

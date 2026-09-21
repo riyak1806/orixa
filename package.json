@@ -5,5 +5,8 @@
   "description": "ORIXA - Educational Game & Assessment Platform",
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0"
+  },
+  "devDependencies": {
+    "supabase": "^2.117.0"
   }
 }

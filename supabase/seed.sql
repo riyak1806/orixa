@@ -9,24 +9,24 @@ BEGIN;
 
 -- 1. Institutional Hierarchy Fixtures
 INSERT INTO public.colleges (id, code, name) VALUES
-  ('11111111-1111-1111-1111-111111111111', 'jspmntc', 'JSPM NTC College of Engineering')
+  ('c0000000-0000-0000-0000-000000000001', 'jspmntc', 'JSPM NTC College of Engineering')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.departments (id, college_id, code, name) VALUES
-  ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'jspmntccs', 'Computer Engineering Department')
+  ('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'jspmntccs', 'Computer Engineering Department')
 ON CONFLICT (college_id, code) DO NOTHING;
 
 INSERT INTO public.academic_levels (id, college_id, code, display_name, rank_order) VALUES
-  ('33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'FE', 'First Year', 1),
-  ('33333333-3333-3333-3333-444444444444', '11111111-1111-1111-1111-111111111111', 'SE', 'Second Year', 2)
+  ('e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'FE', 'First Year', 1),
+  ('e0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 'SE', 'Second Year', 2)
 ON CONFLICT (college_id, code) DO NOTHING;
 
 INSERT INTO public.academic_sessions (id, college_id, code, start_date, end_date, is_current) VALUES
-  ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', '2024-2025', '2024-01-01', '2024-12-31', true)
+  ('f0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', '2024-2025', '2024-01-01', '2024-12-31', true)
 ON CONFLICT (college_id, code) DO NOTHING;
 
 INSERT INTO public.subjects (id, department_id, code, name) VALUES
-  ('55555555-5555-5555-5555-555555555555', '22222222-2222-2222-2222-222222222222', 'CS101', 'Computer Science & Programming')
+  ('a1000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'CS101', 'Computer Science & Programming')
 ON CONFLICT (department_id, code) DO NOTHING;
 
 -- 2. Auth Users & Profiles Data Fixtures
@@ -50,7 +50,7 @@ INSERT INTO public.profiles (
   id, college_id, department_id, role, full_name, is_active, login_id
 ) VALUES (
   '10000000-0000-0000-0000-000000000001',
-  '11111111-1111-1111-1111-111111111111',
+  'c0000000-0000-0000-0000-000000000001',
   NULL,
   'COLLEGE_ADMIN',
   'JSPM NTC General Administrator',
@@ -77,8 +77,8 @@ INSERT INTO public.profiles (
   id, college_id, department_id, role, full_name, is_active, login_id
 ) VALUES (
   '20000000-0000-0000-0000-000000000002',
-  '11111111-1111-1111-1111-111111111111',
-  '22222222-2222-2222-2222-222222222222',
+  'c0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-000000000001',
   'HOD',
   'Dr. Rajesh Kumar (HOD CS)',
   true,
@@ -90,7 +90,7 @@ INSERT INTO public.hod_assignments (
 ) VALUES (
   '20000000-0000-0000-0000-000000000002',
   'HOD',
-  '22222222-2222-2222-2222-222222222222',
+  'd0000000-0000-0000-0000-000000000001',
   true
 ) ON CONFLICT DO NOTHING;
 
@@ -113,8 +113,8 @@ INSERT INTO public.profiles (
   id, college_id, department_id, role, full_name, is_active, login_id
 ) VALUES (
   '30000000-0000-0000-0000-000000000003',
-  '11111111-1111-1111-1111-111111111111',
-  '22222222-2222-2222-2222-222222222222',
+  'c0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-000000000001',
   'TEACHER',
   'Prof. Sarah Jenkins',
   true,
@@ -125,7 +125,7 @@ INSERT INTO public.teacher_profiles (
   profile_id, college_id, role, employee_id, designation
 ) VALUES (
   '30000000-0000-0000-0000-000000000003',
-  '11111111-1111-1111-1111-111111111111',
+  'c0000000-0000-0000-0000-000000000001',
   'TEACHER',
   'EMP-CS-01',
   'Senior Assistant Professor'
@@ -150,8 +150,8 @@ INSERT INTO public.profiles (
   id, college_id, department_id, role, full_name, is_active, login_id
 ) VALUES (
   '40000000-0000-0000-0000-000000000004',
-  '11111111-1111-1111-1111-111111111111',
-  '22222222-2222-2222-2222-222222222222',
+  'c0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-000000000001',
   'STUDENT',
   'Alex Rivera',
   true,
@@ -162,10 +162,10 @@ INSERT INTO public.student_profiles (
   profile_id, college_id, role, student_id, academic_level_id, roll_number
 ) VALUES (
   '40000000-0000-0000-0000-000000000004',
-  '11111111-1111-1111-1111-111111111111',
+  'c0000000-0000-0000-0000-000000000001',
   'STUDENT',
   'STAR_STUDENT',
-  '33333333-3333-3333-3333-333333333333',
+  'e0000000-0000-0000-0000-000000000001',
   'CS-FE-01'
 ) ON CONFLICT (profile_id) DO NOTHING;
 

@@ -207,6 +207,7 @@ CREATE TABLE IF NOT EXISTS public.teacher_subject_class_assignments (
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_tsca_role CHECK (role = 'TEACHER'),
+  CONSTRAINT fk_tsca_teacher_role FOREIGN KEY (teacher_id, role) REFERENCES public.profiles (id, role) ON DELETE CASCADE,
   CONSTRAINT fk_tsca_teacher_org FOREIGN KEY (teacher_id, college_id, department_id) REFERENCES public.profiles (id, college_id, department_id) ON DELETE CASCADE,
   CONSTRAINT fk_tsca_subject_dept FOREIGN KEY (subject_id, department_id) REFERENCES public.subjects (id, department_id) ON DELETE RESTRICT,
   CONSTRAINT fk_tsca_dept_college FOREIGN KEY (department_id, college_id) REFERENCES public.departments (id, college_id) ON DELETE RESTRICT,
@@ -234,6 +235,7 @@ CREATE TABLE IF NOT EXISTS public.student_subject_assignments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_ssa_student_role CHECK (student_role = 'STUDENT'),
   CONSTRAINT uq_ssa_student_subject_level_session UNIQUE (student_id, subject_id, academic_level_id, academic_session_id),
+  CONSTRAINT fk_ssa_student_role FOREIGN KEY (student_id, student_role) REFERENCES public.profiles (id, role) ON DELETE CASCADE,
   CONSTRAINT fk_ssa_student_college FOREIGN KEY (student_id, college_id) REFERENCES public.profiles (id, college_id) ON DELETE CASCADE,
   CONSTRAINT fk_ssa_level_college FOREIGN KEY (academic_level_id, college_id) REFERENCES public.academic_levels (id, college_id) ON DELETE RESTRICT,
   CONSTRAINT fk_ssa_session_college FOREIGN KEY (academic_session_id, college_id) REFERENCES public.academic_sessions (id, college_id) ON DELETE RESTRICT,
@@ -740,6 +742,7 @@ DECLARE
   v_quiz RECORD;
   v_total_questions INTEGER;
   v_attempted_questions INTEGER;
+  v_incomplete_questions INTEGER;
   v_sum_ratio NUMERIC := 0.0;
   v_q RECORD;
   v_ratio NUMERIC;
@@ -797,6 +800,23 @@ BEGIN
 
   IF v_attempted_questions < v_total_questions THEN
     RAISE EXCEPTION 'Not all questions have been answered for this attempt.';
+  END IF;
+
+  -- Verify every question is either solved or exhausted
+  SELECT COUNT(*) INTO v_incomplete_questions
+  FROM public.quiz_questions qq
+  LEFT JOIN public.question_attempts qa
+    ON qa.question_id = qq.id AND qa.attempt_id = p_attempt_id
+  WHERE qq.quiz_id = v_attempt.quiz_id
+    AND (
+      qa.id IS NULL OR (
+        qa.is_solved IS FALSE AND
+        qa.chances_used < COALESCE(qq.max_chances, v_quiz.default_max_chances)
+      )
+    );
+
+  IF v_incomplete_questions > 0 THEN
+    RAISE EXCEPTION 'Cannot complete quiz attempt: % question(s) are neither solved nor exhausted.', v_incomplete_questions;
   END IF;
 
   FOR v_q IN
@@ -870,176 +890,203 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 -- 6.1 colleges
 CREATE POLICY colleges_select ON public.colleges
   FOR SELECT TO authenticated
-  USING (id = private_auth.get_auth_college_id());
+  USING (id = (SELECT private_auth.get_auth_college_id()));
 
 -- 6.2 departments
 CREATE POLICY departments_select ON public.departments
   FOR SELECT TO authenticated
-  USING (college_id = private_auth.get_auth_college_id());
+  USING (college_id = (SELECT private_auth.get_auth_college_id()));
 
 CREATE POLICY departments_all_admin ON public.departments
   FOR ALL TO authenticated
-  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
-  WITH CHECK (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id());
+  USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+  WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
 -- 6.3 academic_levels
 CREATE POLICY academic_levels_select ON public.academic_levels
   FOR SELECT TO authenticated
-  USING (college_id = private_auth.get_auth_college_id());
+  USING (college_id = (SELECT private_auth.get_auth_college_id()));
 
 CREATE POLICY academic_levels_all_admin ON public.academic_levels
   FOR ALL TO authenticated
-  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
-  WITH CHECK (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id());
+  USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+  WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
 -- 6.4 academic_sessions
 CREATE POLICY academic_sessions_select ON public.academic_sessions
   FOR SELECT TO authenticated
-  USING (college_id = private_auth.get_auth_college_id());
+  USING (college_id = (SELECT private_auth.get_auth_college_id()));
 
 CREATE POLICY academic_sessions_all_admin ON public.academic_sessions
   FOR ALL TO authenticated
-  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
-  WITH CHECK (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id());
+  USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+  WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
 -- 6.5 subjects
 CREATE POLICY subjects_select ON public.subjects
   FOR SELECT TO authenticated
-  USING (department_id IN (SELECT id FROM public.departments WHERE college_id = private_auth.get_auth_college_id()));
+  USING (department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())));
 
 CREATE POLICY subjects_write ON public.subjects
   FOR ALL TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = private_auth.get_auth_college_id()))
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
   )
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = private_auth.get_auth_college_id()))
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
 -- 6.6 profiles
 CREATE POLICY profiles_select ON public.profiles
   FOR SELECT TO authenticated
-  USING (college_id = private_auth.get_auth_college_id());
+  USING (
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND (
+          id = auth.uid() OR id IN (SELECT student_id FROM public.student_subject_assignments WHERE teacher_id = auth.uid() AND is_active = true)
+        ))
+    OR ((SELECT private_auth.get_auth_role()) = 'STUDENT' AND id = auth.uid())
+  );
 
 CREATE POLICY profiles_insert ON public.profiles
   FOR INSERT TO authenticated
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
 CREATE POLICY profiles_update ON public.profiles
   FOR UPDATE TO authenticated
   USING (
-    (id = auth.uid() AND college_id = private_auth.get_auth_college_id())
-    OR (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
-    OR (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
+    (id = auth.uid() AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id()))
   )
   WITH CHECK (
-    (id = auth.uid() AND college_id = private_auth.get_auth_college_id())
-    OR (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
-    OR (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
+    (id = auth.uid() AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
 CREATE POLICY profiles_delete ON public.profiles
   FOR DELETE TO authenticated
-  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id());
+  USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()));
 
 -- 6.7 hod_assignments
 CREATE POLICY hod_assignments_select ON public.hod_assignments
   FOR SELECT TO authenticated
-  USING (department_id IN (SELECT id FROM public.departments WHERE college_id = private_auth.get_auth_college_id()));
+  USING (department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())));
 
 CREATE POLICY hod_assignments_write ON public.hod_assignments
   FOR ALL TO authenticated
-  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = private_auth.get_auth_college_id()))
-  WITH CHECK (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = private_auth.get_auth_college_id()));
+  USING ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())))
+  WITH CHECK ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND department_id IN (SELECT id FROM public.departments WHERE college_id = (SELECT private_auth.get_auth_college_id())));
 
 -- 6.8 teacher_profiles
 CREATE POLICY teacher_profiles_select ON public.teacher_profiles
   FOR SELECT TO authenticated
-  USING (college_id = private_auth.get_auth_college_id());
+  USING (
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND profile_id = auth.uid())
+    OR ((SELECT private_auth.get_auth_role()) = 'STUDENT' AND profile_id IN (SELECT teacher_id FROM public.student_subject_assignments WHERE student_id = auth.uid() AND is_active = true))
+  );
 
 CREATE POLICY teacher_profiles_write ON public.teacher_profiles
   FOR ALL TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
   )
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
 -- 6.9 student_profiles
 CREATE POLICY student_profiles_select ON public.student_profiles
   FOR SELECT TO authenticated
-  USING (college_id = private_auth.get_auth_college_id());
+  USING (
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND profile_id IN (SELECT student_id FROM public.student_subject_assignments WHERE teacher_id = auth.uid() AND is_active = true))
+    OR ((SELECT private_auth.get_auth_role()) = 'STUDENT' AND profile_id = auth.uid())
+  );
 
 CREATE POLICY student_profiles_write ON public.student_profiles
   FOR ALL TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
   )
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
 -- 6.10 teacher_subject_class_assignments
 CREATE POLICY teacher_subject_class_assignments_select ON public.teacher_subject_class_assignments
   FOR SELECT TO authenticated
-  USING (teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()));
+  USING (
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND teacher_id = auth.uid())
+    OR ((SELECT private_auth.get_auth_role()) = 'STUDENT' AND id IN (SELECT teacher_assignment_id FROM public.student_subject_assignments WHERE student_id = auth.uid() AND is_active = true))
+  );
 
 CREATE POLICY teacher_subject_class_assignments_write ON public.teacher_subject_class_assignments
   FOR ALL TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id()))
   )
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
 -- 6.11 student_subject_assignments
 CREATE POLICY student_subject_assignments_select ON public.student_subject_assignments
   FOR SELECT TO authenticated
-  USING (student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()));
+  USING (
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE department_id = (SELECT private_auth.get_auth_department_id())))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND teacher_id = auth.uid())
+    OR ((SELECT private_auth.get_auth_role()) = 'STUDENT' AND student_id = auth.uid())
+  );
 
 CREATE POLICY student_subject_assignments_write ON public.student_subject_assignments
   FOR ALL TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = (SELECT private_auth.get_auth_college_id())))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id())))
   )
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = (SELECT private_auth.get_auth_college_id())))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
 -- 6.12 quizzes
 CREATE POLICY quizzes_select ON public.quizzes
   FOR SELECT TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
-    OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
-    OR (private_auth.get_auth_role() = 'TEACHER' AND teacher_id = auth.uid())
-    OR (private_auth.get_auth_role() = 'STUDENT' AND status = 'PUBLISHED' AND college_id = private_auth.get_auth_college_id() AND teacher_assignment_id IN (
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND college_id = (SELECT private_auth.get_auth_college_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND teacher_id = auth.uid())
+    OR ((SELECT private_auth.get_auth_role()) = 'STUDENT' AND status = 'PUBLISHED' AND college_id = (SELECT private_auth.get_auth_college_id()) AND teacher_assignment_id IN (
           SELECT teacher_assignment_id FROM public.student_subject_assignments
           WHERE student_id = auth.uid()
             AND is_active = true
@@ -1053,30 +1100,30 @@ CREATE POLICY quizzes_select ON public.quizzes
 CREATE POLICY quizzes_write ON public.quizzes
   FOR ALL TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'TEACHER' AND teacher_id = auth.uid())
-    OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
+    ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND teacher_id = auth.uid())
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
   )
   WITH CHECK (
-    (private_auth.get_auth_role() = 'TEACHER' AND teacher_id = auth.uid())
-    OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
+    ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND teacher_id = auth.uid())
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id()))
   );
 
 -- 6.13 quiz_questions (Excludes STUDENT from direct row access to protect canonical answers)
 CREATE POLICY quiz_questions_select ON public.quiz_questions
   FOR SELECT TO authenticated
   USING (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND quiz_id IN (SELECT id FROM public.quizzes WHERE college_id = private_auth.get_auth_college_id()))
-    OR (private_auth.get_auth_role() = 'HOD' AND quiz_id IN (SELECT id FROM public.quizzes WHERE department_id = private_auth.get_auth_department_id()))
-    OR (private_auth.get_auth_role() = 'TEACHER' AND quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid()))
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND quiz_id IN (SELECT id FROM public.quizzes WHERE college_id = (SELECT private_auth.get_auth_college_id())))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND quiz_id IN (SELECT id FROM public.quizzes WHERE department_id = (SELECT private_auth.get_auth_department_id())))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid()))
   );
 
 CREATE POLICY quiz_questions_write ON public.quiz_questions
   FOR ALL TO authenticated
   USING (
-    quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid() OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id()))
+    quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid() OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id())))
   )
   WITH CHECK (
-    quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid() OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id()))
+    quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid() OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND department_id = (SELECT private_auth.get_auth_department_id())))
   );
 
 -- 6.14 quiz_attempts
@@ -1084,8 +1131,9 @@ CREATE POLICY quiz_attempts_select ON public.quiz_attempts
   FOR SELECT TO authenticated
   USING (
     student_id = auth.uid()
-    OR (private_auth.get_auth_role() = 'TEACHER' AND quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid()))
-    OR (private_auth.get_auth_role() = 'HOD' AND quiz_id IN (SELECT id FROM public.quizzes WHERE department_id = private_auth.get_auth_department_id()))
+    OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid()))
+    OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND quiz_id IN (SELECT id FROM public.quizzes WHERE department_id = (SELECT private_auth.get_auth_department_id())))
+    OR ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND quiz_id IN (SELECT id FROM public.quizzes WHERE college_id = (SELECT private_auth.get_auth_college_id())))
   );
 -- Direct client INSERT/UPDATE/DELETE denied via RLS (RPC-only gameplay writes)
 
@@ -1096,7 +1144,9 @@ CREATE POLICY question_attempts_select ON public.question_attempts
     attempt_id IN (
       SELECT id FROM public.quiz_attempts
       WHERE student_id = auth.uid()
-         OR quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid())
+         OR ((SELECT private_auth.get_auth_role()) = 'TEACHER' AND quiz_id IN (SELECT id FROM public.quizzes WHERE teacher_id = auth.uid()))
+         OR ((SELECT private_auth.get_auth_role()) = 'HOD' AND quiz_id IN (SELECT id FROM public.quizzes WHERE department_id = (SELECT private_auth.get_auth_department_id())))
+         OR ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND quiz_id IN (SELECT id FROM public.quizzes WHERE college_id = (SELECT private_auth.get_auth_college_id())))
     )
   );
 -- Direct client INSERT/UPDATE/DELETE denied via RLS (RPC-only gameplay writes)
@@ -1109,9 +1159,9 @@ CREATE POLICY notifications_select ON public.notifications
 CREATE POLICY notifications_insert ON public.notifications
   FOR INSERT TO authenticated
   WITH CHECK (
-    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND user_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    ((SELECT private_auth.get_auth_role()) = 'COLLEGE_ADMIN' AND user_id IN (SELECT id FROM public.profiles WHERE college_id = (SELECT private_auth.get_auth_college_id())))
     OR
-    (private_auth.get_auth_role() = 'HOD' AND user_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+    ((SELECT private_auth.get_auth_role()) = 'HOD' AND user_id IN (SELECT id FROM public.profiles WHERE college_id = (SELECT private_auth.get_auth_college_id()) AND department_id = (SELECT private_auth.get_auth_department_id())))
     OR user_id = auth.uid()
   );
 

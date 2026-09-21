@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS public.hod_assignments (
   department_id UUID NOT NULL REFERENCES public.departments(id) ON DELETE RESTRICT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  ended_at TIMESTAMPTZ NULLABLE,
+  ended_at TIMESTAMPTZ,
   CONSTRAINT chk_hod_role CHECK (role = 'HOD'),
   CONSTRAINT chk_hod_dates CHECK (ended_at IS NULL OR ended_at >= started_at),
   CONSTRAINT chk_hod_active_ended CHECK (is_active = false OR ended_at IS NULL),
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS public.teacher_profiles (
   college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE RESTRICT,
   role public.app_role NOT NULL DEFAULT 'TEACHER',
   employee_id VARCHAR(50) NOT NULL,
-  designation VARCHAR(100) NULLABLE,
+  designation VARCHAR(100),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_teacher_role CHECK (role = 'TEACHER'),
   CONSTRAINT uq_teacher_college_employee UNIQUE (college_id, employee_id),
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS public.student_profiles (
   role public.app_role NOT NULL DEFAULT 'STUDENT',
   student_id VARCHAR(50) NOT NULL,
   academic_level_id UUID NOT NULL,
-  roll_number VARCHAR(50) NULLABLE,
+  roll_number VARCHAR(50),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_student_role CHECK (role = 'STUDENT'),
   CONSTRAINT uq_student_college_student_id UNIQUE (college_id, student_id),
@@ -243,7 +243,7 @@ CREATE TABLE IF NOT EXISTS public.quizzes (
   academic_session_id UUID NOT NULL REFERENCES public.academic_sessions(id) ON DELETE RESTRICT,
   teacher_assignment_id UUID NOT NULL,
   title VARCHAR(255) NOT NULL,
-  description TEXT NULLABLE,
+  description TEXT,
   game_type VARCHAR(50) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
   default_max_chances INTEGER NOT NULL DEFAULT 3,
@@ -267,7 +267,7 @@ CREATE TABLE IF NOT EXISTS public.quiz_questions (
   quiz_id UUID NOT NULL REFERENCES public.quizzes(id) ON DELETE CASCADE,
   question_order INTEGER NOT NULL,
   question_text TEXT NOT NULL,
-  max_chances INTEGER NULLABLE,
+  max_chances INTEGER,
   game_payload JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT uq_quiz_questions_order UNIQUE (quiz_id, question_order),
@@ -283,10 +283,10 @@ CREATE TABLE IF NOT EXISTS public.quiz_attempts (
   quiz_id UUID NOT NULL REFERENCES public.quizzes(id) ON DELETE RESTRICT,
   status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  completed_at TIMESTAMPTZ NULLABLE,
-  final_earned_xp INTEGER NULLABLE,
-  final_accuracy_pct INTEGER NULLABLE,
-  final_stars INTEGER NULLABLE,
+  completed_at TIMESTAMPTZ,
+  final_earned_xp INTEGER,
+  final_accuracy_pct INTEGER,
+  final_stars INTEGER,
   CONSTRAINT chk_quiz_attempts_student_role CHECK (student_role = 'STUDENT'),
   CONSTRAINT chk_quiz_attempts_status CHECK (status IN ('IN_PROGRESS', 'COMPLETED', 'ABANDONED')),
   CONSTRAINT chk_quiz_attempts_stars CHECK (final_stars IS NULL OR (final_stars BETWEEN 0 AND 3)),
@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS public.question_attempts (
   attempt_id UUID NOT NULL,
   quiz_id UUID NOT NULL,
   question_id UUID NOT NULL,
-  selected_answer_json JSONB NULLABLE,
+  selected_answer_json JSONB,
   mistakes_count INTEGER NOT NULL DEFAULT 0,
   chances_used INTEGER NOT NULL DEFAULT 1,
   is_solved BOOLEAN NOT NULL DEFAULT false,
@@ -324,7 +324,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   category VARCHAR(50) NOT NULL DEFAULT 'System',
   priority VARCHAR(20) NOT NULL DEFAULT 'Normal',
   is_read BOOLEAN NOT NULL DEFAULT false,
-  target_route VARCHAR(100) NULLABLE,
+  target_route VARCHAR(100),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_notifications_priority CHECK (priority IN ('Normal', 'Important'))
 );
@@ -337,6 +337,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 CREATE OR REPLACE FUNCTION public.fn_verify_active_teaching_assignment()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   v_is_active BOOLEAN;
@@ -366,12 +368,18 @@ CREATE TRIGGER trg_verify_active_quiz_assignment
 CREATE OR REPLACE FUNCTION public.fn_block_completed_attempt_edits()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
 AS $$
 BEGIN
   IF OLD.status = 'COMPLETED' THEN
     RAISE EXCEPTION 'Cannot modify or delete a completed quiz attempt (Attempt ID: %).', OLD.id;
   END IF;
-  RETURN NEW;
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  ELSE
+    RETURN NEW;
+  END IF;
 END;
 $$;
 
@@ -426,17 +434,22 @@ BEGIN
   END IF;
 
   SELECT EXISTS (
-    SELECT 1 FROM public.student_subject_assignments
-    WHERE student_id = v_student_id
-      AND subject_id = v_quiz.subject_id
-      AND academic_level_id = v_quiz.academic_level_id
-      AND academic_session_id = v_quiz.academic_session_id
-      AND teacher_id = v_quiz.teacher_id
-      AND is_active = true
+    SELECT 1
+    FROM public.student_subject_assignments ssa
+    JOIN public.teacher_subject_class_assignments tsca
+      ON tsca.id = ssa.teacher_assignment_id
+    WHERE ssa.student_id = v_student_id
+      AND ssa.teacher_assignment_id = v_quiz.teacher_assignment_id
+      AND ssa.is_active = true
+      AND tsca.is_active = true
+      AND ssa.subject_id = v_quiz.subject_id
+      AND ssa.academic_level_id = v_quiz.academic_level_id
+      AND ssa.academic_session_id = v_quiz.academic_session_id
+      AND ssa.teacher_id = v_quiz.teacher_id
   ) INTO v_assigned;
 
   IF NOT v_assigned THEN
-    RAISE EXCEPTION 'Student is not actively assigned to this subject and teacher.';
+    RAISE EXCEPTION 'Student is not actively assigned to this specific quiz teaching assignment.';
   END IF;
 
   SELECT id INTO v_existing_completed
@@ -546,6 +559,7 @@ BEGIN
   IF v_existing.id IS NOT NULL THEN
     v_prev_mistakes := v_existing.mistakes_count;
     v_prev_chances := v_existing.chances_used;
+
     IF v_existing.is_solved THEN
       RETURN jsonb_build_object(
         'is_correct', true,
@@ -554,6 +568,10 @@ BEGIN
         'mistakes_count', v_prev_mistakes,
         'max_chances', v_max_chances
       );
+    END IF;
+
+    IF v_prev_chances >= v_max_chances THEN
+      RAISE EXCEPTION 'Maximum chances exhausted for this question (Attempt ID: %, Question ID: %).', p_attempt_id, p_question_id;
     END IF;
   END IF;
 
@@ -812,24 +830,28 @@ CREATE POLICY profiles_select ON public.profiles
 
 CREATE POLICY profiles_insert ON public.profiles
   FOR INSERT TO authenticated
-  WITH CHECK (private_auth.get_auth_role() IN ('COLLEGE_ADMIN', 'HOD'));
+  WITH CHECK (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
+  );
 
 CREATE POLICY profiles_update ON public.profiles
   FOR UPDATE TO authenticated
   USING (
-    id = auth.uid()
-    OR private_auth.get_auth_role() = 'COLLEGE_ADMIN'
-    OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
+    (id = auth.uid() AND college_id = private_auth.get_auth_college_id())
+    OR (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    OR (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
   )
   WITH CHECK (
-    id = auth.uid()
-    OR private_auth.get_auth_role() = 'COLLEGE_ADMIN'
-    OR (private_auth.get_auth_role() = 'HOD' AND department_id = private_auth.get_auth_department_id())
+    (id = auth.uid() AND college_id = private_auth.get_auth_college_id())
+    OR (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    OR (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id())
   );
 
 CREATE POLICY profiles_delete ON public.profiles
   FOR DELETE TO authenticated
-  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN');
+  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id());
 
 -- 6.7 hod_assignments
 CREATE POLICY hod_assignments_select ON public.hod_assignments
@@ -848,8 +870,16 @@ CREATE POLICY teacher_profiles_select ON public.teacher_profiles
 
 CREATE POLICY teacher_profiles_write ON public.teacher_profiles
   FOR ALL TO authenticated
-  USING (private_auth.get_auth_role() = 'COLLEGE_ADMIN' OR (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id()))
-  WITH CHECK (private_auth.get_auth_role() = 'COLLEGE_ADMIN' OR (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id()));
+  USING (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+  )
+  WITH CHECK (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+  );
 
 -- 6.9 student_profiles
 CREATE POLICY student_profiles_select ON public.student_profiles
@@ -858,8 +888,16 @@ CREATE POLICY student_profiles_select ON public.student_profiles
 
 CREATE POLICY student_profiles_write ON public.student_profiles
   FOR ALL TO authenticated
-  USING (private_auth.get_auth_role() IN ('COLLEGE_ADMIN', 'HOD'))
-  WITH CHECK (private_auth.get_auth_role() IN ('COLLEGE_ADMIN', 'HOD'));
+  USING (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+  )
+  WITH CHECK (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND college_id = private_auth.get_auth_college_id())
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND college_id = private_auth.get_auth_college_id() AND profile_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+  );
 
 -- 6.10 teacher_subject_class_assignments
 CREATE POLICY teacher_subject_class_assignments_select ON public.teacher_subject_class_assignments
@@ -869,12 +907,14 @@ CREATE POLICY teacher_subject_class_assignments_select ON public.teacher_subject
 CREATE POLICY teacher_subject_class_assignments_write ON public.teacher_subject_class_assignments
   FOR ALL TO authenticated
   USING (
-    private_auth.get_auth_role() = 'COLLEGE_ADMIN'
-    OR (private_auth.get_auth_role() = 'HOD' AND teacher_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
   )
   WITH CHECK (
-    private_auth.get_auth_role() = 'COLLEGE_ADMIN'
-    OR (private_auth.get_auth_role() = 'HOD' AND teacher_id IN (SELECT id FROM public.profiles WHERE department_id = private_auth.get_auth_department_id()))
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND teacher_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
   );
 
 -- 6.11 student_subject_assignments
@@ -884,8 +924,16 @@ CREATE POLICY student_subject_assignments_select ON public.student_subject_assig
 
 CREATE POLICY student_subject_assignments_write ON public.student_subject_assignments
   FOR ALL TO authenticated
-  USING (private_auth.get_auth_role() IN ('COLLEGE_ADMIN', 'HOD'))
-  WITH CHECK (private_auth.get_auth_role() IN ('COLLEGE_ADMIN', 'HOD'));
+  USING (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+  )
+  WITH CHECK (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND student_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+  );
 
 -- 6.12 quizzes
 CREATE POLICY quizzes_select ON public.quizzes
@@ -953,7 +1001,12 @@ CREATE POLICY notifications_select ON public.notifications
 
 CREATE POLICY notifications_insert ON public.notifications
   FOR INSERT TO authenticated
-  WITH CHECK (private_auth.get_auth_role() IN ('COLLEGE_ADMIN', 'HOD') OR user_id = auth.uid());
+  WITH CHECK (
+    (private_auth.get_auth_role() = 'COLLEGE_ADMIN' AND user_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id()))
+    OR
+    (private_auth.get_auth_role() = 'HOD' AND user_id IN (SELECT id FROM public.profiles WHERE college_id = private_auth.get_auth_college_id() AND department_id = private_auth.get_auth_department_id()))
+    OR user_id = auth.uid()
+  );
 
 CREATE POLICY notifications_update ON public.notifications
   FOR UPDATE TO authenticated

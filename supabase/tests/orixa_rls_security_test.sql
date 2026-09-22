@@ -7,6 +7,9 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Isolate test fixtures from pre-existing local seed data
+TRUNCATE public.colleges, auth.users CASCADE;
+
 SELECT plan(21);
 
 -- Helper function to simulate authenticated role & user ID in Supabase RLS context

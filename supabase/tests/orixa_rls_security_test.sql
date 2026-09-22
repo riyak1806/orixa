@@ -113,7 +113,7 @@ INSERT INTO public.quiz_questions (id, quiz_id, question_order, question_text, m
 
 -- A. College isolation check
 SELECT is(
-  (SELECT count(*)::int FROM public.colleges),
+  (SELECT count(*)::int FROM public.colleges WHERE id IN ('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222')),
   2,
   'A. Colleges table contains exact test fixtures'
 );

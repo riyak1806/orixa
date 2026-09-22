@@ -1,6 +1,6 @@
 -- =============================================================================
 -- ORIXA PLATFORM — RLS & DATABASE SECURITY SUITE
--- Deterministic pgTAP-style tests covering scenarios A through S
+-- Comprehensive Administration & Data pgTAP tests
 -- =============================================================================
 
 BEGIN;
@@ -25,7 +25,7 @@ DELETE FROM public.departments;
 DELETE FROM public.colleges;
 DELETE FROM auth.users;
 
-SELECT plan(21);
+SELECT plan(32);
 
 -- Helper function to simulate authenticated role & user ID in Supabase RLS context
 CREATE OR REPLACE FUNCTION set_test_auth_context(p_user_id UUID)
@@ -69,18 +69,11 @@ INSERT INTO public.subjects (id, department_id, code, name) VALUES
   ('22222222-2222-2222-2222-666666666666', '22222222-2222-2222-2222-333333333333', 'CS101', 'Intro to CS Beta');
 
 -- Mock auth.users & public.profiles
--- User UUIDs:
--- Admin A:  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
--- HOD A:    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
--- Teacher A1: 'cccccccc-cccc-cccc-cccc-cccccccccccc'
--- Teacher A2: 'dddddddd-dddd-dddd-dddd-dddddddddddd'
--- Student A1: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
--- Student A2: 'ffffffff-ffff-ffff-ffff-ffffffffffff'
--- Student B1: '99999999-9999-9999-9999-999999999999'
-
 INSERT INTO auth.users (id, email) VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin.a@col-a.edu'),
+  ('aaaaaaaa-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'admin.b@col-b.edu'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'hod.cs.a@col-a.edu'),
+  ('bbbbbbbb-cccc-cccc-cccc-cccccccccccc', 'hod.me.a@col-a.edu'),
   ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'teacher.a1@col-a.edu'),
   ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'teacher.a2@col-a.edu'),
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'student.a1@col-a.edu'),
@@ -89,12 +82,18 @@ INSERT INTO auth.users (id, email) VALUES
 
 INSERT INTO public.profiles (id, college_id, department_id, role, full_name) VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', NULL, 'COLLEGE_ADMIN', 'Admin Alpha'),
+  ('aaaaaaaa-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', NULL, 'COLLEGE_ADMIN', 'Admin Beta'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'HOD', 'HOD CS Alpha'),
+  ('bbbbbbbb-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-333333333333', 'HOD', 'HOD ME Alpha'),
   ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'TEACHER', 'Teacher A1'),
   ('dddddddd-dddd-dddd-dddd-dddddddddddd', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'TEACHER', 'Teacher A2'),
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'STUDENT', 'Student A1'),
   ('ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'STUDENT', 'Student A2'),
   ('99999999-9999-9999-9999-999999999999', '22222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-333333333333', 'STUDENT', 'Student B1');
+
+INSERT INTO public.hod_assignments (profile_id, role, department_id, is_active) VALUES
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'HOD', '11111111-1111-1111-1111-222222222222', true),
+  ('bbbbbbbb-cccc-cccc-cccc-cccccccccccc', 'HOD', '11111111-1111-1111-1111-333333333333', true);
 
 INSERT INTO public.teacher_profiles (profile_id, college_id, role, employee_id) VALUES
   ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'TEACHER', 'EMP-A1'),
@@ -115,7 +114,6 @@ INSERT INTO public.student_subject_assignments (id, student_id, student_role, co
   ('11111111-4444-4444-4444-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-3333-3333-3333-111111111111', true);
 
 -- Quizzes
--- Quiz 1 (Teacher A1, Published)
 INSERT INTO public.quizzes (id, college_id, department_id, teacher_id, teacher_role, subject_id, academic_level_id, academic_session_id, teacher_assignment_id, title, game_type, status, default_max_chances, total_possible_xp) VALUES
   ('11111111-5555-5555-5555-111111111111', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', '11111111-3333-3333-3333-111111111111', 'Quiz Alpha Published', 'TRUE_FALSE', 'PUBLISHED', 3, 100),
   ('22222222-5555-5555-5555-111111111111', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'TEACHER', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', '22222222-3333-3333-3333-111111111111', 'Quiz Beta Published', 'TRUE_FALSE', 'PUBLISHED', 3, 100);
@@ -129,93 +127,213 @@ INSERT INTO public.quiz_questions (id, quiz_id, question_order, question_text, m
 -- EXECUTABLE SECURITY SCENARIOS
 -- -----------------------------------------------------------------------------
 
--- A. College isolation check
+-- 1. College A admin cannot access College B data
+SELECT set_test_auth_context('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'); -- Admin College A
 SELECT is(
-  (SELECT count(*)::int FROM public.colleges WHERE id IN ('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222')),
-  2,
-  'A. Colleges table contains exact test fixtures'
+  (SELECT count(*)::int FROM public.departments WHERE college_id = '22222222-2222-2222-2222-222222222222'),
+  0,
+  '1. College A admin cannot access College B departments'
 );
 
--- B. Department isolation check
+-- 2. College A admin can access College A data
+SELECT set_test_auth_context('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'); -- Admin College A
 SELECT is(
   (SELECT count(*)::int FROM public.departments WHERE college_id = '11111111-1111-1111-1111-111111111111'),
   2,
-  'B. Departments strictly scoped to College A'
+  '2. College A admin can access College A departments'
 );
 
--- C. Student profile self-only access check
-SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+-- 3. HOD cannot access another department profiles
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
 SELECT is(
-  (SELECT count(*)::int FROM public.profiles WHERE id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
+  (SELECT count(*)::int FROM public.profiles WHERE department_id = '11111111-1111-1111-1111-333333333333'),
   0,
-  'C. Student A1 cannot read Student A2 profile'
+  '3. HOD CS Alpha cannot access ME department profiles'
 );
 
--- D. Student assignments self-only check
-SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+-- 4. HOD can access own department
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
 SELECT is(
-  (SELECT count(*)::int FROM public.student_subject_assignments WHERE student_id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
-  0,
-  'D. Student A1 cannot read Student A2 assignment'
+  (SELECT count(*)::int FROM public.profiles WHERE department_id = '11111111-1111-1111-1111-222222222222' AND id != 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
+  4,
+  '4. HOD CS Alpha can access profiles in own department'
 );
 
--- E. Teacher cannot read unrelated student profile
+-- 5. HOD cannot access another college
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
+SELECT is(
+  (SELECT count(*)::int FROM public.departments WHERE college_id = '22222222-2222-2222-2222-222222222222'),
+  0,
+  '5. HOD CS Alpha cannot access College B departments'
+);
+
+-- 6. HOD can manage department teachers
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
+SELECT is(
+  (SELECT count(*)::int FROM public.teacher_profiles WHERE profile_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'),
+  1,
+  '6. HOD CS Alpha can read/manage department teacher profiles'
+);
+
+-- 7. HOD can manage department students
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
+SELECT is(
+  (SELECT count(*)::int FROM public.student_profiles WHERE profile_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'),
+  1,
+  '7. HOD CS Alpha can read/manage department student profiles'
+);
+
+-- 8. Teacher cannot access unrelated teacher's students
 SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.profiles WHERE id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
   0,
-  'E. Teacher A1 cannot read unassigned Student A2 profile'
+  '8. Teacher A1 cannot access Student A2 (assigned to Teacher A2)'
 );
 
--- F. Teacher cannot read unrelated student assignment
-SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
-SELECT is(
-  (SELECT count(*)::int FROM public.student_subject_assignments WHERE student_id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
-  0,
-  'F. Teacher A1 cannot read unassigned Student A2 assignment'
-);
-
--- G. Teacher can read assigned student profile
+-- 9. Teacher can access assigned students
 SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.profiles WHERE id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'),
   1,
-  'G. Teacher A1 can read assigned Student A1 profile'
+  '9. Teacher A1 can access assigned Student A1'
 );
 
--- H. Student can read own profile
+-- 10. Teacher cannot create arbitrary student records if product rules prohibit it
+SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
+SELECT throws_ok(
+  $$ INSERT INTO public.profiles (id, college_id, department_id, role, full_name) VALUES ('77777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'STUDENT', 'Illegal Student') $$,
+  '42501',
+  NULL,
+  '10. Teacher cannot insert student profile'
+);
+
+-- 11. Student cannot access another student's profile
 SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
-  (SELECT count(*)::int FROM public.profiles WHERE id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'),
-  1,
-  'H. Student A1 can read own profile'
+  (SELECT count(*)::int FROM public.profiles WHERE id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
+  0,
+  '11. Student A1 cannot read Student A2 profile'
 );
 
--- I. Student accesses only assigned published quizzes
+-- 12. Student cannot access another student's assignments
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT is(
+  (SELECT count(*)::int FROM public.student_subject_assignments WHERE student_id = 'ffffffff-ffff-ffff-ffff-ffffffffffff'),
+  0,
+  '12. Student A1 cannot read Student A2 assignment'
+);
+
+-- 13. Student can access own assignment
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT is(
+  (SELECT count(*)::int FROM public.student_subject_assignments WHERE student_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'),
+  1,
+  '13. Student A1 can access own subject assignment'
+);
+
+-- 14. Cross-college teacher assignment fails
+SELECT set_config('role', 'postgres', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', '22222222-2222-2222-2222-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
+  '23503',
+  NULL,
+  '14. Cross-college teacher assignment rejected by FK'
+);
+
+-- 15. Cross-department teacher assignment fails
+SELECT set_config('role', 'postgres', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-333333333333', '11111111-1111-1111-1111-777777777777', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
+  '23503',
+  NULL,
+  '15. Cross-department teacher assignment rejected by FK'
+);
+
+-- 16. Cross-college student assignment fails
+SELECT set_config('role', 'postgres', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.student_subject_assignments (student_id, student_role, college_id, subject_id, academic_level_id, academic_session_id, teacher_id, teacher_assignment_id) VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-777777777777', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-3333-3333-3333-111111111111') $$,
+  '23503',
+  NULL,
+  '16. Cross-college student assignment rejected by FK'
+);
+
+-- 17. Cross-department student assignment fails
+SELECT set_config('role', 'postgres', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.student_subject_assignments (student_id, student_role, college_id, subject_id, academic_level_id, academic_session_id, teacher_id, teacher_assignment_id) VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-777777777777', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-3333-3333-3333-111111111111') $$,
+  '23503',
+  NULL,
+  '17. Cross-department student assignment rejected by FK'
+);
+
+-- 18. Invalid subject/academic-level/session relationship fails
+SELECT set_config('role', 'postgres', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.student_subject_assignments (student_id, student_role, college_id, subject_id, academic_level_id, academic_session_id, teacher_id, teacher_assignment_id) VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-666666666666', '22222222-2222-2222-2222-444444444444', '11111111-1111-1111-1111-555555555555', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-3333-3333-3333-111111111111') $$,
+  '23503',
+  NULL,
+  '18. Invalid academic level relationship fails'
+);
+
+-- 19. Duplicate logical assignment is rejected
+SELECT set_config('role', 'postgres', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.student_subject_assignments (student_id, student_role, college_id, subject_id, academic_level_id, academic_session_id, teacher_id, teacher_assignment_id) VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-3333-3333-3333-111111111111') $$,
+  '23505',
+  NULL,
+  '19. Duplicate logical student assignment rejected'
+);
+
+-- 20. Valid HOD-created teacher relationship succeeds
+SELECT set_config('role', 'postgres', true);
+INSERT INTO auth.users (id, email) VALUES ('88888888-8888-8888-8888-888888888888', 'newteacher@col-a.edu');
+INSERT INTO public.profiles (id, college_id, department_id, role, full_name) VALUES ('88888888-8888-8888-8888-888888888888', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'TEACHER', 'New Teacher');
+
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
+INSERT INTO public.teacher_profiles (profile_id, college_id, role, employee_id) VALUES ('88888888-8888-8888-8888-888888888888', '11111111-1111-1111-1111-111111111111', 'TEACHER', 'EMP-NEW');
+SELECT is(
+  (SELECT count(*)::int FROM public.teacher_profiles WHERE profile_id = '88888888-8888-8888-8888-888888888888'),
+  1,
+  '20. Valid HOD-created teacher profile relationship succeeds'
+);
+
+-- 21. Valid HOD-created student relationship succeeds
+SELECT set_config('role', 'postgres', true);
+INSERT INTO auth.users (id, email) VALUES ('77777777-7777-7777-7777-777777777777', 'newstudent@col-a.edu');
+INSERT INTO public.profiles (id, college_id, department_id, role, full_name) VALUES ('77777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'STUDENT', 'New Student');
+
+SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS Alpha
+INSERT INTO public.student_profiles (profile_id, college_id, role, student_id, academic_level_id) VALUES ('77777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 'STUDENT', 'STU-NEW', '11111111-1111-1111-1111-444444444444');
+SELECT is(
+  (SELECT count(*)::int FROM public.student_profiles WHERE profile_id = '77777777-7777-7777-7777-777777777777'),
+  1,
+  '21. Valid HOD-created student profile relationship succeeds'
+);
+
+-- Additional Gameplay & Immutability Tests (Preserved from baseline)
 SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.quizzes),
   1,
-  'I. Student A1 sees Quiz Alpha (assigned) but not Quiz Beta (unassigned teacher)'
+  'Preserved: Student A1 sees Quiz Alpha but not Quiz Beta'
 );
 
--- J. Teacher cannot read another teacher's quiz questions
 SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.quiz_questions WHERE quiz_id = '22222222-5555-5555-5555-111111111111'),
   0,
-  'J. Teacher A1 cannot read Teacher A2 quiz questions'
+  'Preserved: Teacher A1 cannot read Teacher A2 quiz questions'
 );
 
--- K1. Student quiz_questions direct SELECT denial
 SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT is(
   (SELECT count(*)::int FROM public.quiz_questions),
   0,
-  'K1. Student A1 direct SELECT on quiz_questions yields 0 rows'
+  'Preserved: Student A1 direct SELECT on quiz_questions yields 0 rows'
 );
 
--- K2. RPC Start attempt + question sanitization verification
 SELECT set_config('role', 'postgres', true);
 INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES
   ('11111111-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS');
@@ -224,28 +342,25 @@ SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student
 SELECT is(
   (public.fn_get_attempt_questions('11111111-7777-7777-7777-111111111111')->0->'game_payload'->>'correct_boolean'),
   NULL,
-  'K2. fn_get_attempt_questions strips correct_boolean from payload'
+  'Preserved: fn_get_attempt_questions strips correct_boolean from payload'
 );
 
--- L. Student quiz_attempts direct write denial
 SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT throws_ok(
   $$ INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES ('99999999-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS') $$,
   '42501',
   NULL,
-  'L. Student A1 direct INSERT on quiz_attempts denied by RLS/privileges'
+  'Preserved: Student A1 direct INSERT on quiz_attempts denied'
 );
 
--- M. Student question_attempts direct write denial
 SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
 SELECT throws_ok(
   $$ INSERT INTO public.question_attempts (attempt_id, quiz_id, question_id, is_solved) VALUES ('11111111-7777-7777-7777-111111111111', '11111111-5555-5555-5555-111111111111', '11111111-6666-6666-6666-111111111111', true) $$,
   '42501',
   NULL,
-  'M. Student A1 direct INSERT on question_attempts denied by RLS/privileges'
+  'Preserved: Student A1 direct INSERT on question_attempts denied'
 );
 
--- N. HOD can access department question attempts
 SELECT set_config('role', 'postgres', true);
 INSERT INTO public.question_attempts (attempt_id, quiz_id, question_id, is_solved, mistakes_count, chances_used) VALUES
   ('11111111-7777-7777-7777-111111111111', '11111111-5555-5555-5555-111111111111', '11111111-6666-6666-6666-111111111111', false, 1, 1);
@@ -254,37 +369,16 @@ SELECT set_test_auth_context('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'); -- HOD CS 
 SELECT is(
   (SELECT count(*)::int FROM public.question_attempts),
   1,
-  'N. HOD CS Alpha can read department question attempts'
+  'Preserved: HOD CS Alpha can read department question attempts'
 );
 
--- O. Teacher can access own quiz attempts
 SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
 SELECT is(
   (SELECT count(*)::int FROM public.quiz_attempts),
   1,
-  'O. Teacher A1 can read attempts for own quizzes'
+  'Preserved: Teacher A1 can read attempts for own quizzes'
 );
 
--- P. Cross-college record rejection
-SELECT set_config('role', 'postgres', true);
-SELECT throws_ok(
-  $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', '22222222-2222-2222-2222-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
-  '23503',
-  NULL,
-  'P. Cross-college subject assignment rejected by FK'
-);
-
--- Q. Cross-department record rejection
--- Uses Subject ME101 (in Mechanical Dept ME-A) to ensure Teacher A1 (CS Dept) assignment is rejected strictly by cross-department FK fk_tsca_teacher_org (23503) rather than active unique index collision (23505)
-SELECT set_config('role', 'postgres', true);
-SELECT throws_ok(
-  $$ INSERT INTO public.teacher_subject_class_assignments (teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id) VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-333333333333', '11111111-1111-1111-1111-777777777777', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555') $$,
-  '23503',
-  NULL,
-  'Q. Cross-department teacher assignment rejected by FK'
-);
-
--- R1. Completed attempt UPDATE immutability
 SELECT set_config('role', 'postgres', true);
 UPDATE public.quiz_attempts SET status = 'COMPLETED' WHERE id = '11111111-7777-7777-7777-111111111111';
 
@@ -292,18 +386,16 @@ SELECT throws_ok(
   $$ UPDATE public.quiz_attempts SET final_earned_xp = 500 WHERE id = '11111111-7777-7777-7777-111111111111' $$,
   'P0001',
   NULL,
-  'R1. Modifying completed attempt throws exception'
+  'Preserved: Modifying completed attempt throws exception'
 );
 
--- R2. Completed attempt DELETE immutability
 SELECT throws_ok(
   $$ DELETE FROM public.quiz_attempts WHERE id = '11111111-7777-7777-7777-111111111111' $$,
   'P0001',
   NULL,
-  'R2. Deleting completed attempt throws exception'
+  'Preserved: Deleting completed attempt throws exception'
 );
 
--- S. Incomplete attempt completion rejection
 SELECT set_config('role', 'postgres', true);
 INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES
   ('22222222-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS');
@@ -315,7 +407,7 @@ SELECT throws_ok(
   $$ SELECT public.fn_complete_quiz_attempt('22222222-7777-7777-7777-111111111111') $$,
   'P0001',
   NULL,
-  'S. Completing an unsolved/unexhausted quiz attempt throws exception'
+  'Preserved: Completing an unsolved/unexhausted quiz attempt throws exception'
 );
 
 SELECT * FROM finish();

@@ -31,6 +31,7 @@ ON CONFLICT (department_id, code) DO NOTHING;
 
 -- 2. Auth Users & Profiles Data Fixtures
 -- Password hash below corresponds to 'Password123!' created via pgcrypto crypt()
+
 -- 2.1 COLLEGE_ADMIN (login_id: 'jspmntc')
 INSERT INTO auth.users (
   id, instance_id, email, encrypted_password, email_confirmed_at,
@@ -168,5 +169,35 @@ INSERT INTO public.student_profiles (
   'e0000000-0000-0000-0000-000000000001',
   'CS-FE-01'
 ) ON CONFLICT (profile_id) DO NOTHING;
+
+-- 3. Teacher & Student Assignments
+INSERT INTO public.teacher_subject_class_assignments (
+  id, teacher_id, role, college_id, department_id, subject_id, academic_level_id, academic_session_id, is_active
+) VALUES (
+  'b0000000-0000-0000-0000-000000000001',
+  '30000000-0000-0000-0000-000000000003',
+  'TEACHER',
+  'c0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-000000000001',
+  'a1000000-0000-0000-0000-000000000001',
+  'e0000000-0000-0000-0000-000000000001',
+  'f0000000-0000-0000-0000-000000000001',
+  true
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.student_subject_assignments (
+  id, student_id, student_role, college_id, subject_id, academic_level_id, academic_session_id, teacher_id, teacher_assignment_id, is_active
+) VALUES (
+  'b1000000-0000-0000-0000-000000000001',
+  '40000000-0000-0000-0000-000000000004',
+  'STUDENT',
+  'c0000000-0000-0000-0000-000000000001',
+  'a1000000-0000-0000-0000-000000000001',
+  'e0000000-0000-0000-0000-000000000001',
+  'f0000000-0000-0000-0000-000000000001',
+  '30000000-0000-0000-0000-000000000003',
+  'b0000000-0000-0000-0000-000000000001',
+  true
+) ON CONFLICT (id) DO NOTHING;
 
 COMMIT;

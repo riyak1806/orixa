@@ -80,8 +80,8 @@
                         <span>EMAIL</span>
                     </label>
                     <div class="input-shell">
-                        <input type="email" id="login-email" name="email" class="cartoon-input"
-                            placeholder="you@school.edu" autocomplete="email">
+                        <input type="text" id="login-email" name="email" class="cartoon-input"
+                            placeholder="e.g. EMP-CS-01" autocomplete="username">
                     </div>
                     <span class="field-error" id="login-email-error"></span>
                 </div>
@@ -135,6 +135,9 @@
         </main>
     </div>
 
+    <script src="node_modules/@supabase/supabase-js/dist/umd/supabase.js"></script>
+    <script src="orixa-config.js"></script>
+    <script src="orixa-auth.js"></script>
     <script src="teacher.js"></script>
 </body>
 

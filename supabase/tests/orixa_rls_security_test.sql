@@ -7,6 +7,24 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Isolate test fixtures from pre-existing local seed data in transaction
+DELETE FROM public.question_attempts;
+DELETE FROM public.quiz_attempts;
+DELETE FROM public.quiz_questions;
+DELETE FROM public.quizzes;
+DELETE FROM public.student_subject_assignments;
+DELETE FROM public.teacher_subject_class_assignments;
+DELETE FROM public.hod_assignments;
+DELETE FROM public.student_profiles;
+DELETE FROM public.teacher_profiles;
+DELETE FROM public.profiles;
+DELETE FROM public.subjects;
+DELETE FROM public.academic_sessions;
+DELETE FROM public.academic_levels;
+DELETE FROM public.departments;
+DELETE FROM public.colleges;
+DELETE FROM auth.users;
+
 SELECT plan(21);
 
 -- Helper function to simulate authenticated role & user ID in Supabase RLS context

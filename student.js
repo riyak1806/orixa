@@ -196,20 +196,44 @@ function initStudentLoginForm() {
         setFormMessage('', null);
     });
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
 
         if (!validate()) {
             return;
         }
 
+        const usernameVal = usernameInput.value.trim();
+        const pinVal = pinInput.value.trim();
+
         setSubmitting(true);
 
-        window.setTimeout(() => {
+        try {
+            const result = await window.OrixaAuth.signInWithOrixaId(usernameVal, pinVal);
+
+            if (!result.success) {
+                setSubmitting(false);
+                setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
+                return;
+            }
+
+            const profile = result.profile;
+            if (profile.role !== 'STUDENT') {
+                await window.OrixaAuth.signOut();
+                setSubmitting(false);
+                setFormMessage('Unauthorized role for Student Login.', 'error');
+                return;
+            }
+
+            setFormMessage('Opening student portal...', 'success');
+            window.setTimeout(() => {
+                window.location.href = 'student-portal.html';
+            }, 400);
+        } catch (err) {
+            console.error('Student login submission error:', err);
             setSubmitting(false);
-            setFormMessage('Opening student portal.', 'success');
-            window.location.href = 'student-portal.html';
-        }, 500);
+            setFormMessage('An unexpected authentication error occurred.', 'error');
+        }
     });
 }
 

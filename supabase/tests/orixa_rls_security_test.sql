@@ -25,7 +25,7 @@ DELETE FROM public.departments;
 DELETE FROM public.colleges;
 DELETE FROM auth.users;
 
-SELECT plan(32);
+SELECT plan(42);
 
 -- Helper function to simulate authenticated role & user ID in Supabase RLS context
 CREATE OR REPLACE FUNCTION set_test_auth_context(p_user_id UUID)
@@ -408,6 +408,108 @@ SELECT throws_ok(
   'P0001',
   NULL,
   'Preserved: Completing an unsolved/unexhausted quiz attempt throws exception'
+);
+
+-- -----------------------------------------------------------------------------
+-- BLOCK C QUIZ SYSTEM SECURITY EXTENSIONS (33 to 42)
+-- -----------------------------------------------------------------------------
+
+-- 33. Draft quiz is invisible to student
+SELECT set_config('role', 'postgres', true);
+INSERT INTO public.quizzes (id, college_id, department_id, teacher_id, teacher_role, subject_id, academic_level_id, academic_session_id, teacher_assignment_id, title, game_type, status) VALUES
+  ('33333333-5555-5555-5555-111111111111', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', '11111111-3333-3333-3333-111111111111', 'Quiz Alpha Draft', 'TRUE_FALSE', 'DRAFT');
+
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT is(
+  (SELECT count(*)::int FROM public.quizzes WHERE id = '33333333-5555-5555-5555-111111111111'),
+  0,
+  '33. Draft quiz is invisible to student'
+);
+
+-- 34. Closed quiz cannot start new attempt
+SELECT set_config('role', 'postgres', true);
+INSERT INTO public.quizzes (id, college_id, department_id, teacher_id, teacher_role, subject_id, academic_level_id, academic_session_id, teacher_assignment_id, title, game_type, status) VALUES
+  ('44444444-5555-5555-5555-111111111111', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'TEACHER', '11111111-1111-1111-1111-666666666666', '11111111-1111-1111-1111-444444444444', '11111111-1111-1111-1111-555555555555', '11111111-3333-3333-3333-111111111111', 'Quiz Alpha Closed', 'TRUE_FALSE', 'CLOSED');
+
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT throws_ok(
+  $$ SELECT public.fn_start_quiz_attempt('44444444-5555-5555-5555-111111111111') $$,
+  'P0001',
+  NULL,
+  '34. Closed quiz cannot start new attempt'
+);
+
+-- 35. Unassigned student cannot start attempt
+SELECT set_test_auth_context('99999999-9999-9999-9999-999999999999'); -- Student B1
+SELECT throws_ok(
+  $$ SELECT public.fn_start_quiz_attempt('11111111-5555-5555-5555-111111111111') $$,
+  'P0001',
+  NULL,
+  '35. Unassigned student cannot start attempt for unassigned quiz'
+);
+
+-- 36. Student cannot see another student''s attempt
+SELECT set_test_auth_context('ffffffff-ffff-ffff-ffff-ffffffffffff'); -- Student A2
+SELECT is(
+  (SELECT count(*)::int FROM public.quiz_attempts WHERE student_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'),
+  0,
+  '36. Student A2 cannot read Student A1 quiz attempts'
+);
+
+-- 37. Student cannot submit answer to another student''s attempt
+SELECT set_test_auth_context('ffffffff-ffff-ffff-ffff-ffffffffffff'); -- Student A2
+SELECT throws_ok(
+  $$ SELECT public.fn_submit_question_answer('11111111-7777-7777-7777-111111111111', '11111111-6666-6666-6666-111111111111', '{"submitted_boolean": "TRUE"}'::jsonb) $$,
+  'P0001',
+  NULL,
+  '37. Student A2 cannot submit answer to Student A1 attempt'
+);
+
+-- 38. Student cannot complete another student''s attempt
+SELECT set_test_auth_context('ffffffff-ffff-ffff-ffff-ffffffffffff'); -- Student A2
+SELECT throws_ok(
+  $$ SELECT public.fn_complete_quiz_attempt('11111111-7777-7777-7777-111111111111') $$,
+  'P0001',
+  NULL,
+  '38. Student A2 cannot complete Student A1 attempt'
+);
+
+-- 39. Teacher A1 cannot update Teacher A2''s quiz
+SELECT set_test_auth_context('cccccccc-cccc-cccc-cccc-cccccccccccc'); -- Teacher A1
+UPDATE public.quizzes SET title = 'Hacked Title' WHERE id = '22222222-5555-5555-5555-111111111111';
+SELECT set_config('role', 'postgres', true);
+SELECT is(
+  (SELECT title FROM public.quizzes WHERE id = '22222222-5555-5555-5555-111111111111'),
+  'Quiz Beta Published',
+  '39. Teacher A1 update on Teacher A2 quiz is blocked by RLS'
+);
+
+-- 40. Teacher A2 cannot view Teacher A1''s quiz results
+SELECT set_test_auth_context('dddddddd-dddd-dddd-dddd-dddddddddddd'); -- Teacher A2
+SELECT is(
+  (SELECT count(*)::int FROM public.quiz_attempts WHERE quiz_id = '11111111-5555-5555-5555-111111111111'),
+  0,
+  '40. Teacher A2 cannot view attempts for Teacher A1 quiz'
+);
+
+-- 41. Correct answer RPC evaluation for True/False (correct)
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT is(
+  (public.fn_submit_question_answer('22222222-7777-7777-7777-111111111111', '11111111-6666-6666-6666-111111111111', '{"submitted_boolean": "TRUE"}'::jsonb)->>'is_correct')::boolean,
+  true,
+  '41. fn_submit_question_answer evaluates TRUE as correct for Question 1'
+);
+
+-- 42. Correct answer RPC evaluation for True/False (incorrect)
+SELECT set_config('role', 'postgres', true);
+INSERT INTO public.quiz_attempts (id, student_id, student_role, quiz_id, status) VALUES
+  ('55555555-7777-7777-7777-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'STUDENT', '11111111-5555-5555-5555-111111111111', 'IN_PROGRESS');
+
+SELECT set_test_auth_context('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'); -- Student A1
+SELECT is(
+  (public.fn_submit_question_answer('55555555-7777-7777-7777-111111111111', '11111111-6666-6666-6666-111111111111', '{"submitted_boolean": "FALSE"}'::jsonb)->>'is_correct')::boolean,
+  false,
+  '42. fn_submit_question_answer evaluates FALSE as incorrect for Question 1'
 );
 
 SELECT * FROM finish();

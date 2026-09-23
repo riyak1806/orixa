@@ -256,11 +256,12 @@ function getQuestThemeStyle(questName, subject) {
     return { bg: "var(--color-purple)", text: "white" };
 }
 
-function openQuestGame(questName, rawCount, category, chances = 3, teacherName = 'Professor Riley') {
+function openQuestGame(questName, rawCount, category, chances = 3, teacherName = 'Professor Riley', dbAttemptId = null, dbQuestions = null) {
     // Enforce perfect square question count
     let root = Math.round(Math.sqrt(rawCount));
     if (root < 2) root = 2;
-    const questionCount = root * root;
+    const questionCount = dbQuestions ? dbQuestions.length : root * root;
+    const gridDim = Math.max(2, Math.ceil(Math.sqrt(questionCount)));
 
     const questionStats = Array.from({ length: questionCount }, () => ({
         mistakes: 0,
@@ -275,8 +276,8 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
         teacherName: teacherName || 'Professor Riley',
         configuredChances: typeof chances === 'number' && chances > 0 ? chances : 3,
         questionCount: questionCount,
-        gridDimension: root,
-        questions: generateMockQuestions(category, questionCount),
+        gridDimension: gridDim,
+        questions: dbQuestions || generateMockQuestions(category, questionCount),
         questionStats: questionStats,
         solvedTiles: new Set(),
         processedTiles: new Set(),
@@ -285,7 +286,8 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
         startTime: Date.now(),
         remainingChances: typeof chances === 'number' && chances > 0 ? chances : 3,
         disabledOptions: new Set(),
-        isProcessing: false
+        isProcessing: false,
+        dbAttemptId: dbAttemptId
     };
 
     const modal = document.getElementById('quest-modal');
@@ -502,86 +504,27 @@ function handleTileOptionSelect(tileIndex, optIndex) {
     const optionBtns = document.querySelectorAll('.tile-option-btn');
     const stat = currentGameState.questionStats[tileIndex];
 
-    const isCorrect = optIndex === question.correctAnswer;
-
-    if (isCorrect) {
-        if (optBtn) optBtn.classList.add('correct');
-        currentGameState.solvedTiles.add(tileIndex);
-        currentGameState.processedTiles.add(tileIndex);
-        if (stat) {
-            stat.isSolved = true;
-            stat.totalAttempts++;
-        }
-
-        optionBtns.forEach(btn => btn.disabled = true);
-
-        if (feedbackEl) {
-            feedbackEl.innerHTML = `
-                <div class="tile-feedback-box correct">
-                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> CORRECT! You revealed Tile #${tileIndex + 1}
-                </div>
-            `;
-        }
-
-        setGameTimeout(() => {
-            currentGameState.isProcessing = false;
-            closeQuestionModal();
-            renderGameBoard();
-
-            // Check completion
-            if (currentGameState.processedTiles.size === currentGameState.questionCount) {
-                setGameTimeout(() => renderVictoryScreen(), 300);
-            }
-        }, 700);
-    } else {
-        if (stat) {
-            stat.mistakes++;
-            stat.totalAttempts++;
-        }
-        currentGameState.remainingChances -= 1;
-        currentGameState.disabledOptions.add(optIndex);
-
-        if (optBtn) {
-            optBtn.classList.add('incorrect');
-            optBtn.disabled = true;
-        }
-
-        const remaining = currentGameState.remainingChances;
-
-        if (remaining > 0) {
-            if (feedbackEl) {
-                feedbackEl.innerHTML = `
-                    <div class="tile-feedback-box incorrect">
-                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! ${remaining} ${remaining === 1 ? 'chance' : 'chances'} remaining. Try again!
-                    </div>
-                `;
-            }
-
-            setTimeout(() => {
-                currentGameState.isProcessing = false;
-            }, 300);
-        } else {
+    const processOptionResult = (evaluatedIsCorrect) => {
+        if (evaluatedIsCorrect) {
+            if (optBtn) optBtn.classList.add('correct');
+            currentGameState.solvedTiles.add(tileIndex);
             currentGameState.processedTiles.add(tileIndex);
             if (stat) {
-                stat.isSolved = false;
-            }
-
-            const correctBtn = document.getElementById(`option-btn-${question.correctAnswer}`);
-            if (correctBtn) {
-                correctBtn.classList.add('correct');
+                stat.isSolved = true;
+                stat.totalAttempts++;
             }
 
             optionBtns.forEach(btn => btn.disabled = true);
 
             if (feedbackEl) {
                 feedbackEl.innerHTML = `
-                    <div class="tile-feedback-box incorrect">
-                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! No chances remaining. Correct answer: <strong>${escapeHTML(question.options[question.correctAnswer])}</strong>
+                    <div class="tile-feedback-box correct">
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> CORRECT! You revealed Tile #${tileIndex + 1}
                     </div>
                 `;
             }
 
-            setTimeout(() => {
+            setGameTimeout(() => {
                 currentGameState.isProcessing = false;
                 closeQuestionModal();
                 renderGameBoard();
@@ -589,9 +532,87 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 if (currentGameState.processedTiles.size === currentGameState.questionCount) {
                     setGameTimeout(() => renderVictoryScreen(), 300);
                 }
-            }, 1400);
+            }, 700);
+        } else {
+            if (stat) {
+                stat.mistakes++;
+                stat.totalAttempts++;
+            }
+            currentGameState.remainingChances -= 1;
+            currentGameState.disabledOptions.add(optIndex);
+
+            if (optBtn) {
+                optBtn.classList.add('incorrect');
+                optBtn.disabled = true;
+            }
+
+            const remaining = currentGameState.remainingChances;
+
+            if (remaining > 0) {
+                if (feedbackEl) {
+                    feedbackEl.innerHTML = `
+                        <div class="tile-feedback-box incorrect">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! ${remaining} ${remaining === 1 ? 'chance' : 'chances'} remaining. Try again!
+                        </div>
+                    `;
+                }
+
+                setTimeout(() => {
+                    currentGameState.isProcessing = false;
+                }, 300);
+            } else {
+                currentGameState.processedTiles.add(tileIndex);
+                if (stat) {
+                    stat.isSolved = false;
+                }
+
+                const correctBtn = document.getElementById(`option-btn-${question.correctAnswer}`);
+                if (correctBtn) {
+                    correctBtn.classList.add('correct');
+                }
+
+                optionBtns.forEach(btn => btn.disabled = true);
+
+                if (feedbackEl) {
+                    feedbackEl.innerHTML = `
+                        <div class="tile-feedback-box incorrect">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> INCORRECT! No chances remaining.
+                        </div>
+                    `;
+                }
+
+                setTimeout(() => {
+                    currentGameState.isProcessing = false;
+                    closeQuestionModal();
+                    renderGameBoard();
+
+                    if (currentGameState.processedTiles.size === currentGameState.questionCount) {
+                        setGameTimeout(() => renderVictoryScreen(), 300);
+                    }
+                }, 1400);
+            }
+        }
+    };
+
+    if (currentGameState.dbAttemptId) {
+        const dbQ = currentGameState.questions[tileIndex];
+        if (dbQ && dbQ.dbQuestionId && window.OrixaAuth && window.OrixaAuth.client) {
+            window.OrixaAuth.client.rpc('fn_submit_question_answer', {
+                p_attempt_id: currentGameState.dbAttemptId,
+                p_question_id: dbQ.dbQuestionId,
+                p_answer_json: { selected_option_index: String(optIndex) }
+            }).then(res => {
+                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
+                processOptionResult(evalIsCorrect);
+            }).catch(e => {
+                console.warn('RPC submit error:', e);
+                processOptionResult(false);
+            });
+            return;
         }
     }
+
+    processOptionResult(false);
 }
 
 // Phase 4: Final Victory & 3-Star Winning Sequence
@@ -601,6 +622,14 @@ function renderVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(currentGameState.questName);
     const results = calculateQuizResults(currentGameState.questionStats, totalMaxXP);
+
+    if (currentGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
+        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
+            p_attempt_id: currentGameState.dbAttemptId
+        }).then(res => {
+            if (res.error) console.warn('Complete tile quiz RPC error:', res.error);
+        });
+    }
 
     addCompletedQuiz(currentGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
@@ -799,13 +828,21 @@ let matchGameState = {
 
 let activeMatchDrag = null;
 
-function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3) {
-    const pairs = [
+function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3, dbAttemptId = null, dbQuestions = null) {
+    let pairs = [
         { id: 'm1', text: "Capital of France?", answer: "Paris" },
         { id: 'm2', text: "2 + 2?", answer: "4" },
         { id: 'm3', text: "Largest planet?", answer: "Jupiter" },
         { id: 'm4', text: "Red Planet?", answer: "Mars" }
     ];
+
+    if (dbQuestions && dbQuestions.length > 0) {
+        pairs = dbQuestions.map((q, idx) => ({
+            id: q.dbQuestionId || `m${idx + 1}`,
+            text: q.text,
+            answer: q.answer
+        }));
+    }
 
     // Left questions order
     const questions = pairs.map(p => ({ id: p.id, text: p.text }));
@@ -841,7 +878,9 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley', cha
         selectedQuestionId: null,
         selectedAnswerId: null,
         incorrectAttempts: 0,
-        startTime: Date.now()
+        startTime: Date.now(),
+        dbAttemptId: dbAttemptId,
+        dbQuestions: dbQuestions
     };
 
     const modal = document.getElementById('quest-modal');
@@ -1146,77 +1185,72 @@ function attemptMatch(qId, aId) {
 
     const stat = matchGameState.pairStats ? matchGameState.pairStats.find(p => p.id === qId) : null;
 
-    if (qId === aId) {
-        // CORRECT MATCH
-        if (stat) {
-            stat.isSolved = true;
-            stat.totalAttempts++;
-        }
-        matchGameState.matches.set(qId, aId);
-        matchGameState.selectedQuestionId = null;
-        matchGameState.selectedAnswerId = null;
-
-        renderMatchGameBoard();
-
-        // Check if all pairs processed (matched + failed)
-        if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
-            setGameTimeout(renderMatchVictoryScreen, 600);
-        }
-    } else {
-        // INCORRECT MATCH
-        if (stat) {
-            stat.mistakes++;
-            stat.totalAttempts++;
-        }
-        matchGameState.incorrectAttempts++;
-        matchGameState.selectedQuestionId = null;
-        matchGameState.selectedAnswerId = null;
-
-        // Visual feedback
-        const qCard = document.getElementById(`q-card-${qId}`);
-        const aCard = document.getElementById(`a-card-${aId}`);
-
-        if (qCard) qCard.classList.add('is-wrong');
-        if (aCard) aCard.classList.add('is-wrong');
-
-        // Draw temporary red error line
-        drawErrorLine(qId, aId);
-
-        const currentMistakes = stat ? stat.mistakes : 1;
-        const maxChances = matchGameState.configuredChances || 3;
-
-        if (currentMistakes >= maxChances) {
+    const processMatchResult = (evaluatedIsCorrect) => {
+        if (evaluatedIsCorrect) {
             if (stat) {
-                stat.isSolved = false;
+                stat.isSolved = true;
+                stat.totalAttempts++;
             }
-            matchGameState.failedPairs.add(qId);
+            matchGameState.matches.set(qId, aId);
+            matchGameState.selectedQuestionId = null;
+            matchGameState.selectedAnswerId = null;
 
-            setTimeout(() => {
-                if (qCard) {
-                    qCard.classList.remove('is-wrong', 'is-selected');
-                }
-                if (aCard) {
-                    aCard.classList.remove('is-wrong', 'is-selected');
-                }
-                removeErrorLine();
-                renderMatchGameBoard();
+            renderMatchGameBoard();
 
-                if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
-                    setGameTimeout(renderMatchVictoryScreen, 600);
-                }
-            }, 600);
+            if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+                setGameTimeout(renderMatchVictoryScreen, 600);
+            }
         } else {
-            setTimeout(() => {
-                if (qCard) {
-                    qCard.classList.remove('is-wrong', 'is-selected');
-                }
-                if (aCard) {
-                    aCard.classList.remove('is-wrong', 'is-selected');
-                }
-                removeErrorLine();
+            if (stat) {
+                stat.mistakes++;
+                stat.totalAttempts++;
+            }
+            matchGameState.incorrectAttempts++;
+            matchGameState.selectedQuestionId = null;
+            matchGameState.selectedAnswerId = null;
+
+            const qCard = document.getElementById(`q-card-${qId}`);
+            const aCard = document.getElementById(`a-card-${aId}`);
+
+            if (qCard) qCard.classList.add('is-wrong');
+            if (aCard) aCard.classList.add('is-wrong');
+
+            drawErrorLine(qId, aId);
+
+            setGameTimeout(() => {
+                if (qCard) qCard.classList.remove('is-wrong');
+                if (aCard) aCard.classList.remove('is-wrong');
+
+                const errLine = document.getElementById(`err-line-${qId}-${aId}`);
+                if (errLine) errLine.remove();
+
+                renderMatchGameBoard();
             }, 600);
         }
+    };
+
+    if (matchGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
+        const matchingDbQ = matchGameState.dbQuestions ? matchGameState.dbQuestions.find(q => q.dbQuestionId === qId) : null;
+        const targetQId = matchingDbQ ? matchingDbQ.dbQuestionId : (matchGameState.dbQuestions && matchGameState.dbQuestions[0] ? matchGameState.dbQuestions[0].dbQuestionId : qId);
+
+        const pairsPayload = Array.from(matchGameState.matches.entries()).map(([q, a]) => ({ id: q, choice: a }));
+        pairsPayload.push({ id: qId, choice: aId });
+
+        window.OrixaAuth.client.rpc('fn_submit_question_answer', {
+            p_attempt_id: matchGameState.dbAttemptId,
+            p_question_id: targetQId,
+            p_answer_json: { pairs: pairsPayload }
+        }).then(res => {
+            const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
+            processMatchResult(evalIsCorrect);
+        }).catch(e => {
+            console.warn('RPC match pair error:', e);
+            processMatchResult(false);
+        });
+        return;
     }
+
+    processMatchResult(qId === aId);
 }
 
 function drawErrorLine(qId, aId) {
@@ -1292,6 +1326,14 @@ function renderMatchVictoryScreen() {
     const totalMaxXP = getQuestMaxXP(matchGameState.questName);
     const results = calculateQuizResults(matchGameState.pairStats, totalMaxXP);
 
+    if (matchGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
+        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
+            p_attempt_id: matchGameState.dbAttemptId
+        }).then(res => {
+            if (res.error) console.warn('Complete match quiz RPC error:', res.error);
+        });
+    }
+
     addCompletedQuiz(matchGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - matchGameState.startTime) / 1000));
@@ -1357,7 +1399,7 @@ let fillBlanksGameState = {
     isProcessing: false
 };
 
-function openFillBlanksGame(questName, category, customQuestions = null, chances = 3, teacherName = 'Professor Riley') {
+function openFillBlanksGame(questName, category, customQuestions = null, chances = 3, teacherName = 'Professor Riley', dbAttemptId = null) {
     const defaultQuestions = [
         {
             statement: "The capital of France is Paris.",
@@ -1430,7 +1472,8 @@ function openFillBlanksGame(questName, category, customQuestions = null, chances
         incorrectAttempts: 0,
         startTime: Date.now(),
         selectedOption: null,
-        isProcessing: false
+        isProcessing: false,
+        dbAttemptId: dbAttemptId
     };
 
     const modal = document.getElementById('quest-modal');
@@ -1672,86 +1715,81 @@ function attemptFitbAnswer(optionText, card) {
 
     const currentStat = fillBlanksGameState.questionStats ? fillBlanksGameState.questionStats[fillBlanksGameState.currentIndex] : null;
 
-    const isCorrect = (optionText === currentQ.correctAnswerText) ||
-                      (currentQ.blankAnswer && optionText.toLowerCase() === currentQ.blankAnswer.toLowerCase());
+    const isCorrectFallback = (optionText === currentQ.correctAnswerText) ||
+                              (currentQ.blankAnswer && optionText.toLowerCase() === currentQ.blankAnswer.toLowerCase());
 
-    if (isCorrect) {
-        if (currentStat) {
-            currentStat.isSolved = true;
-            currentStat.totalAttempts++;
-        }
-
-        // Correct feedback
-        target.textContent = optionText;
-        target.classList.remove('is-incorrect', 'is-target-active');
-        target.classList.add('is-correct');
-
-        if (card) {
-            card.style.visibility = 'hidden';
-        }
-
-        // Transition to next question or victory screen
-        setTimeout(() => {
-            fillBlanksGameState.isProcessing = false;
-            fillBlanksGameState.currentIndex++;
-            fillBlanksGameState.remainingChances = fillBlanksGameState.configuredChances;
-            if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
-                renderFitbVictoryScreen();
-            } else {
-                renderFillBlanksGameBoard();
-            }
-        }, 700);
-
-    } else {
-        if (currentStat) {
-            currentStat.mistakes++;
-            currentStat.totalAttempts++;
-        }
-
-        // Incorrect feedback
-        fillBlanksGameState.incorrectAttempts++;
-        fillBlanksGameState.remainingChances--;
-
-        target.textContent = optionText;
-        target.classList.remove('is-target-active');
-        target.classList.add('is-incorrect');
-
-        const feedbackEl = document.getElementById('fitb-feedback-banner');
-
-        if (fillBlanksGameState.remainingChances > 0) {
-            if (feedbackEl) {
-                feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.innerHTML = `Incorrect! ${fillBlanksGameState.remainingChances} ${fillBlanksGameState.remainingChances === 1 ? 'chance' : 'chances'} remaining. Try again!`;
+    const processFitbResult = (evaluatedIsCorrect) => {
+        if (evaluatedIsCorrect) {
+            if (currentStat) {
+                currentStat.isSolved = true;
+                currentStat.totalAttempts++;
             }
 
-            // Chances remain: keep correct answer hidden, allow trying again
+            // Correct feedback
+            target.textContent = optionText;
+            target.classList.remove('is-incorrect', 'is-target-active');
+            target.classList.add('is-correct');
+
+            if (card) {
+                card.style.visibility = 'hidden';
+            }
+
+            // Transition to next question or victory screen
             setTimeout(() => {
-                target.textContent = "______";
-                target.classList.remove('is-incorrect');
-                if (card) {
-                    card.classList.remove('is-selected', 'is-dragging');
-                    card.style.opacity = '';
-                }
-                if (feedbackEl) feedbackEl.innerHTML = '';
                 fillBlanksGameState.isProcessing = false;
-            }, 600);
+                fillBlanksGameState.currentIndex++;
+                fillBlanksGameState.remainingChances = fillBlanksGameState.configuredChances;
+                if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
+                    renderFitbVictoryScreen();
+                } else {
+                    renderFillBlanksGameBoard();
+                }
+            }, 700);
+
         } else {
             if (currentStat) {
-                currentStat.isSolved = false;
+                currentStat.mistakes++;
+                currentStat.totalAttempts++;
             }
 
-            const correctRevealText = currentQ.correctAnswerText || currentQ.blankAnswer || optionText;
-            if (feedbackEl) {
-                feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.innerHTML = `Incorrect! Correct answer: <strong>${escapeHTML(correctRevealText)}</strong>`;
-            }
+            // Incorrect feedback
+            fillBlanksGameState.incorrectAttempts++;
+            fillBlanksGameState.remainingChances--;
 
-            // All chances exhausted: reveal correct answer before proceeding
-            setTimeout(() => {
-                target.textContent = correctRevealText;
-                target.classList.remove('is-incorrect');
-                target.classList.add('is-correct');
+            target.textContent = optionText;
+            target.classList.remove('is-target-active');
+            target.classList.add('is-incorrect');
 
+            const feedbackEl = document.getElementById('fitb-feedback-banner');
+
+            if (fillBlanksGameState.remainingChances > 0) {
+                if (feedbackEl) {
+                    feedbackEl.style.color = "var(--color-red-dark)";
+                    feedbackEl.innerHTML = `Incorrect! ${fillBlanksGameState.remainingChances} ${fillBlanksGameState.remainingChances === 1 ? 'chance' : 'chances'} remaining. Try again!`;
+                }
+
+                // Chances remain: keep correct answer hidden, allow trying again
+                setTimeout(() => {
+                    target.textContent = "______";
+                    target.classList.remove('is-incorrect');
+                    if (card) {
+                        card.classList.remove('is-selected', 'is-dragging');
+                        card.style.opacity = '';
+                    }
+                    if (feedbackEl) feedbackEl.innerHTML = '';
+                    fillBlanksGameState.isProcessing = false;
+                }, 600);
+            } else {
+                if (currentStat) {
+                    currentStat.isSolved = false;
+                }
+
+                if (feedbackEl) {
+                    feedbackEl.style.color = "var(--color-red-dark)";
+                    feedbackEl.innerHTML = `Incorrect! No chances remaining.`;
+                }
+
+                // All chances exhausted: move forward
                 setTimeout(() => {
                     fillBlanksGameState.isProcessing = false;
                     fillBlanksGameState.currentIndex++;
@@ -1762,9 +1800,29 @@ function attemptFitbAnswer(optionText, card) {
                         renderFillBlanksGameBoard();
                     }
                 }, 1200);
-            }, 500);
+            }
+        }
+    };
+
+    if (fillBlanksGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
+        const dbQ = fillBlanksGameState.questions[fillBlanksGameState.currentIndex];
+        if (dbQ && dbQ.dbQuestionId) {
+            window.OrixaAuth.client.rpc('fn_submit_question_answer', {
+                p_attempt_id: fillBlanksGameState.dbAttemptId,
+                p_question_id: dbQ.dbQuestionId,
+                p_answer_json: { submitted_words: [optionText] }
+            }).then(res => {
+                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : isCorrectFallback;
+                processFitbResult(evalIsCorrect);
+            }).catch(e => {
+                console.warn('RPC fitb error:', e);
+                processFitbResult(isCorrectFallback);
+            });
+            return;
         }
     }
+
+    processFitbResult(isCorrectFallback);
 }
 
 function renderFitbVictoryScreen() {
@@ -1773,6 +1831,14 @@ function renderFitbVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(fillBlanksGameState.questName);
     const results = calculateQuizResults(fillBlanksGameState.questionStats, totalMaxXP);
+
+    if (fillBlanksGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
+        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
+            p_attempt_id: fillBlanksGameState.dbAttemptId
+        }).then(res => {
+            if (res.error) console.warn('Complete fill blanks quiz RPC error:', res.error);
+        });
+    }
 
     addCompletedQuiz(fillBlanksGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
@@ -1839,7 +1905,7 @@ let trueFalseGameState = {
     isProcessing: false
 };
 
-function openTrueFalseGame(questName, category, customQuestions = null, teacherName = 'Professor Riley', chances = 1) {
+function openTrueFalseGame(questName, category, customQuestions = null, teacherName = 'Professor Riley', chances = 1, dbAttemptId = null) {
     const defaultQuestions = [
         {
             statement: "Water freezes at 0°C at standard atmospheric pressure.",
@@ -1892,7 +1958,8 @@ function openTrueFalseGame(questName, category, customQuestions = null, teacherN
         correctAnswersCount: 0,
         incorrectAttemptsCount: 0,
         startTime: Date.now(),
-        isProcessing: false
+        isProcessing: false,
+        dbAttemptId: dbAttemptId
     };
 
     const modal = document.getElementById('quest-modal');
@@ -1993,84 +2060,26 @@ function evaluateTrueFalseChoice(selectedBool) {
     if (btnTrue) btnTrue.disabled = true;
     if (btnFalse) btnFalse.disabled = true;
 
-    const isCorrect = selectedBool === currentQ.correctAnswer;
+    const isCorrectFallback = selectedBool === currentQ.correctAnswer;
 
-    if (isCorrect) {
-        if (currentStat) {
-            currentStat.isSolved = true;
-            currentStat.totalAttempts++;
-        }
-        trueFalseGameState.correctAnswersCount++;
-
-        if (cardEl) cardEl.classList.add('is-correct');
-        if (selectedBool) {
-            if (btnTrue) btnTrue.classList.add('selected-correct');
-        } else {
-            if (btnFalse) btnFalse.classList.add('selected-correct');
-        }
-
-        if (feedbackEl) {
-            feedbackEl.style.color = "var(--color-green-dark)";
-            feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> Correct!`;
-        }
-
-        setTimeout(() => {
-            trueFalseGameState.isProcessing = false;
-            trueFalseGameState.currentIndex++;
-            trueFalseGameState.remainingChances = trueFalseGameState.configuredChances;
-            if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
-                renderTrueFalseVictoryScreen();
-            } else {
-                renderTrueFalseGameBoard();
-            }
-        }, 700);
-
-    } else {
-        if (currentStat) {
-            currentStat.mistakes++;
-            currentStat.totalAttempts++;
-        }
-        trueFalseGameState.incorrectAttemptsCount++;
-        trueFalseGameState.remainingChances--;
-
-        if (cardEl) {
-            cardEl.classList.add('is-incorrect');
-        }
-        if (selectedBool) {
-            if (btnTrue) btnTrue.classList.add('selected-incorrect');
-        } else {
-            if (btnFalse) btnFalse.classList.add('selected-incorrect');
-        }
-
-        const correctText = currentQ.correctAnswer ? "TRUE" : "FALSE";
-
-        if (trueFalseGameState.remainingChances > 0) {
-            if (feedbackEl) {
-                feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Try again.`;
-            }
-
-            setTimeout(() => {
-                if (cardEl) cardEl.classList.remove('is-incorrect');
-                if (btnTrue) {
-                    btnTrue.classList.remove('selected-incorrect');
-                    btnTrue.disabled = false;
-                }
-                if (btnFalse) {
-                    btnFalse.classList.remove('selected-incorrect');
-                    btnFalse.disabled = false;
-                }
-                if (feedbackEl) feedbackEl.textContent = "";
-                trueFalseGameState.isProcessing = false;
-            }, 800);
-        } else {
+    const processTrueFalseResult = (evaluatedIsCorrect) => {
+        if (evaluatedIsCorrect) {
             if (currentStat) {
-                currentStat.isSolved = false;
+                currentStat.isSolved = true;
+                currentStat.totalAttempts++;
+            }
+            trueFalseGameState.correctAnswersCount++;
+
+            if (cardEl) cardEl.classList.add('is-correct');
+            if (selectedBool) {
+                if (btnTrue) btnTrue.classList.add('selected-correct');
+            } else {
+                if (btnFalse) btnFalse.classList.add('selected-correct');
             }
 
             if (feedbackEl) {
-                feedbackEl.style.color = "var(--color-red-dark)";
-                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Correct answer: ${correctText}`;
+                feedbackEl.style.color = "var(--color-green-dark)";
+                feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> Correct!`;
             }
 
             setTimeout(() => {
@@ -2082,9 +2091,87 @@ function evaluateTrueFalseChoice(selectedBool) {
                 } else {
                     renderTrueFalseGameBoard();
                 }
-            }, 1200);
+            }, 700);
+
+        } else {
+            if (currentStat) {
+                currentStat.mistakes++;
+                currentStat.totalAttempts++;
+            }
+            trueFalseGameState.incorrectAttemptsCount++;
+            trueFalseGameState.remainingChances--;
+
+            if (cardEl) {
+                cardEl.classList.add('is-incorrect');
+            }
+            if (selectedBool) {
+                if (btnTrue) btnTrue.classList.add('selected-incorrect');
+            } else {
+                if (btnFalse) btnFalse.classList.add('selected-incorrect');
+            }
+
+            if (trueFalseGameState.remainingChances > 0) {
+                if (feedbackEl) {
+                    feedbackEl.style.color = "var(--color-red-dark)";
+                    feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! Try again.`;
+                }
+
+                setTimeout(() => {
+                    if (cardEl) cardEl.classList.remove('is-incorrect');
+                    if (btnTrue) {
+                        btnTrue.classList.remove('selected-incorrect');
+                        btnTrue.disabled = false;
+                    }
+                    if (btnFalse) {
+                        btnFalse.classList.remove('selected-incorrect');
+                        btnFalse.disabled = false;
+                    }
+                    if (feedbackEl) feedbackEl.textContent = "";
+                    trueFalseGameState.isProcessing = false;
+                }, 800);
+            } else {
+                if (currentStat) {
+                    currentStat.isSolved = false;
+                }
+
+                if (feedbackEl) {
+                    feedbackEl.style.color = "var(--color-red-dark)";
+                    feedbackEl.innerHTML = `<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg> Incorrect! No chances remaining.`;
+                }
+
+                setTimeout(() => {
+                    trueFalseGameState.isProcessing = false;
+                    trueFalseGameState.currentIndex++;
+                    trueFalseGameState.remainingChances = trueFalseGameState.configuredChances;
+                    if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
+                        renderTrueFalseVictoryScreen();
+                    } else {
+                        renderTrueFalseGameBoard();
+                    }
+                }, 1200);
+            }
+        }
+    };
+
+    if (trueFalseGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
+        const dbQ = trueFalseGameState.questions[trueFalseGameState.currentIndex];
+        if (dbQ && dbQ.dbQuestionId) {
+            window.OrixaAuth.client.rpc('fn_submit_question_answer', {
+                p_attempt_id: trueFalseGameState.dbAttemptId,
+                p_question_id: dbQ.dbQuestionId,
+                p_answer_json: { submitted_boolean: String(selectedBool).toUpperCase() }
+            }).then(res => {
+                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : isCorrectFallback;
+                processTrueFalseResult(evalIsCorrect);
+            }).catch(e => {
+                console.warn('RPC tf error:', e);
+                processTrueFalseResult(isCorrectFallback);
+            });
+            return;
         }
     }
+
+    processTrueFalseResult(isCorrectFallback);
 }
 
 function renderTrueFalseVictoryScreen() {
@@ -2093,6 +2180,14 @@ function renderTrueFalseVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(trueFalseGameState.questName);
     const results = calculateQuizResults(trueFalseGameState.questionStats, totalMaxXP);
+
+    if (trueFalseGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
+        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
+            p_attempt_id: trueFalseGameState.dbAttemptId
+        }).then(res => {
+            if (res.error) console.warn('Complete true/false quiz RPC error:', res.error);
+        });
+    }
 
     addCompletedQuiz(trueFalseGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
@@ -2210,6 +2305,161 @@ window.openOrixaModal = openOrixaModal;
 window.closeOrixaModal = closeOrixaModal;
 window.confirmStudentLogout = confirmStudentLogout;
 
+async function fetchPublishedQuizzesFromSupabase() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+
+    try {
+        const { data: quizzes, error } = await client
+            .from('quizzes')
+            .select('*, subjects(name), profiles!quizzes_teacher_id_fkey(full_name)')
+            .eq('status', 'PUBLISHED')
+            .order('created_at', { ascending: false });
+
+        if (error || !quizzes || quizzes.length === 0) return;
+
+        const grid = document.querySelector('.student-quest-grid');
+        if (!grid) return;
+
+        quizzes.forEach(q => {
+            const subjectName = q.subjects ? q.subjects.name : 'Computer Science';
+            const teacherName = q.profiles ? q.profiles.full_name : 'Professor Riley';
+            const gameTypeLabel = (q.game_type || 'TILE_PUZZLE').replace('_', ' ');
+
+            // Check if card already exists
+            const existing = grid.querySelector(`[data-supabase-id="${q.id}"]`);
+            if (existing) return;
+
+            const card = document.createElement('div');
+            card.className = 'quest-card cartoon-panel';
+            card.dataset.title = q.title;
+            card.dataset.subject = subjectName;
+            card.dataset.topic = `${q.title} ${subjectName} ${gameTypeLabel}`;
+            card.dataset.supabaseId = q.id;
+
+            let themeBg = 'var(--color-green)';
+            let themeText = 'var(--border-dark)';
+            if (q.game_type === 'MATCH_FOLLOWING') { themeBg = 'var(--color-purple)'; themeText = 'white'; }
+            else if (q.game_type === 'TRUE_FALSE') { themeBg = 'var(--color-yellow)'; }
+            else if (q.game_type === 'FILL_BLANKS') { themeBg = 'var(--color-green)'; }
+
+            card.innerHTML = `
+                <div class="quiz-mgmt-card-header">
+                    <div>
+                        <h4 class="quiz-mgmt-card-title">${escapeHTML(q.title)}</h4>
+                        <span class="quiz-mgmt-card-subject">${escapeHTML(subjectName)}</span>
+                    </div>
+                    <span class="quest-reward-badge" style="background-color: ${themeBg}; color: ${themeText};">+${q.total_possible_xp || 100} XP</span>
+                </div>
+                <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                    <div class="quiz-mgmt-card-info-row">
+                        <span>Format</span>
+                        <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">${escapeHTML(gameTypeLabel)}</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span>Teacher</span>
+                        <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(teacherName)}</span>
+                    </div>
+                </div>
+                <button type="button" class="play-quest-btn" style="background-color: ${themeBg}; color: ${themeText};">
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                        <path d="M8 5v14l11-7z" fill="currentColor" />
+                    </svg>
+                    <span>LAUNCH QUEST</span>
+                </button>
+            `;
+
+            const btn = card.querySelector('.play-quest-btn');
+            btn.addEventListener('click', () => {
+                launchSupabaseQuiz(q, subjectName, teacherName);
+            });
+
+            grid.prepend(card);
+        });
+
+        hideCompletedQuizzes();
+    } catch (e) {
+        console.warn('Failed to fetch published quizzes from Supabase:', e);
+    }
+}
+
+async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+
+    try {
+        const { data: attemptId, error: startErr } = await client.rpc('fn_start_quiz_attempt', {
+            p_quiz_id: quiz.id
+        });
+
+        if (startErr || !attemptId) {
+            console.error('fn_start_quiz_attempt error:', startErr);
+            alert(startErr ? startErr.message : 'Could not start quiz attempt.');
+            return;
+        }
+
+        const { data: questions, error: qErr } = await client.rpc('fn_get_attempt_questions', {
+            p_attempt_id: attemptId
+        });
+
+        if (qErr || !questions || !Array.isArray(questions)) {
+            console.error('fn_get_attempt_questions error:', qErr);
+            alert('Could not load quiz questions.');
+            return;
+        }
+
+        if (quiz.game_type === 'TILE_PUZZLE') {
+            const mappedQ = questions.map(q => {
+                const payload = q.game_payload || {};
+                return {
+                    dbQuestionId: q.id,
+                    text: q.question_text || payload.question_text || '',
+                    options: payload.options || ['Option A', 'Option B', 'Option C', 'Option D']
+                };
+            });
+            openQuestGame(quiz.title, mappedQ.length, subjectName, quiz.default_max_chances || 3, teacherName, attemptId, mappedQ);
+        } else if (quiz.game_type === 'MATCH_FOLLOWING') {
+            const firstQ = questions[0] || {};
+            const payload = firstQ.game_payload || {};
+            const prompts = payload.prompts || (payload.pairs ? payload.pairs.map(p => ({ id: p.id, prompt: p.prompt })) : []);
+            const choices = payload.choices || (payload.pairs ? payload.pairs.map(p => ({ id: p.id, choice: p.correct_match })) : []);
+            const mappedPairs = prompts.map((p, idx) => {
+                const c = choices.find(ch => ch.id === p.id) || choices[idx] || {};
+                return {
+                    dbQuestionId: firstQ.id,
+                    id: p.id || `p${idx + 1}`,
+                    text: p.prompt || `Prompt ${idx + 1}`,
+                    answer: c.choice || `Choice ${idx + 1}`
+                };
+            });
+            openMatchGame(quiz.title, subjectName, teacherName, quiz.default_max_chances || 3, attemptId, mappedPairs);
+        } else if (quiz.game_type === 'FILL_BLANKS') {
+            const mappedQ = questions.map(q => {
+                const payload = q.game_payload || {};
+                const tokens = payload.sentence_tokens || [q.question_text];
+                const options = payload.options || ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
+                return {
+                    dbQuestionId: q.id,
+                    statement: Array.isArray(tokens) ? tokens.join(' ') : q.question_text,
+                    options: options
+                };
+            });
+            openFillBlanksGame(quiz.title, subjectName, mappedQ, quiz.default_max_chances || 3, teacherName, attemptId);
+        } else if (quiz.game_type === 'TRUE_FALSE') {
+            const mappedQ = questions.map(q => {
+                const payload = q.game_payload || {};
+                return {
+                    dbQuestionId: q.id,
+                    statement: payload.statement || q.question_text
+                };
+            });
+            openTrueFalseGame(quiz.title, subjectName, mappedQ, teacherName, quiz.default_max_chances || 1, attemptId);
+        }
+    } catch (e) {
+        console.error('Error launching Supabase quiz:', e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     if (window.OrixaAuth) {
         const profile = await window.OrixaAuth.requireRole(['STUDENT'], 'student-login.html');
@@ -2225,6 +2475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadCompletedQuizzesFromStorage();
     hideCompletedQuizzes();
+    await fetchPublishedQuizzesFromSupabase();
 });
 
 // Close on outside clicks or escape key

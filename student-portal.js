@@ -504,21 +504,6 @@ function handleTileOptionSelect(tileIndex, optIndex) {
     const optionBtns = document.querySelectorAll('.tile-option-btn');
     const stat = currentGameState.questionStats[tileIndex];
 
-    const isCorrect = optIndex === question.correctAnswer;
-
-    if (currentGameState.dbAttemptId) {
-        const dbQ = currentGameState.questions[tileIndex];
-        if (dbQ && dbQ.dbQuestionId && window.OrixaAuth && window.OrixaAuth.client) {
-            window.OrixaAuth.client.rpc('fn_submit_question_answer', {
-                p_attempt_id: currentGameState.dbAttemptId,
-                p_question_id: dbQ.dbQuestionId,
-                p_answer_json: { selected_option_index: String(optIndex) }
-            }).then(res => {
-                if (res.error) console.warn('Submit tile option RPC error:', res.error);
-            });
-        }
-    }
-
     const processOptionResult = (evaluatedIsCorrect) => {
         if (evaluatedIsCorrect) {
             if (optBtn) optBtn.classList.add('correct');
@@ -617,17 +602,17 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 p_question_id: dbQ.dbQuestionId,
                 p_answer_json: { selected_option_index: String(optIndex) }
             }).then(res => {
-                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : isCorrect;
+                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
                 processOptionResult(evalIsCorrect);
             }).catch(e => {
                 console.warn('RPC submit error:', e);
-                processOptionResult(isCorrect);
+                processOptionResult(false);
             });
             return;
         }
     }
 
-    processOptionResult(isCorrect);
+    processOptionResult(false);
 }
 
 // Phase 4: Final Victory & 3-Star Winning Sequence
@@ -1200,11 +1185,54 @@ function attemptMatch(qId, aId) {
 
     const stat = matchGameState.pairStats ? matchGameState.pairStats.find(p => p.id === qId) : null;
 
+    const processMatchResult = (evaluatedIsCorrect) => {
+        if (evaluatedIsCorrect) {
+            if (stat) {
+                stat.isSolved = true;
+                stat.totalAttempts++;
+            }
+            matchGameState.matches.set(qId, aId);
+            matchGameState.selectedQuestionId = null;
+            matchGameState.selectedAnswerId = null;
+
+            renderMatchGameBoard();
+
+            if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+                setGameTimeout(renderMatchVictoryScreen, 600);
+            }
+        } else {
+            if (stat) {
+                stat.mistakes++;
+                stat.totalAttempts++;
+            }
+            matchGameState.incorrectAttempts++;
+            matchGameState.selectedQuestionId = null;
+            matchGameState.selectedAnswerId = null;
+
+            const qCard = document.getElementById(`q-card-${qId}`);
+            const aCard = document.getElementById(`a-card-${aId}`);
+
+            if (qCard) qCard.classList.add('is-wrong');
+            if (aCard) aCard.classList.add('is-wrong');
+
+            drawErrorLine(qId, aId);
+
+            setGameTimeout(() => {
+                if (qCard) qCard.classList.remove('is-wrong');
+                if (aCard) aCard.classList.remove('is-wrong');
+
+                const errLine = document.getElementById(`err-line-${qId}-${aId}`);
+                if (errLine) errLine.remove();
+
+                renderMatchGameBoard();
+            }, 600);
+        }
+    };
+
     if (matchGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
         const matchingDbQ = matchGameState.dbQuestions ? matchGameState.dbQuestions.find(q => q.dbQuestionId === qId) : null;
-        const targetQId = matchingDbQ ? matchingDbQ.dbQuestionId : qId;
+        const targetQId = matchingDbQ ? matchingDbQ.dbQuestionId : (matchGameState.dbQuestions && matchGameState.dbQuestions[0] ? matchGameState.dbQuestions[0].dbQuestionId : qId);
 
-        // Collect all submitted pairs
         const pairsPayload = Array.from(matchGameState.matches.entries()).map(([q, a]) => ({ id: q, choice: a }));
         pairsPayload.push({ id: qId, choice: aId });
 
@@ -1213,81 +1241,16 @@ function attemptMatch(qId, aId) {
             p_question_id: targetQId,
             p_answer_json: { pairs: pairsPayload }
         }).then(res => {
-            if (res.error) console.warn('Submit match pair RPC error:', res.error);
+            const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
+            processMatchResult(evalIsCorrect);
+        }).catch(e => {
+            console.warn('RPC match pair error:', e);
+            processMatchResult(false);
         });
+        return;
     }
 
-    if (qId === aId) {
-        // CORRECT MATCH
-        if (stat) {
-            stat.isSolved = true;
-            stat.totalAttempts++;
-        }
-        matchGameState.matches.set(qId, aId);
-        matchGameState.selectedQuestionId = null;
-        matchGameState.selectedAnswerId = null;
-
-        renderMatchGameBoard();
-
-        // Check if all pairs processed (matched + failed)
-        if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
-            setGameTimeout(renderMatchVictoryScreen, 600);
-        }
-    } else {
-        // INCORRECT MATCH
-        if (stat) {
-            stat.mistakes++;
-            stat.totalAttempts++;
-        }
-        matchGameState.incorrectAttempts++;
-        matchGameState.selectedQuestionId = null;
-        matchGameState.selectedAnswerId = null;
-
-        // Visual feedback
-        const qCard = document.getElementById(`q-card-${qId}`);
-        const aCard = document.getElementById(`a-card-${aId}`);
-
-        if (qCard) qCard.classList.add('is-wrong');
-        if (aCard) aCard.classList.add('is-wrong');
-
-        // Draw temporary red error line
-        drawErrorLine(qId, aId);
-
-        const currentMistakes = stat ? stat.mistakes : 1;
-        const maxChances = matchGameState.configuredChances || 3;
-
-        if (currentMistakes >= maxChances) {
-            if (stat) {
-                stat.isSolved = false;
-            }
-            matchGameState.failedPairs.add(qId);
-
-            setTimeout(() => {
-                if (qCard) {
-                    qCard.classList.remove('is-wrong', 'is-selected');
-                }
-                if (aCard) {
-                    aCard.classList.remove('is-wrong', 'is-selected');
-                }
-                removeErrorLine();
-                renderMatchGameBoard();
-
-                if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
-                    setGameTimeout(renderMatchVictoryScreen, 600);
-                }
-            }, 600);
-        } else {
-            setTimeout(() => {
-                if (qCard) {
-                    qCard.classList.remove('is-wrong', 'is-selected');
-                }
-                if (aCard) {
-                    aCard.classList.remove('is-wrong', 'is-selected');
-                }
-                removeErrorLine();
-            }, 600);
-        }
-    }
+    processMatchResult(qId === aId);
 }
 
 function drawErrorLine(qId, aId) {
@@ -2349,7 +2312,7 @@ async function fetchPublishedQuizzesFromSupabase() {
     try {
         const { data: quizzes, error } = await client
             .from('quizzes')
-            .select('*, subjects(name), teacher_profiles(profiles(full_name))')
+            .select('*, subjects(name), profiles!quizzes_teacher_id_fkey(full_name)')
             .eq('status', 'PUBLISHED')
             .order('created_at', { ascending: false });
 
@@ -2360,7 +2323,7 @@ async function fetchPublishedQuizzesFromSupabase() {
 
         quizzes.forEach(q => {
             const subjectName = q.subjects ? q.subjects.name : 'Computer Science';
-            const teacherName = q.teacher_profiles && q.teacher_profiles.profiles ? q.teacher_profiles.profiles.full_name : 'Professor Riley';
+            const teacherName = q.profiles ? q.profiles.full_name : 'Professor Riley';
             const gameTypeLabel = (q.game_type || 'TILE_PUZZLE').replace('_', ' ');
 
             // Check if card already exists
@@ -2451,20 +2414,22 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
                 return {
                     dbQuestionId: q.id,
                     text: q.question_text || payload.question_text || '',
-                    options: payload.options || ['Option A', 'Option B', 'Option C', 'Option D'],
-                    correctAnswer: 0
+                    options: payload.options || ['Option A', 'Option B', 'Option C', 'Option D']
                 };
             });
             openQuestGame(quiz.title, mappedQ.length, subjectName, quiz.default_max_chances || 3, teacherName, attemptId, mappedQ);
         } else if (quiz.game_type === 'MATCH_FOLLOWING') {
-            const mappedPairs = questions.map((q, idx) => {
-                const payload = q.game_payload || {};
-                const prompt = payload.prompts && payload.prompts[0] ? payload.prompts[0].prompt : q.question_text;
-                const choice = payload.choices && payload.choices[0] ? payload.choices[0].choice : `Answer ${idx + 1}`;
+            const firstQ = questions[0] || {};
+            const payload = firstQ.game_payload || {};
+            const prompts = payload.prompts || (payload.pairs ? payload.pairs.map(p => ({ id: p.id, prompt: p.prompt })) : []);
+            const choices = payload.choices || (payload.pairs ? payload.pairs.map(p => ({ id: p.id, choice: p.correct_match })) : []);
+            const mappedPairs = prompts.map((p, idx) => {
+                const c = choices.find(ch => ch.id === p.id) || choices[idx] || {};
                 return {
-                    dbQuestionId: q.id,
-                    text: prompt,
-                    answer: choice
+                    dbQuestionId: firstQ.id,
+                    id: p.id || `p${idx + 1}`,
+                    text: p.prompt || `Prompt ${idx + 1}`,
+                    answer: c.choice || `Choice ${idx + 1}`
                 };
             });
             openMatchGame(quiz.title, subjectName, teacherName, quiz.default_max_chances || 3, attemptId, mappedPairs);
@@ -2476,9 +2441,7 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
                 return {
                     dbQuestionId: q.id,
                     statement: Array.isArray(tokens) ? tokens.join(' ') : q.question_text,
-                    blankAnswer: options[0] || '',
-                    options: options,
-                    correctAnswer: 0
+                    options: options
                 };
             });
             openFillBlanksGame(quiz.title, subjectName, mappedQ, quiz.default_max_chances || 3, teacherName, attemptId);
@@ -2487,8 +2450,7 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
                 const payload = q.game_payload || {};
                 return {
                     dbQuestionId: q.id,
-                    statement: payload.statement || q.question_text,
-                    correctAnswer: true
+                    statement: payload.statement || q.question_text
                 };
             });
             openTrueFalseGame(quiz.title, subjectName, mappedQ, teacherName, quiz.default_max_chances || 1, attemptId);

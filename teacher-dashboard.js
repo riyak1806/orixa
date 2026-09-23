@@ -999,63 +999,87 @@ async function saveQuizToSupabase(isPublish) {
         .from('teacher_subject_class_assignments')
         .select('id, college_id, department_id, subject_id, academic_level_id, academic_session_id')
         .eq('teacher_id', profile.id)
-        .eq('is_active', true)
-        .limit(1);
+        .eq('is_active', true);
 
+    let activeAssignment = null;
     if (assignments && assignments.length > 0) {
-        teacherAssignmentId = assignments[0].id;
-        collegeId = assignments[0].college_id;
-        departmentId = assignments[0].department_id;
-        subjectId = assignments[0].subject_id;
-        levelId = assignments[0].academic_level_id;
-        sessionId = assignments[0].academic_session_id;
+        if (createQuizState.subjectId) {
+            activeAssignment = assignments.find(a => a.subject_id === createQuizState.subjectId);
+        }
+        if (!activeAssignment && createQuizState.subject) {
+            const { data: matchedSub } = await client
+                .from('subjects')
+                .select('id')
+                .ilike('name', createQuizState.subject.trim())
+                .limit(1);
+            if (matchedSub && matchedSub[0]) {
+                activeAssignment = assignments.find(a => a.subject_id === matchedSub[0].id);
+            }
+        }
+        if (!activeAssignment) {
+            activeAssignment = assignments[0];
+        }
     } else {
-        const { data: sub } = await client.from('subjects').select('id, department_id').limit(1);
-        const { data: lvl } = await client.from('academic_levels').select('id, college_id').limit(1);
-        const { data: ses } = await client.from('academic_sessions').select('id').limit(1);
-
-        subjectId = sub && sub[0] ? sub[0].id : 's0000000-0000-0000-0000-000000000001';
-        departmentId = sub && sub[0] ? sub[0].department_id : departmentId;
-        levelId = lvl && lvl[0] ? lvl[0].id : 'l0000000-0000-0000-0000-000000000001';
-        collegeId = lvl && lvl[0] ? lvl[0].college_id : collegeId;
-        sessionId = ses && ses[0] ? ses[0].id : 'e0000000-0000-0000-0000-000000000001';
-
-        const { data: tsca } = await client
-            .from('teacher_subject_class_assignments')
-            .select('id')
-            .eq('teacher_id', profile.id)
-            .limit(1);
-        teacherAssignmentId = tsca && tsca[0] ? tsca[0].id : '11111111-3333-3333-3333-111111111111';
+        return { success: false, error: 'No active teacher subject assignment found for profile.' };
     }
+
+    teacherAssignmentId = activeAssignment.id;
+    collegeId = activeAssignment.college_id;
+    departmentId = activeAssignment.department_id;
+    subjectId = activeAssignment.subject_id;
+    levelId = activeAssignment.academic_level_id;
+    sessionId = activeAssignment.academic_session_id;
 
     const quizStatus = isPublish ? 'PUBLISHED' : 'DRAFT';
 
-    const { data: quizInsert, error: quizError } = await client
-        .from('quizzes')
-        .insert({
-            college_id: collegeId,
-            department_id: departmentId,
-            teacher_id: profile.id,
-            teacher_role: 'TEACHER',
-            subject_id: subjectId,
-            academic_level_id: levelId,
-            academic_session_id: sessionId,
-            teacher_assignment_id: teacherAssignmentId,
-            title: createQuizState.title.trim(),
-            description: createQuizState.description ? createQuizState.description.trim() : '',
-            game_type: createQuizState.gameType,
-            status: quizStatus,
-            default_max_chances: createQuizState.settings.attempts || 3,
-            total_possible_xp: 100,
-            settings: {
-                timeLimit: createQuizState.settings.timeLimit || 15,
-                passingScore: createQuizState.settings.passingScore || 70,
-                shuffleQuestions: createQuizState.settings.shuffleQuestions || false,
-                shuffleAnswers: createQuizState.settings.shuffleAnswers || false
-            }
-        })
-        .select()
-        .single();
+    const quizData = {
+        college_id: collegeId,
+        department_id: departmentId,
+        teacher_id: profile.id,
+        teacher_role: 'TEACHER',
+        subject_id: subjectId,
+        academic_level_id: levelId,
+        academic_session_id: sessionId,
+        teacher_assignment_id: teacherAssignmentId,
+        title: createQuizState.title.trim(),
+        description: createQuizState.description ? createQuizState.description.trim() : '',
+        game_type: createQuizState.gameType,
+        status: quizStatus,
+        default_max_chances: createQuizState.settings.attempts || 3,
+        total_possible_xp: 100,
+        settings: {
+            timeLimit: createQuizState.settings.timeLimit || 15,
+            passingScore: createQuizState.settings.passingScore || 70,
+            shuffleQuestions: createQuizState.settings.shuffleQuestions || false,
+            shuffleAnswers: createQuizState.settings.shuffleAnswers || false
+        }
+    };
+
+    let quizInsert = null;
+    let quizError = null;
+
+    if (createQuizState.editingQuizId) {
+        const { data: updated, error: uErr } = await client
+            .from('quizzes')
+            .update(quizData)
+            .eq('id', createQuizState.editingQuizId)
+            .select()
+            .single();
+        quizInsert = updated;
+        quizError = uErr;
+
+        if (quizInsert) {
+            await client.from('quiz_questions').delete().eq('quiz_id', quizInsert.id);
+        }
+    } else {
+        const { data: inserted, error: iErr } = await client
+            .from('quizzes')
+            .insert(quizData)
+            .select()
+            .single();
+        quizInsert = inserted;
+        quizError = iErr;
+    }
 
     if (quizError || !quizInsert) {
         console.error('Failed to save quiz in Supabase:', quizError);
@@ -1108,6 +1132,7 @@ async function saveQuizToSupabase(isPublish) {
         const { error: qErr } = await client.from('quiz_questions').insert(questionsToInsert);
         if (qErr) {
             console.error('Failed to save questions in Supabase:', qErr);
+            return { success: false, error: qErr.message };
         }
     }
 
@@ -2287,7 +2312,25 @@ function renderGameBuilderStep(dynamicPage) {
             MOCK_DATA.quizzes.unshift(newQuiz);
 
             saveQuizToSupabase(false).then(res => {
-                if (res.success) fetchTeacherQuizzesFromSupabase();
+                if (!res.success) {
+                    console.error('Save draft error:', res.error);
+                    openOrixaModal(`
+                        <div class="orixa-modal-card">
+                            <header class="orixa-modal-header" style="background: var(--color-red);">
+                                <h3 class="orixa-modal-title" style="color: #ffffff;">Save Failed</h3>
+                                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal();" aria-label="Close modal">
+                                    <span data-icon="x"></span>
+                                </button>
+                            </header>
+                            <div class="orixa-modal-body" style="padding: var(--t-space-3);">
+                                <p style="font-size: 1.1rem; font-weight: 700; color: var(--border-dark);">Could not save quiz to database:</p>
+                                <p style="color: var(--color-red-dark); font-size: 0.95rem; margin-top: 8px;">${escapeHTML(res.error || 'Unknown error')}</p>
+                            </div>
+                        </div>
+                    `);
+                    return;
+                }
+                fetchTeacherQuizzesFromSupabase();
             });
 
             // Show Success Modal
@@ -2369,13 +2412,31 @@ function renderGameBuilderStep(dynamicPage) {
                     MOCK_DATA.quizzes.unshift(newQuiz);
 
                     saveQuizToSupabase(true).then(res => {
-                        if (res.success) fetchTeacherQuizzesFromSupabase();
-                    });
+                        if (!res.success) {
+                            console.error('Publish error:', res.error);
+                            closeOrixaModal();
+                            openOrixaModal(`
+                                <div class="orixa-modal-card">
+                                    <header class="orixa-modal-header" style="background: var(--color-red);">
+                                        <h3 class="orixa-modal-title" style="color: #ffffff;">Publish Failed</h3>
+                                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal();" aria-label="Close modal">
+                                            <span data-icon="x"></span>
+                                        </button>
+                                    </header>
+                                    <div class="orixa-modal-body" style="padding: var(--t-space-3);">
+                                        <p style="font-size: 1.1rem; font-weight: 700; color: var(--border-dark);">Could not publish quiz to database:</p>
+                                        <p style="color: var(--color-red-dark); font-size: 0.95rem; margin-top: 8px;">${escapeHTML(res.error || 'Unknown error')}</p>
+                                    </div>
+                                </div>
+                            `);
+                            return;
+                        }
+                        fetchTeacherQuizzesFromSupabase();
 
-                    closeOrixaModal();
+                        closeOrixaModal();
 
-                    // Success Feedback
-                    openOrixaModal(`
+                        // Success Feedback
+                        openOrixaModal(`
                         <div class="orixa-modal-card">
                             <header class="orixa-modal-header" style="background: var(--color-green);">
                                 <h3 class="orixa-modal-title" style="color: var(--border-dark);">Published Successfully!</h3>
@@ -2395,8 +2456,9 @@ function renderGameBuilderStep(dynamicPage) {
                         </div>
                     `);
 
-                    // Reset state
-                    createQuizState = null;
+                        // Reset state
+                        createQuizState = null;
+                    });
                 });
             }
         });

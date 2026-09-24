@@ -1622,9 +1622,6 @@ function attemptFitbAnswer(optionText, card) {
 
     const currentStat = fillBlanksGameState.questionStats ? fillBlanksGameState.questionStats[fillBlanksGameState.currentIndex] : null;
 
-    const isCorrectFallback = (optionText === currentQ.correctAnswerText) ||
-                              (currentQ.blankAnswer && optionText.toLowerCase() === currentQ.blankAnswer.toLowerCase());
-
     const processFitbResult = (evaluatedIsCorrect) => {
         if (evaluatedIsCorrect) {
             if (currentStat) {
@@ -1719,17 +1716,17 @@ function attemptFitbAnswer(optionText, card) {
                 p_question_id: dbQ.dbQuestionId,
                 p_answer_json: { submitted_words: [optionText] }
             }).then(res => {
-                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : isCorrectFallback;
+                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
                 processFitbResult(evalIsCorrect);
             }).catch(e => {
                 console.warn('RPC fitb error:', e);
-                processFitbResult(isCorrectFallback);
+                processFitbResult(false);
             });
             return;
         }
     }
 
-    processFitbResult(isCorrectFallback);
+    processFitbResult(false);
 }
 
 function renderFitbVictoryScreen() {
@@ -1952,8 +1949,6 @@ function evaluateTrueFalseChoice(selectedBool) {
     if (btnTrue) btnTrue.disabled = true;
     if (btnFalse) btnFalse.disabled = true;
 
-    const isCorrectFallback = selectedBool === currentQ.correctAnswer;
-
     const processTrueFalseResult = (evaluatedIsCorrect) => {
         if (evaluatedIsCorrect) {
             if (currentStat) {
@@ -2053,17 +2048,17 @@ function evaluateTrueFalseChoice(selectedBool) {
                 p_question_id: dbQ.dbQuestionId,
                 p_answer_json: { submitted_boolean: String(selectedBool).toUpperCase() }
             }).then(res => {
-                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : isCorrectFallback;
+                const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
                 processTrueFalseResult(evalIsCorrect);
             }).catch(e => {
                 console.warn('RPC tf error:', e);
-                processTrueFalseResult(isCorrectFallback);
+                processTrueFalseResult(false);
             });
             return;
         }
     }
 
-    processTrueFalseResult(isCorrectFallback);
+    processTrueFalseResult(false);
 }
 
 function renderTrueFalseVictoryScreen() {

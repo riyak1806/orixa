@@ -1300,7 +1300,7 @@ async function loadHodDataFromSupabase() {
 
         const { data: students } = await client
             .from('student_profiles')
-            .select('*, profiles(full_name, email, login_id)')
+            .select('*, profiles!student_profiles_profile_id_fkey(full_name, email, login_id)')
             .eq('department_id', profile.department_id);
 
         if (students) {

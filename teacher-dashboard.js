@@ -407,7 +407,7 @@ async function fetchTeacherResultsFromSupabase() {
             .from('quiz_attempts')
             .select('*, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
             .eq('quizzes.teacher_id', user.id)
-            .order('created_at', { ascending: false });
+            .order('started_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching results from Supabase:', error);
@@ -420,8 +420,9 @@ async function fetchTeacherResultsFromSupabase() {
                 const subjectName = (att.quizzes && att.quizzes.subjects) ? att.quizzes.subjects.name : 'Computer Science';
                 const studentName = att.profiles ? (att.profiles.full_name || att.profiles.login_id) : 'Student';
                 const studentId = att.profiles ? att.profiles.login_id : 'STD';
-                const totalXP = att.earned_xp || 0;
-                const percentage = att.score_percentage || 0;
+                const totalXP = att.final_earned_xp || 0;
+                const percentage = att.final_accuracy_pct || 0;
+                const attemptDate = att.completed_at || att.started_at;
 
                 return {
                     id: att.id,
@@ -436,7 +437,7 @@ async function fetchTeacherResultsFromSupabase() {
                     correctCount: percentage >= 50 ? 1 : 0,
                     incorrectCount: percentage < 50 ? 1 : 0,
                     daysOffset: 0,
-                    dateAttempted: att.created_at ? att.created_at.split('T')[0] : '',
+                    dateAttempted: attemptDate ? attemptDate.split('T')[0] : '',
                     questionsBreakdown: []
                 };
             });
@@ -455,7 +456,7 @@ async function fetchTeacherStudentsFromSupabase() {
     try {
         const { data: assignments, error } = await client
             .from('student_subject_assignments')
-            .select('*, profiles!student_subject_assignments_student_id_fkey(id, full_name, email, login_id, student_profiles(*))')
+            .select('*, profiles!student_subject_assignments_student_id_fkey(id, full_name, email, login_id, student_profiles!student_profiles_profile_id_fkey(*))')
             .eq('teacher_id', user.id)
             .eq('is_active', true);
 

@@ -4,29 +4,13 @@
 
 const MOCK_COLLEGE_DATA = {
     collegeInfo: {
-        id: 'jspmntc',
-        name: 'JSPM NTC — Jayawantrao Sawant College of Engineering',
-        adminName: 'General College Administrator',
+        id: '',
+        name: '',
+        adminName: '',
         academicYear: '2024–2025'
     },
-    departments: [
-        { id: 'DEPT-101', name: 'Computer Engineering', hodName: 'Dr. Rajesh Sharma', hodEmpId: 'HOD-CS-01', totalStudents: 340, activeTeachers: 14, avgAccuracy: 88 },
-        { id: 'DEPT-102', name: 'Mechanical Engineering', hodName: 'Prof. Amit Verma', hodEmpId: 'HOD-ME-02', totalStudents: 280, activeTeachers: 12, avgAccuracy: 79 },
-        { id: 'DEPT-103', name: 'Electrical Engineering', hodName: 'Dr. Sunita Patil', hodEmpId: 'HOD-EE-03', totalStudents: 220, activeTeachers: 10, avgAccuracy: 84 },
-        { id: 'DEPT-104', name: 'Civil Engineering', hodName: 'Prof. Ramesh Kulkarni', hodEmpId: 'HOD-CE-04', totalStudents: 190, activeTeachers: 8, avgAccuracy: 72 }
-    ],
-    studentPerformance: [
-        { id: 'STU-101', name: 'Aarav Sharma', department: 'Computer Engineering', teacher: 'Prof. Sarah Jenkins', year: 'FE', subject: 'Data Structures', quizzesCompleted: 14, avgAccuracy: 94, totalXp: 1650, status: 'Top Performer' },
-        { id: 'STU-102', name: 'Ananya Deshmukh', department: 'Computer Engineering', teacher: 'Prof. Sarah Jenkins', year: 'SE', subject: 'Database Management', quizzesCompleted: 11, avgAccuracy: 88, totalXp: 1320, status: 'Above Average' },
-        { id: 'STU-103', name: 'Rohan Mehta', department: 'Mechanical Engineering', teacher: 'Prof. Robert Miller', year: 'TE', subject: 'Thermodynamics', quizzesCompleted: 8, avgAccuracy: 76, totalXp: 920, status: 'Average' },
-        { id: 'STU-104', name: 'Priya Joshi', department: 'Electrical Engineering', teacher: 'Prof. Alan Turing', year: 'BE', subject: 'Circuit Analysis', quizzesCompleted: 16, avgAccuracy: 96, totalXp: 1890, status: 'Top Performer' },
-        { id: 'STU-105', name: 'Vikram Singh', department: 'Civil Engineering', teacher: 'Prof. Sarah Jenkins', year: 'SE', subject: 'Structural Mechanics', quizzesCompleted: 6, avgAccuracy: 64, totalXp: 680, status: 'Needs Improvement' },
-        { id: 'STU-106', name: 'Sanya Malhotra', department: 'Computer Engineering', teacher: 'Prof. Alan Turing', year: 'TE', subject: 'Web Technologies', quizzesCompleted: 12, avgAccuracy: 91, totalXp: 1420, status: 'Top Performer' },
-        { id: 'STU-107', name: 'Aditya Pawar', department: 'Mechanical Engineering', teacher: 'Prof. Robert Miller', year: 'FE', subject: 'Engineering Physics', quizzesCompleted: 9, avgAccuracy: 82, totalXp: 1080, status: 'Above Average' },
-        { id: 'STU-108', name: 'Neha Kulkarni', department: 'Electrical Engineering', teacher: 'Prof. Alan Turing', year: 'SE', subject: 'Control Systems', quizzesCompleted: 15, avgAccuracy: 97, totalXp: 1850, status: 'Top Performer' },
-        { id: 'STU-109', name: 'Kunal Shinde', department: 'Civil Engineering', teacher: 'Prof. Robert Miller', year: 'TE', subject: 'Fluid Mechanics', quizzesCompleted: 7, avgAccuracy: 70, totalXp: 780, status: 'Average' },
-        { id: 'STU-110', name: 'Isha Gupta', department: 'Computer Engineering', teacher: 'Prof. Sarah Jenkins', year: 'BE', subject: 'Cloud Computing', quizzesCompleted: 13, avgAccuracy: 89, totalXp: 1510, status: 'Above Average' }
-    ]
+    departments: [],
+    studentPerformance: []
 };
 
 // State variables
@@ -435,6 +419,55 @@ function confirmCollegeLogout(event) {
     });
 }
 
+async function loadCollegeDataFromSupabase() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+    const profile = await window.OrixaAuth.getCurrentProfile();
+    if (!profile) return;
+
+    try {
+        if (profile.college_id) {
+            const { data: col } = await client
+                .from('colleges')
+                .select('*')
+                .eq('id', profile.college_id)
+                .maybeSingle();
+            if (col) {
+                MOCK_COLLEGE_DATA.collegeInfo.name = col.name;
+                MOCK_COLLEGE_DATA.collegeInfo.id = col.code;
+            }
+        }
+
+        const { data: depts } = await client
+            .from('departments')
+            .select('*, hod_assignments(profile_id, profiles(full_name, login_id))')
+            .eq('college_id', profile.college_id);
+
+        if (depts) {
+            MOCK_COLLEGE_DATA.departments = depts.map(d => {
+                let hodName = 'Unassigned HOD';
+                let hodEmpId = 'DEPT-HOD';
+                if (d.hod_assignments && d.hod_assignments[0] && d.hod_assignments[0].profiles) {
+                    hodName = d.hod_assignments[0].profiles.full_name || hodName;
+                    hodEmpId = d.hod_assignments[0].profiles.login_id || hodEmpId;
+                }
+
+                return {
+                    id: d.id,
+                    name: d.name,
+                    hodName: hodName,
+                    hodEmpId: hodEmpId,
+                    totalStudents: 0,
+                    activeTeachers: 1,
+                    avgAccuracy: 85
+                };
+            });
+        }
+    } catch (e) {
+        console.warn('Error fetching college data from Supabase:', e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     if (window.OrixaAuth) {
         const profile = await window.OrixaAuth.requireRole(['COLLEGE_ADMIN'], 'college-login.html');
@@ -444,6 +477,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             MOCK_COLLEGE_DATA.collegeInfo.adminName = profile.full_name;
         }
     }
+
+    await loadCollegeDataFromSupabase();
 
     renderCollegeStats();
     renderDepartmentList();

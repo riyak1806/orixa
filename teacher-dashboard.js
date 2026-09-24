@@ -31,96 +31,18 @@ const ICONS = {
     trueFalse: '<path d="m9 12 2 2 4-4"></path><circle cx="12" cy="12" r="9"></circle>'
 };
 
-// Centralized Data Architecture
+// Centralized Data Architecture (Populated from Supabase)
 const MOCK_DATA = {
-    unreadCount: 3,
-    notifications: [
-        {
-            id: 1,
-            title: "Quiz Completed",
-            message: "Aarav Sharma completed Solar System Basics with a score of 92%.",
-            category: "Quiz",
-            priority: "Normal",
-            read: false,
-            timestamp: "2026-08-12T10:30:00Z",
-            dateStr: "10 mins ago",
-            target: "results"
-        },
-        {
-            id: 2,
-            title: "New Student Added",
-            message: "A new student Anjali Gupta has been added to Grade 7 Science.",
-            category: "Student",
-            priority: "Normal",
-            read: true,
-            timestamp: "2026-08-11T14:15:00Z",
-            dateStr: "1 day ago",
-            target: "students"
-        },
-        {
-            id: 3,
-            title: "Quiz Results Available",
-            message: "Results for Ancient Civilizations are now available.",
-            category: "Results",
-            priority: "Important",
-            read: false,
-            timestamp: "2026-08-12T09:00:00Z",
-            dateStr: "2 hours ago",
-            target: "results"
-        },
-        {
-            id: 4,
-            title: "Quiz Draft Saved",
-            message: "Your Fractions Sprint quiz has been saved as a draft.",
-            category: "Quiz",
-            priority: "Normal",
-            read: true,
-            timestamp: "2026-08-10T11:00:00Z",
-            dateStr: "2 days ago",
-            target: "quiz-management"
-        },
-        {
-            id: 5,
-            title: "System Update",
-            message: "ORIXA Teacher Portal has been updated to version 1.2.0 with improved analysis.",
-            category: "System",
-            priority: "Important",
-            read: true,
-            timestamp: "2026-08-08T08:30:00Z",
-            dateStr: "4 days ago",
-            target: "dashboard"
-        },
-        {
-            id: 6,
-            title: "Student Activity Warning",
-            message: "Priya Patel has been marked inactive due to no activity for 2 weeks.",
-            category: "Student",
-            priority: "Important",
-            read: false,
-            timestamp: "2026-08-12T06:45:00Z",
-            dateStr: "4 hours ago",
-            target: "students"
-        },
-        {
-            id: 7,
-            title: "General Announcement",
-            message: "The school science fair is scheduled for next Friday. Prepare quiz modules accordingly.",
-            category: "General",
-            priority: "Normal",
-            read: true,
-            timestamp: "2026-08-07T13:00:00Z",
-            dateStr: "5 days ago",
-            target: "dashboard"
-        }
-    ],
+    unreadCount: 0,
+    notifications: [],
     teacher: {
-        name: "Professor Riley",
-        email: "riley@orixa.edu",
-        department: "Science & Technology",
-        subjects: ["Biology", "Chemistry", "General Science"],
-        classes: ["Grade 7 Science", "Grade 8 Biology", "Grade 9 Chemistry"],
-        bio: "Passionate educator specializing in interactive science teaching. Helping students discover the wonders of nature through gamified quizzes.",
-        employeeId: "EMP-7392"
+        name: "",
+        email: "",
+        department: "",
+        subjects: [],
+        classes: [],
+        bio: "",
+        employeeId: ""
     },
     settings: {
         notifications: {
@@ -139,535 +61,21 @@ const MOCK_DATA = {
             showCorrectAnswers: true,
             allowLateSubmissions: false
         },
-        activeSessions: [
-            { device: "MacBook Pro (Chrome)", lastActive: "Active now", location: "Mumbai, India" },
-            { device: "iPad Air (Safari)", lastActive: "2 hours ago", location: "Mumbai, India" },
-            { device: "Windows Desktop (Firefox)", lastActive: "3 days ago", location: "Pune, India" }
-        ]
+        activeSessions: []
     },
     stats: [
-        { label: 'Total Quizzes', value: '48', caption: 'Created this semester', icon: 'clipboard', tone: 'yellow' },
-        { label: 'Total Students', value: '312', caption: 'Active: 285 | Inactive: 27', icon: 'users', tone: 'blue' },
-        { label: 'Average Score', value: '84%', caption: 'Subject average score', icon: 'target', tone: 'green' },
-        { label: 'Recent Activity', value: '14', caption: 'Quiz submissions today', icon: 'clock', tone: 'orange' }
+        { label: 'Total Quizzes', value: '0', caption: 'Created this semester', icon: 'clipboard', tone: 'yellow' },
+        { label: 'Total Students', value: '0', caption: 'Active: 0 | Inactive: 0', icon: 'users', tone: 'blue' },
+        { label: 'Average Score', value: '0%', caption: 'Subject average score', icon: 'target', tone: 'green' },
+        { label: 'Recent Activity', value: '0', caption: 'Quiz submissions today', icon: 'clock', tone: 'orange' }
     ],
-    students: [
-        {
-            id: "STU-001",
-            name: "Aarav Sharma",
-            grade: "Grade 8",
-            email: "aarav@example.com",
-            quizzesAttempted: 12,
-            averageScore: 84,
-            status: "Active",
-            lastActivity: "2026-08-11",
-            subject: "Science",
-            bestScore: 95,
-            recentQuizzes: [
-                { title: "Solar System Basics", score: 88, date: "2026-08-10" },
-                { title: "Cell Structure and Function", score: 80, date: "2026-08-08" },
-                { title: "Periodic Table Review", score: 84, date: "2026-07-28" }
-            ]
-        },
-        {
-            id: "STU-002",
-            name: "Anjali Gupta",
-            grade: "Grade 7",
-            email: "anjali@example.com",
-            quizzesAttempted: 8,
-            averageScore: 92,
-            status: "Active",
-            lastActivity: "2026-08-12",
-            subject: "Mathematics",
-            bestScore: 100,
-            recentQuizzes: [
-                { title: "Fractions Sprint", score: 95, date: "2026-08-09" },
-                { title: "Algebra Equations", score: 89, date: "2026-08-07" }
-            ]
-        },
-        {
-            id: "STU-003",
-            name: "Siddharth Sen",
-            grade: "Grade 9",
-            email: "siddharth@example.com",
-            quizzesAttempted: 15,
-            averageScore: 76,
-            status: "Active",
-            lastActivity: "2026-08-12",
-            subject: "History",
-            bestScore: 88,
-            recentQuizzes: [
-                { title: "Ancient Civilizations", score: 72, date: "2026-08-05" },
-                { title: "Roman Empire", score: 80, date: "2026-08-04" }
-            ]
-        },
-        {
-            id: "STU-004",
-            name: "Priya Patel",
-            grade: "Grade 8",
-            email: "priya@example.com",
-            quizzesAttempted: 10,
-            averageScore: 68,
-            status: "Inactive",
-            lastActivity: "2026-07-20",
-            subject: "Science",
-            bestScore: 75,
-            recentQuizzes: [
-                { title: "Cell Structure and Function", score: 65, date: "2026-07-18" }
-            ]
-        },
-        {
-            id: "STU-005",
-            name: "Rohan Das",
-            grade: "Grade 7",
-            email: "rohan@example.com",
-            quizzesAttempted: 5,
-            averageScore: 89,
-            status: "Active",
-            lastActivity: "2026-08-10",
-            subject: "Science",
-            bestScore: 94,
-            recentQuizzes: [
-                { title: "Solar System Basics", score: 90, date: "2026-08-10" }
-            ]
-        },
-        {
-            id: "STU-006",
-            name: "Meera Nair",
-            grade: "Grade 9",
-            email: "meera@example.com",
-            quizzesAttempted: 0,
-            averageScore: 0,
-            status: "Inactive",
-            lastActivity: "2026-08-01",
-            subject: "Mathematics",
-            bestScore: 0,
-            recentQuizzes: []
-        }
-    ],
-    activities: [
-        { title: 'Quiz Completed', desc: 'Solar System Basics by 26 students', time: '10 mins ago', icon: 'clipboard' },
-        { title: 'Student Submission', desc: 'Rahul Sharma submitted Fractions Sprint', time: '25 mins ago', icon: 'clipboard' },
-        { title: 'New Student Added', desc: 'Siddharth Sen registered in Class B', time: '1 hour ago', icon: 'users' },
-        { title: 'Result Updated', desc: 'Grade 7 Science results compiled', time: '2 hours ago', icon: 'chart' },
-        { title: 'Quiz Published', desc: 'Ancient Civilizations is now Live', time: '1 day ago', icon: 'trophy' },
-        { title: 'Question Bank Activity', desc: '35 new algebra questions added', time: '2 days ago', icon: 'bank' }
-    ],
-    quizzes: [
-        { id: 1, title: 'Solar System Basics', subject: 'Science', questions: 18, status: 'Live', icon: 'trophy', attempts: 26, lastUpdated: '2026-08-10', gameType: 'TILE_PUZZLE' },
-        { id: 2, title: 'Fractions Sprint', subject: 'Maths', questions: 12, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-09', gameType: 'TILE_PUZZLE' },
-        { id: 3, title: 'Ancient Civilizations', subject: 'History', questions: 20, status: 'Closed', icon: 'history', attempts: 18, lastUpdated: '2026-08-05', gameType: 'MATCH_FOLLOWING' },
-        { id: 4, title: 'Cell Structure and Function', subject: 'Science', questions: 15, status: 'Live', icon: 'trophy', attempts: 42, lastUpdated: '2026-08-08', gameType: 'TILE_PUZZLE' },
-        { id: 5, title: 'Algebra Equations', subject: 'Maths', questions: 10, status: 'Live', icon: 'clipboard', attempts: 35, lastUpdated: '2026-08-07', gameType: 'FILL_BLANKS' },
-        { id: 6, title: 'Periodic Table Review', subject: 'Science', questions: 30, status: 'Closed', icon: 'history', attempts: 55, lastUpdated: '2026-07-28', gameType: 'TRUE_FALSE' },
-        { id: 7, title: 'Intro to Geometry', subject: 'Maths', questions: 15, status: 'Draft', icon: 'clipboard', attempts: 0, lastUpdated: '2026-08-02', gameType: 'TILE_PUZZLE' },
-        { id: 8, title: 'Roman Empire', subject: 'History', questions: 15, status: 'Live', icon: 'trophy', attempts: 12, lastUpdated: '2026-08-04', gameType: 'TRUE_FALSE' }
-    ],
-    questionBank: [
-        {
-            id: 1,
-            text: "What is the largest planet in our solar system?",
-            subject: "Science",
-            topic: "Solar System",
-            difficulty: "Easy",
-            type: "Multiple Choice",
-            options: ["Earth", "Jupiter", "Mars", "Saturn"],
-            correctAnswer: 1,
-            marks: 1,
-            lastUpdated: "2026-08-11"
-        },
-        {
-            id: 2,
-            text: "What is the powerhouse of the cell?",
-            subject: "Science",
-            topic: "Biology",
-            difficulty: "Medium",
-            type: "Multiple Choice",
-            options: ["Mitochondria", "Nucleus", "Ribosome", "Endoplasmic Reticulum"],
-            correctAnswer: 0,
-            marks: 2,
-            lastUpdated: "2026-08-08"
-        },
-        {
-            id: 3,
-            text: "Which of the following is a prime number?",
-            subject: "Mathematics",
-            topic: "Number Theory",
-            difficulty: "Medium",
-            type: "Multiple Choice",
-            options: ["4", "9", "15", "17"],
-            correctAnswer: 3,
-            marks: 2,
-            lastUpdated: "2026-08-05"
-        },
-        {
-            id: 4,
-            text: "Python is an interpreted programming language.",
-            subject: "Computer Science",
-            topic: "Programming",
-            difficulty: "Easy",
-            type: "True / False",
-            correctAnswer: "True",
-            marks: 1,
-            lastUpdated: "2026-08-10"
-        },
-        {
-            id: 5,
-            text: "The Battle of Hastings was fought in 1066.",
-            subject: "History",
-            topic: "Medieval",
-            difficulty: "Easy",
-            type: "True / False",
-            correctAnswer: "True",
-            marks: 1,
-            lastUpdated: "2026-08-09"
-        },
-        {
-            id: 6,
-            text: "What does CSS stand for in web development?",
-            subject: "Computer Science",
-            topic: "Web Development",
-            difficulty: "Medium",
-            type: "Multiple Choice",
-            options: ["Creative Style Sheets", "Computer Style Sheets", "Cascading Style Sheets", "Colorful Style Sheets"],
-            correctAnswer: 2,
-            marks: 2,
-            lastUpdated: "2026-08-04"
-        },
-        {
-            id: 7,
-            text: "Select the correct spelling of the word meaning 'temporary stay'.",
-            subject: "English",
-            topic: "Vocabulary",
-            difficulty: "Hard",
-            type: "Multiple Choice",
-            options: ["Sojorn", "Sojourn", "Sojorner", "Sojourner"],
-            correctAnswer: 1,
-            marks: 3,
-            lastUpdated: "2026-08-01"
-        }
-    ],
-    results: [
-        {
-            id: "RES-001",
-            studentId: "STU-001",
-            studentName: "Aarav Sharma",
-            quizId: 1,
-            quizName: "Solar System Basics",
-            subject: "Science",
-            grade: "Grade 8",
-            score: 17,
-            totalQuestions: 20,
-            percentage: 85,
-            correctCount: 17,
-            incorrectCount: 3,
-            daysOffset: 0, // Today
-            questionsBreakdown: [
-                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Jupiter", correctAnswer: "Jupiter", isCorrect: true, marks: 2 },
-                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 },
-                { number: 3, text: "The Battle of Hastings was fought in 1066.", studentAnswer: "True", correctAnswer: "True", isCorrect: true, marks: 1 },
-                { number: 4, text: "Python is an interpreted programming language.", studentAnswer: "False", correctAnswer: "True", isCorrect: false, marks: 0 }
-            ]
-        },
-        {
-            id: "RES-002",
-            studentId: "STU-002",
-            studentName: "Anjali Gupta",
-            quizId: 5,
-            quizName: "Algebra Equations",
-            subject: "Mathematics",
-            grade: "Grade 7",
-            score: 10,
-            totalQuestions: 10,
-            percentage: 100,
-            correctCount: 10,
-            incorrectCount: 0,
-            daysOffset: 1, // Yesterday
-            questionsBreakdown: [
-                { number: 1, text: "Which of the following is a prime number?", studentAnswer: "17", correctAnswer: "17", isCorrect: true, marks: 2 },
-                { number: 2, text: "Solve for x: 2x + 5 = 15", studentAnswer: "5", correctAnswer: "5", isCorrect: true, marks: 2 }
-            ]
-        },
-        {
-            id: "RES-003",
-            studentId: "STU-003",
-            studentName: "Siddharth Sen",
-            quizId: 3,
-            quizName: "Ancient Civilizations",
-            subject: "History",
-            grade: "Grade 9",
-            score: 15,
-            totalQuestions: 20,
-            percentage: 75,
-            correctCount: 15,
-            incorrectCount: 5,
-            daysOffset: 3, // This Week
-            questionsBreakdown: [
-                { number: 1, text: "The Battle of Hastings was fought in 1066.", studentAnswer: "True", correctAnswer: "True", isCorrect: true, marks: 1 },
-                { number: 2, text: "Who was the first emperor of Rome?", studentAnswer: "Julius Caesar", correctAnswer: "Augustus", isCorrect: false, marks: 0 }
-            ]
-        },
-        {
-            id: "RES-004",
-            studentId: "STU-004",
-            studentName: "Priya Patel",
-            quizId: 4,
-            quizName: "Cell Structure and Function",
-            subject: "Science",
-            grade: "Grade 8",
-            score: 7,
-            totalQuestions: 15,
-            percentage: 46,
-            correctCount: 7,
-            incorrectCount: 8,
-            daysOffset: 15, // This Month
-            questionsBreakdown: [
-                { number: 1, text: "What is the powerhouse of the cell?", studentAnswer: "Nucleus", correctAnswer: "Mitochondria", isCorrect: false, marks: 0 },
-                { number: 2, text: "Which organelle performs photosynthesis?", studentAnswer: "Chloroplast", correctAnswer: "Chloroplast", isCorrect: true, marks: 2 }
-            ]
-        },
-        {
-            id: "RES-005",
-            studentId: "STU-005",
-            studentName: "Rohan Das",
-            quizId: 1,
-            quizName: "Solar System Basics",
-            subject: "Science",
-            grade: "Grade 7",
-            score: 18,
-            totalQuestions: 20,
-            percentage: 90,
-            correctCount: 18,
-            incorrectCount: 2,
-            daysOffset: 5, // This Week
-            questionsBreakdown: [
-                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Jupiter", correctAnswer: "Jupiter", isCorrect: true, marks: 2 },
-                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 }
-            ]
-        },
-        {
-            id: "RES-006",
-            studentId: "STU-001",
-            studentName: "Aarav Sharma",
-            quizId: 4,
-            quizName: "Cell Structure and Function",
-            subject: "Science",
-            grade: "Grade 8",
-            score: 12,
-            totalQuestions: 15,
-            percentage: 80,
-            correctCount: 12,
-            incorrectCount: 3,
-            daysOffset: 10, // This Month
-            questionsBreakdown: [
-                { number: 1, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 },
-                { number: 2, text: "Which organelle performs photosynthesis?", studentAnswer: "Chloroplast", correctAnswer: "Chloroplast", isCorrect: true, marks: 2 }
-            ]
-        },
-        {
-            id: "RES-007",
-            studentId: "STU-002",
-            studentName: "Anjali Gupta",
-            quizId: 1,
-            quizName: "Solar System Basics",
-            subject: "Science",
-            grade: "Grade 7",
-            score: 19,
-            totalQuestions: 20,
-            percentage: 95,
-            correctCount: 19,
-            incorrectCount: 1,
-            daysOffset: 45, // All Time
-            questionsBreakdown: [
-                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Jupiter", correctAnswer: "Jupiter", isCorrect: true, marks: 2 },
-                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 }
-            ]
-        },
-        {
-            id: "RES-008",
-            studentId: "STU-003",
-            studentName: "Siddharth Sen",
-            quizId: 8,
-            quizName: "Roman Empire",
-            subject: "History",
-            grade: "Grade 9",
-            score: 11,
-            totalQuestions: 15,
-            percentage: 73,
-            correctCount: 11,
-            incorrectCount: 4,
-            daysOffset: 32, // All Time
-            questionsBreakdown: [
-                { number: 1, text: "Who was the first emperor of Rome?", studentAnswer: "Augustus", correctAnswer: "Augustus", isCorrect: true, marks: 2 },
-                { number: 2, text: "The Battle of Hastings was fought in 1066.", studentAnswer: "True", correctAnswer: "True", isCorrect: true, marks: 1 }
-            ]
-        },
-        {
-            id: "RES-009",
-            studentId: "STU-004",
-            studentName: "Priya Patel",
-            quizId: 1,
-            quizName: "Solar System Basics",
-            subject: "Science",
-            grade: "Grade 8",
-            score: 11,
-            totalQuestions: 20,
-            percentage: 55,
-            correctCount: 11,
-            incorrectCount: 9,
-            daysOffset: 8, // This Month
-            questionsBreakdown: [
-                { number: 1, text: "What is the largest planet in our solar system?", studentAnswer: "Mars", correctAnswer: "Jupiter", isCorrect: false, marks: 0 },
-                { number: 2, text: "What is the powerhouse of the cell?", studentAnswer: "Mitochondria", correctAnswer: "Mitochondria", isCorrect: true, marks: 2 }
-            ]
-        },
-        {
-            id: "RES-010",
-            studentId: "STU-005",
-            studentName: "Rohan Das",
-            quizId: 5,
-            quizName: "Algebra Equations",
-            subject: "Mathematics",
-            grade: "Grade 7",
-            score: 8,
-            totalQuestions: 10,
-            percentage: 80,
-            correctCount: 8,
-            incorrectCount: 2,
-            daysOffset: 12, // This Month
-            questionsBreakdown: [
-                { number: 1, text: "Which of the following is a prime number?", studentAnswer: "17", correctAnswer: "17", isCorrect: true, marks: 2 },
-                { number: 2, text: "Solve for x: 2x + 5 = 15", studentAnswer: "6", correctAnswer: "5", isCorrect: false, marks: 0 }
-            ]
-        }
-    ],
-    searchableItems: [
-        // Quizzes
-        { title: "Solar System Basics", type: "Quiz", category: "quizzes", target: "quiz-management" },
-        { title: "Fractions Sprint", type: "Quiz", category: "quizzes", target: "quiz-management" },
-        { title: "Ancient Civilizations", type: "Quiz", category: "quizzes", target: "quiz-management" },
-        { title: "Cell Structure and Function", type: "Quiz", category: "quizzes", target: "quiz-management" },
-
-        // Students
-        { title: "Rahul Sharma", type: "Student", category: "students", target: "students" },
-        { title: "Anjali Gupta", type: "Student", category: "students", target: "students" },
-        { title: "Siddharth Sen", type: "Student", category: "students", target: "students" },
-        { title: "Priya Patel", type: "Student", category: "students", target: "students" },
-
-        // Results
-        { title: "Grade 7 Science Results", type: "Results", category: "results", target: "results" },
-        { title: "Maths fractions Sprint Results", type: "Results", category: "results", target: "results" },
-        { title: "History Ancient Civilizations Results", type: "Results", category: "results", target: "results" },
-
-        // Question Bank
-        { title: "Photosynthesis Questions", type: "Question Bank", category: "question-bank", target: "question-bank" },
-        { title: "Algebraic Equations", type: "Question Bank", category: "question-bank", target: "question-bank" },
-
-        // Past Quizzes
-        { title: "Periodic Table Review", type: "Past Quiz", category: "past-quizzes", target: "past-quizzes" },
-        { title: "Intro to Geometry", type: "Past Quiz", category: "past-quizzes", target: "past-quizzes" },
-
-        // Teacher Pages / Navigation Pages
-        { title: "Teacher Profile", type: "Page", category: "profile", target: "profile" },
-        { title: "Settings Page", type: "Page", category: "settings", target: "settings" },
-        { title: "Notifications Page", type: "Page", category: "notifications", target: "notifications" },
-        { title: "Help Section", type: "Page", category: "help", target: "help" }
-    ],
-    pastQuizzes: [
-        {
-            id: 101,
-            title: "Ancient Civilizations",
-            subject: "History",
-            grade: "Grade 8",
-            questionsCount: 20,
-            attempts: 42,
-            averageScore: 78,
-            highestScore: 96,
-            lowestScore: 41,
-            completionDate: "2026-08-08",
-            status: "Completed",
-            description: "A comprehensive review of ancient Egyptian, Greek, and Roman societies, key figures, and cultural contributions.",
-            passRate: 85,
-            studentPerformance: [
-                { name: "Siddharth Sen", id: "STU-003", score: 15, percentage: 75, correctAnswers: 15, date: "2026-08-05" },
-                { name: "Aarav Sharma", id: "STU-001", score: 18, percentage: 90, correctAnswers: 18, date: "2026-08-06" },
-                { name: "Anjali Gupta", id: "STU-002", score: 19, percentage: 95, correctAnswers: 19, date: "2026-08-07" },
-                { name: "Priya Patel", id: "STU-004", score: 11, percentage: 55, correctAnswers: 11, date: "2026-08-08" }
-            ],
-            questionPerformance: [
-                { number: 1, text: "Which river was essential to the survival of Ancient Egyptian civilization?", correct: 38, incorrect: 4, accuracy: 90 },
-                { number: 2, text: "Who was the first emperor of Rome?", correct: 30, incorrect: 12, accuracy: 71 },
-                { number: 3, text: "In which year did the Western Roman Empire fall?", correct: 28, incorrect: 14, accuracy: 67 }
-            ]
-        },
-        {
-            id: 102,
-            title: "Periodic Table Review",
-            subject: "Science",
-            grade: "Grade 9",
-            questionsCount: 30,
-            attempts: 55,
-            averageScore: 82,
-            highestScore: 100,
-            lowestScore: 50,
-            completionDate: "2026-07-28",
-            status: "Completed",
-            description: "End-of-unit assessment on chemical groups, periodic trends, atomic numbers, and element classifications.",
-            passRate: 91,
-            studentPerformance: [
-                { name: "Rohan Das", id: "STU-005", score: 27, percentage: 90, correctAnswers: 27, date: "2026-07-27" },
-                { name: "Aarav Sharma", id: "STU-001", score: 24, percentage: 80, correctAnswers: 24, date: "2026-07-28" }
-            ],
-            questionPerformance: [
-                { number: 1, text: "What is the atomic symbol for Gold?", correct: 52, incorrect: 3, accuracy: 95 },
-                { number: 2, text: "Which group of elements is known as the Halogens?", correct: 48, incorrect: 7, accuracy: 87 }
-            ]
-        },
-        {
-            id: 103,
-            title: "Algebra Equations",
-            subject: "Mathematics",
-            grade: "Grade 7",
-            questionsCount: 10,
-            attempts: 35,
-            averageScore: 74,
-            highestScore: 100,
-            lowestScore: 30,
-            completionDate: "2026-08-07",
-            status: "Completed",
-            description: "Solving single-variable linear equations and word problems involving basic algebraic relationships.",
-            passRate: 77,
-            studentPerformance: [
-                { name: "Anjali Gupta", id: "STU-002", score: 10, percentage: 100, correctAnswers: 10, date: "2026-08-07" },
-                { name: "Rohan Das", id: "STU-005", score: 8, percentage: 80, correctAnswers: 8, date: "2026-08-07" }
-            ],
-            questionPerformance: [
-                { number: 1, text: "Solve for x: 2x + 5 = 15", correct: 32, incorrect: 3, accuracy: 91 }
-            ]
-        },
-        {
-            id: 104,
-            title: "Solar System Basics",
-            subject: "Science",
-            grade: "Grade 8",
-            questionsCount: 18,
-            attempts: 26,
-            averageScore: 88,
-            highestScore: 100,
-            lowestScore: 60,
-            completionDate: "2026-08-10",
-            status: "Completed",
-            description: "Introduction to planetary sizes, orbits, moons, and astronomical milestones in our solar system.",
-            passRate: 96,
-            studentPerformance: [
-                { name: "Aarav Sharma", id: "STU-001", score: 17, percentage: 94, correctAnswers: 17, date: "2026-08-10" },
-                { name: "Rohan Das", id: "STU-005", score: 16, percentage: 89, correctAnswers: 16, date: "2026-08-10" }
-            ],
-            questionPerformance: [
-                { number: 1, text: "What is the largest planet in our solar system?", correct: 25, incorrect: 1, accuracy: 96 }
-            ]
-        }
-    ]
+    students: [],
+    activities: [],
+    quizzes: [],
+    questionBank: [],
+    results: [],
+    searchableItems: [],
+    pastQuizzes: []
 };
 
 const navItems = [
@@ -939,7 +347,7 @@ async function fetchTeacherQuizzesFromSupabase() {
             .select('*, subjects(name), quiz_questions(count)')
             .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
             const mappedQuizzes = data.map(q => {
                 let statusLabel = 'Draft';
                 let iconName = 'clipboard';
@@ -966,7 +374,8 @@ async function fetchTeacherQuizzesFromSupabase() {
                     icon: iconName,
                     attempts: 0,
                     lastUpdated: q.created_at ? q.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-                    gameType: q.game_type
+                    gameType: q.game_type,
+                    description: q.description || ''
                 };
             });
 
@@ -976,6 +385,173 @@ async function fetchTeacherQuizzesFromSupabase() {
     } catch (e) {
         console.warn('Could not fetch quizzes from Supabase:', e);
     }
+}
+
+async function fetchTeacherResultsFromSupabase() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+    try {
+        const { data: attempts, error } = await client
+            .from('quiz_attempts')
+            .select('*, quizzes(title, game_type, subjects(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
+            .order('created_at', { ascending: false });
+
+        if (!error && attempts) {
+            MOCK_DATA.results = attempts.map(att => {
+                const quizName = att.quizzes ? att.quizzes.title : 'Quiz';
+                const subjectName = (att.quizzes && att.quizzes.subjects) ? att.quizzes.subjects.name : 'Computer Science';
+                const studentName = att.profiles ? (att.profiles.full_name || att.profiles.login_id) : 'Student';
+                const studentId = att.profiles ? att.profiles.login_id : 'STD';
+                const totalXP = att.earned_xp || 0;
+                const percentage = att.score_percentage || 0;
+
+                return {
+                    id: att.id,
+                    studentName: studentName,
+                    studentId: studentId,
+                    quizName: quizName,
+                    subject: subjectName,
+                    grade: 'Grade 5',
+                    percentage: percentage,
+                    score: totalXP,
+                    totalQuestions: 100,
+                    correctCount: percentage >= 50 ? 1 : 0,
+                    incorrectCount: percentage < 50 ? 1 : 0,
+                    daysOffset: 0,
+                    dateAttempted: att.created_at ? att.created_at.split('T')[0] : '',
+                    questionsBreakdown: []
+                };
+            });
+        }
+    } catch (e) {
+        console.warn('Could not fetch results from Supabase:', e);
+    }
+}
+
+async function fetchTeacherStudentsFromSupabase() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+    try {
+        const { data: students, error } = await client
+            .from('student_profiles')
+            .select('*, profiles(full_name, email, login_id)');
+
+        if (!error && students) {
+            MOCK_DATA.students = students.map(s => {
+                const prof = s.profiles || {};
+                return {
+                    id: prof.login_id || s.id,
+                    name: prof.full_name || 'Student',
+                    email: prof.email || `${prof.login_id || 'student'}@auth.orixa.internal`,
+                    grade: 'Grade 5',
+                    subject: 'Computer Science',
+                    status: 'Active',
+                    averageScore: 85,
+                    quizzesAttempted: 0
+                };
+            });
+        }
+    } catch (e) {
+        console.warn('Could not fetch students from Supabase:', e);
+    }
+}
+
+async function fetchQuestionBankFromSupabase() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+    try {
+        const { data: questions, error } = await client
+            .from('quiz_questions')
+            .select('*, quizzes(title, game_type, subjects(name))');
+
+        if (!error && questions) {
+            MOCK_DATA.questionBank = questions.map(q => {
+                const gameType = (q.quizzes && q.quizzes.game_type) || 'TILE_PUZZLE';
+                const subject = (q.quizzes && q.quizzes.subjects) ? q.quizzes.subjects.name : 'Computer Science';
+                const payload = q.game_payload || {};
+                let qType = 'Multiple Choice';
+                let opts = ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
+                let correctOpt = 0;
+
+                if (gameType === 'TILE_PUZZLE') {
+                    qType = 'Multiple Choice';
+                    opts = payload.options || opts;
+                    correctOpt = parseInt(payload.correct_option_index || 0, 10);
+                } else if (gameType === 'MATCH_FOLLOWING') {
+                    qType = 'Match Pair';
+                } else if (gameType === 'FILL_BLANKS') {
+                    qType = 'Fill Blanks';
+                } else if (gameType === 'TRUE_FALSE') {
+                    qType = 'True / False';
+                }
+
+                return {
+                    id: q.id,
+                    text: q.question_text,
+                    subject: subject,
+                    grade: 'Grade 5',
+                    type: qType,
+                    difficulty: 'Medium',
+                    marks: 5,
+                    options: opts,
+                    correctAnswer: correctOpt,
+                    gameType: gameType
+                };
+            });
+        }
+    } catch (e) {
+        console.warn('Could not fetch question bank from Supabase:', e);
+    }
+}
+
+async function fetchNotificationsFromSupabase() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+    try {
+        const profile = await window.OrixaAuth.getCurrentProfile();
+        if (!profile) return;
+
+        const { data: notifs, error } = await client
+            .from('notifications')
+            .select('*')
+            .eq('user_id', profile.id)
+            .order('created_at', { ascending: false });
+
+        if (!error && notifs) {
+            MOCK_DATA.notifications = notifs.map(n => ({
+                id: n.id,
+                title: n.title,
+                message: n.message,
+                category: n.category || 'General',
+                priority: n.priority || 'Normal',
+                read: n.is_read || false,
+                timestamp: n.created_at,
+                dateStr: n.created_at ? n.created_at.split('T')[0] : 'Today'
+            }));
+            MOCK_DATA.unreadCount = MOCK_DATA.notifications.filter(n => !n.read).length;
+            renderNotificationDot();
+        }
+    } catch (e) {
+        console.warn('Could not fetch notifications from Supabase:', e);
+    }
+}
+
+function updateDashboardStats() {
+    const totalQuizzes = MOCK_DATA.quizzes.length;
+    const totalStudents = MOCK_DATA.students.length;
+    const activeStudents = MOCK_DATA.students.filter(s => s.status === 'Active').length;
+    const inactiveStudents = MOCK_DATA.students.filter(s => s.status === 'Inactive').length;
+    const results = MOCK_DATA.results;
+    const avgScore = results.length > 0 ? Math.round(results.reduce((a, b) => a + (b.percentage || 0), 0) / results.length) : 0;
+    const submissionsToday = results.length;
+
+    MOCK_DATA.stats = [
+        { label: 'Total Quizzes', value: String(totalQuizzes), caption: 'Created in system', icon: 'clipboard', tone: 'yellow' },
+        { label: 'Total Students', value: String(totalStudents), caption: `Active: ${activeStudents} | Inactive: ${inactiveStudents}`, icon: 'users', tone: 'blue' },
+        { label: 'Average Score', value: `${avgScore}%`, caption: 'Class average score', icon: 'target', tone: 'green' },
+        { label: 'Recent Activity', value: String(submissionsToday), caption: 'Quiz submissions', icon: 'clock', tone: 'orange' }
+    ];
+    renderStats();
 }
 
 async function saveQuizToSupabase(isPublish) {
@@ -7657,104 +7233,41 @@ function escapeHTML(str) {
     );
 }
 
-function initCurrentTeacherData() {
-    let currentTeacher = null;
-    try {
-        const stored = localStorage.getItem('orixa_current_teacher');
-        if (stored) {
-            currentTeacher = JSON.parse(stored);
+async function initCurrentTeacherData() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+    const profile = await window.OrixaAuth.getCurrentProfile();
+    if (!profile) return;
+
+    MOCK_DATA.teacher.name = profile.full_name || '';
+    MOCK_DATA.teacher.email = profile.email || '';
+    MOCK_DATA.teacher.employeeId = profile.login_id || '';
+
+    // Fetch department name if department_id exists
+    if (profile.department_id) {
+        const { data: dept } = await client
+            .from('departments')
+            .select('name')
+            .eq('id', profile.department_id)
+            .maybeSingle();
+        if (dept) {
+            MOCK_DATA.teacher.department = dept.name;
         }
-    } catch (e) {
-        console.warn('Could not read current teacher from localStorage:', e);
     }
 
-    if (currentTeacher && currentTeacher.name) {
-        MOCK_DATA.teacher.name = currentTeacher.name;
-        if (currentTeacher.email) MOCK_DATA.teacher.email = currentTeacher.email;
-        if (currentTeacher.empId) MOCK_DATA.teacher.employeeId = currentTeacher.empId;
+    // Fetch active teacher assignments
+    const { data: assignments } = await client
+        .from('teacher_subject_class_assignments')
+        .select('*, subjects(name), academic_levels(display_name)')
+        .eq('teacher_id', profile.id)
+        .eq('is_active', true);
+
+    if (assignments && assignments.length > 0) {
+        MOCK_DATA.teacher.subjects = Array.from(new Set(assignments.map(a => a.subjects ? a.subjects.name : null).filter(Boolean)));
+        MOCK_DATA.teacher.classes = Array.from(new Set(assignments.map(a => a.academic_levels ? a.academic_levels.display_name : null).filter(Boolean)));
     }
 
-    let hodAssignments = [];
-    try {
-        const hodStored = localStorage.getItem('orixa_hod_mock_data');
-        if (hodStored) {
-            const parsedHod = JSON.parse(hodStored);
-            if (parsedHod && Array.isArray(parsedHod.students)) {
-                hodAssignments = parsedHod.students;
-            }
-        }
-    } catch (e) {
-        console.warn('Could not load HOD mock data in teacher dashboard:', e);
-    }
-
-    // Default fallbacks if local storage empty
-    if (hodAssignments.length === 0) {
-        hodAssignments = [
-            { id: 'STU-CS-101', name: 'Aarav Sharma', studentId: 'STU-CS-101', year: '1st Year', subject: 'Data Structures', teacher: 'Prof. Sarah Jenkins' },
-            { id: 'STU-CS-102', name: 'Ananya Deshmukh', studentId: 'STU-CS-102', year: '2nd Year', subject: 'Database Management', teacher: 'Prof. Alan Turing' },
-            { id: 'STU-CS-103', name: 'Rahul', studentId: 'STU-CS-103', year: '2nd Year', subject: 'DBMS', teacher: 'Teacher A' },
-            { id: 'STU-CS-104', name: 'Priya', studentId: 'STU-CS-104', year: '2nd Year', subject: 'AI', teacher: 'Teacher B' }
-        ];
-    }
-
-    const currentTeacherName = MOCK_DATA.teacher.name.toLowerCase().trim();
-
-    // Check if current teacher has specific HOD assigned students
-    const teacherHodStudents = hodAssignments.filter(s =>
-        s.teacher && s.teacher.toLowerCase().trim() === currentTeacherName
-    );
-
-    // If teacher exists in HOD assignments (or is a specific test teacher like Teacher A/B or Sarah/Alan), restrict view strictly to their assigned students
-    const isSpecificHodTeacher = teacherHodStudents.length > 0 ||
-        currentTeacherName.includes('teacher a') ||
-        currentTeacherName.includes('teacher b') ||
-        currentTeacherName.includes('sarah') ||
-        currentTeacherName.includes('alan');
-
-    if (isSpecificHodTeacher) {
-        const mappedStudents = teacherHodStudents.map(s => {
-            const existing = MOCK_DATA.students.find(m => m.name.toLowerCase() === s.name.toLowerCase() || m.id === s.studentId);
-            if (existing) {
-                return {
-                    ...existing,
-                    grade: s.year || existing.grade,
-                    subject: s.subject || existing.subject
-                };
-            }
-            return {
-                id: s.studentId || s.id || `STU-${Date.now()}`,
-                name: s.name,
-                grade: s.year || '2nd Year',
-                email: `${s.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
-                quizzesAttempted: 5,
-                averageScore: 85,
-                status: 'Active',
-                lastActivity: '2026-08-12',
-                subject: s.subject || 'Computer Science',
-                bestScore: 90,
-                recentQuizzes: []
-            };
-        });
-
-        MOCK_DATA.students = mappedStudents;
-
-        // Scope results strictly to assigned students for this teacher
-        const assignedStudentNames = new Set(mappedStudents.map(s => s.name.toLowerCase()));
-        const assignedStudentIds = new Set(mappedStudents.map(s => s.id));
-
-        MOCK_DATA.results = MOCK_DATA.results.filter(r =>
-            assignedStudentNames.has(r.studentName.toLowerCase()) || assignedStudentIds.has(r.studentId)
-        );
-    }
-
-    // Update stats total students and caption
-    const activeCount = MOCK_DATA.students.filter(s => s.status === 'Active').length;
-    const inactiveCount = MOCK_DATA.students.length - activeCount;
-    const studentStat = MOCK_DATA.stats.find(st => st.label === 'Total Students');
-    if (studentStat) {
-        studentStat.value = String(MOCK_DATA.students.length);
-        studentStat.caption = `Active: ${activeCount} | Inactive: ${inactiveCount}`;
-    }
+    updateTopBarProfileChip();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -7767,16 +7280,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    initCurrentTeacherData();
+    await initCurrentTeacherData();
     renderSidebar();
-    renderStats();
-    renderActivities();
-    renderQuizzes();
-    renderIcons();
     initDashboardNavigation();
     initSidebarCollapsible();
     initSearch();
     renderNotificationDot();
     updateTopBarProfileChip();
-    await fetchTeacherQuizzesFromSupabase();
+
+    await Promise.all([
+        fetchTeacherQuizzesFromSupabase(),
+        fetchTeacherStudentsFromSupabase(),
+        fetchTeacherResultsFromSupabase(),
+        fetchQuestionBankFromSupabase(),
+        fetchNotificationsFromSupabase()
+    ]);
+
+    updateDashboardStats();
+    renderActivities();
+    renderQuizzes();
+    renderIcons();
 });

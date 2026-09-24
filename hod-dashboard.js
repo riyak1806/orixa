@@ -261,7 +261,6 @@ function initAddTeacherForm() {
         };
 
         HOD_MOCK_DATA.teachers.push(newTeacher);
-        saveHodMockData();
 
         form.reset();
         [nameInput, empIdInput, subjectsInput, yearsInput].forEach(setFieldValid);
@@ -381,7 +380,6 @@ function initAddStudentForm() {
         };
 
         HOD_MOCK_DATA.students.push(newStudent);
-        saveHodMockData();
 
         form.reset();
         [nameInput, idInput, yearSelect, subjectSelect, teacherSelect].forEach(setFieldValid);
@@ -1024,8 +1022,6 @@ function confirmTeacherImport() {
         HOD_MOCK_DATA.teachers.push(newTeacher);
     });
 
-    saveHodMockData();
-
     renderHodStats();
     renderTeacherList();
     updateStudentFormDropdowns();
@@ -1247,8 +1243,6 @@ function confirmStudentImport() {
         };
         HOD_MOCK_DATA.students.push(newStudent);
     });
-
-    saveHodMockData();
 
     renderHodStats();
     renderStudentList();

@@ -939,7 +939,7 @@ async function fetchTeacherQuizzesFromSupabase() {
             .select('*, subjects(name), quiz_questions(count)')
             .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
             const mappedQuizzes = data.map(q => {
                 let statusLabel = 'Draft';
                 let iconName = 'clipboard';
@@ -972,6 +972,11 @@ async function fetchTeacherQuizzesFromSupabase() {
 
             MOCK_DATA.quizzes = mappedQuizzes;
             renderQuizzes();
+
+            const dynamicPage = document.getElementById('dynamic-placeholder-page');
+            if (dynamicPage && !dynamicPage.classList.contains('hidden') && dynamicPage.querySelector('.quiz-mgmt-container')) {
+                renderQuizManagementPage();
+            }
         }
     } catch (e) {
         console.warn('Could not fetch quizzes from Supabase:', e);
@@ -2296,21 +2301,6 @@ function renderGameBuilderStep(dynamicPage) {
                 return;
             }
 
-            // Save to Supabase and MOCK_DATA
-            const newId = MOCK_DATA.quizzes.length > 0 ? Math.max(...MOCK_DATA.quizzes.map(q => q.id)) + 1 : 1;
-            const newQuiz = {
-                id: newId,
-                title: createQuizState.title,
-                subject: createQuizState.subject,
-                questions: createQuizState.questions.length,
-                status: 'Draft',
-                icon: 'clipboard',
-                attempts: 0,
-                lastUpdated: new Date().toISOString().split('T')[0],
-                gameType: createQuizState.gameType
-            };
-            MOCK_DATA.quizzes.unshift(newQuiz);
-
             saveQuizToSupabase(false).then(res => {
                 if (!res.success) {
                     console.error('Save draft error:', res.error);
@@ -2397,20 +2387,6 @@ function renderGameBuilderStep(dynamicPage) {
             const confirmBtn = document.getElementById('confirm-publish-btn');
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', () => {
-                    const newId = MOCK_DATA.quizzes.length > 0 ? Math.max(...MOCK_DATA.quizzes.map(q => q.id)) + 1 : 1;
-                    const newQuiz = {
-                        id: newId,
-                        title: createQuizState.title,
-                        subject: createQuizState.subject,
-                        questions: createQuizState.questions.length,
-                        status: 'Live',
-                        icon: 'trophy',
-                        attempts: 0,
-                        lastUpdated: new Date().toISOString().split('T')[0],
-                        gameType: createQuizState.gameType
-                    };
-                    MOCK_DATA.quizzes.unshift(newQuiz);
-
                     saveQuizToSupabase(true).then(res => {
                         if (!res.success) {
                             console.error('Publish error:', res.error);
@@ -2979,13 +2955,13 @@ function renderQuizList() {
                             </div>
                         </div>
                         <div class="quiz-mgmt-card-actions">
-                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuizDetails(${quiz.id})" title="View Details">
+                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuizDetails('${quiz.id}')" title="View Details">
                                 <span data-icon="search"></span> View
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuizDetails(${quiz.id})" title="Edit Quiz">
+                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuizDetails('${quiz.id}')" title="Edit Quiz">
                                 <span data-icon="clipboard"></span> Edit
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuizConfirm(${quiz.id})" title="Delete Quiz">
+                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuizConfirm('${quiz.id}')" title="Delete Quiz">
                                 <span data-icon="x"></span> Delete
                             </button>
                         </div>
@@ -3026,7 +3002,7 @@ window.openOrixaModal = openOrixaModal;
 window.closeOrixaModal = closeOrixaModal;
 
 window.viewQuizDetails = function(id) {
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const statusPillClass = quiz.status === 'Live' ? 'pill-live' : (quiz.status === 'Draft' ? 'pill-draft' : 'pill-closed');
@@ -3077,7 +3053,7 @@ window.viewQuizDetails = function(id) {
 };
 
 window.editQuizDetails = function(id) {
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const html = `
@@ -3135,7 +3111,7 @@ window.editQuizDetails = function(id) {
 
 window.saveQuizDetails = function(event, id) {
     event.preventDefault();
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const newTitle = document.getElementById('edit-quiz-title').value.trim();
@@ -3156,7 +3132,7 @@ window.saveQuizDetails = function(event, id) {
 };
 
 window.deleteQuizConfirm = function(id) {
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const html = `
@@ -3179,7 +3155,7 @@ window.deleteQuizConfirm = function(id) {
                 <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
                     Cancel
                 </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuiz(${quiz.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuiz('${quiz.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
                     Yes, Delete
                 </button>
             </footer>
@@ -3189,7 +3165,7 @@ window.deleteQuizConfirm = function(id) {
 };
 
 window.performDeleteQuiz = function(id) {
-    const index = MOCK_DATA.quizzes.findIndex(q => q.id === id);
+    const index = MOCK_DATA.quizzes.findIndex(q => String(q.id) === String(id));
     if (index !== -1) {
         MOCK_DATA.quizzes.splice(index, 1);
         closeOrixaModal();

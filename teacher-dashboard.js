@@ -1,6 +1,11 @@
 /* ==========================================================================
    ORIXA - TEACHER DASHBOARD CONTROLLER
-   Dummy data and navigation-ready frontend components only.
+   RECOMMENDED DATABASE INDEXES FOR OPTIMAL PERFORMANCE:
+   - CREATE INDEX IF NOT EXISTS idx_quizzes_teacher_created ON public.quizzes(teacher_id, created_at DESC);
+   - CREATE INDEX IF NOT EXISTS idx_quiz_attempts_started ON public.quiz_attempts(started_at DESC);
+   - CREATE INDEX IF NOT EXISTS idx_student_subject_assignments_teacher_active ON public.student_subject_assignments(teacher_id, is_active);
+   - CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz_id ON public.quiz_questions(quiz_id);
+   - CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications(user_id, created_at DESC);
    ========================================================================== */
 
 const ICONS = {
@@ -347,9 +352,10 @@ async function fetchTeacherQuizzesFromSupabase() {
     try {
         const { data, error } = await client
             .from('quizzes')
-            .select('*, subjects!quizzes_subject_id_fkey(name), quiz_questions(count)')
+            .select('id, title, status, game_type, description, created_at, subjects!quizzes_subject_id_fkey(name), quiz_questions(count)')
             .eq('teacher_id', user.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(100);
 
         if (error) {
             console.error('Error fetching quizzes from Supabase:', error);
@@ -405,9 +411,10 @@ async function fetchTeacherResultsFromSupabase() {
     try {
         const { data: attempts, error } = await client
             .from('quiz_attempts')
-            .select('*, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
+            .select('id, final_earned_xp, final_accuracy_pct, started_at, completed_at, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
             .eq('quizzes.teacher_id', user.id)
-            .order('started_at', { ascending: false });
+            .order('started_at', { ascending: false })
+            .limit(100);
 
         if (error) {
             console.error('Error fetching results from Supabase:', error);
@@ -454,11 +461,14 @@ async function fetchTeacherStudentsFromSupabase() {
     if (!user) return;
 
     try {
+        // Note: email column does not exist on public.profiles or public.student_profiles (stored in auth.users).
+        // A schema migration is required if public email selection is needed. Generated internal auth email is used as fallback.
         const { data: assignments, error } = await client
             .from('student_subject_assignments')
-            .select('*, profiles!student_subject_assignments_student_id_fkey(id, full_name, email, login_id, student_profiles!student_profiles_profile_id_fkey(*))')
+            .select('student_id, profiles!student_subject_assignments_student_id_fkey(id, full_name, login_id, student_profiles!student_profiles_profile_id_fkey(student_id, roll_number))')
             .eq('teacher_id', user.id)
-            .eq('is_active', true);
+            .eq('is_active', true)
+            .limit(100);
 
         if (error) {
             console.error('Error fetching students from Supabase:', error);
@@ -472,10 +482,11 @@ async function fetchTeacherStudentsFromSupabase() {
                 const prof = a.profiles;
                 if (prof && !seen.has(prof.id)) {
                     seen.add(prof.id);
+                    const cleanLoginId = prof.login_id || 'student';
                     studentsList.push({
                         id: prof.login_id || prof.id,
                         name: prof.full_name || 'Student',
-                        email: prof.email || `${prof.login_id || 'student'}@auth.orixa.internal`,
+                        email: `${cleanLoginId}@auth.orixa.internal`,
                         grade: 'Grade 5',
                         subject: 'Computer Science',
                         status: 'Active',
@@ -500,8 +511,9 @@ async function fetchQuestionBankFromSupabase() {
     try {
         const { data: questions, error } = await client
             .from('quiz_questions')
-            .select('*, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name))')
-            .eq('quizzes.teacher_id', user.id);
+            .select('id, question_text, game_payload, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name))')
+            .eq('quizzes.teacher_id', user.id)
+            .limit(100);
 
         if (error) {
             console.error('Error fetching question bank from Supabase:', error);
@@ -557,9 +569,10 @@ async function fetchNotificationsFromSupabase() {
 
         const { data: notifs, error } = await client
             .from('notifications')
-            .select('*')
+            .select('id, title, message, category, priority, is_read, created_at')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(100);
 
         if (error) {
             console.error('Error fetching notifications from Supabase:', error);
@@ -2760,7 +2773,7 @@ window.editQuizDetails = function(id) {
 
 window.saveQuizDetails = async function(event, id) {
     event.preventDefault();
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const newTitle = document.getElementById('edit-quiz-title').value.trim();

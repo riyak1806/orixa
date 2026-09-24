@@ -1280,9 +1280,11 @@ async function loadHodDataFromSupabase() {
             }
         }
 
+        // Note: email column does not exist on public.profiles or public.teacher_profiles / public.student_profiles (stored in auth.users).
+        // A schema migration is required if public email selection is needed.
         const { data: teachers } = await client
             .from('teacher_profiles')
-            .select('*, profiles(full_name, email, login_id)')
+            .select('*, profiles(full_name, login_id)')
             .eq('department_id', profile.department_id);
 
         if (teachers) {
@@ -1300,7 +1302,7 @@ async function loadHodDataFromSupabase() {
 
         const { data: students } = await client
             .from('student_profiles')
-            .select('*, profiles!student_profiles_profile_id_fkey(full_name, email, login_id)')
+            .select('*, profiles!student_profiles_profile_id_fkey(full_name, login_id)')
             .eq('department_id', profile.department_id);
 
         if (students) {

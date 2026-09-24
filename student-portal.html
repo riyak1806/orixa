@@ -509,8 +509,8 @@
 
             <div class="topbar-actions">
                 <button class="profile-chip" type="button" aria-label="Student profile" onclick="openStudentProfileModal()">
-                    <span class="profile-avatar" style="background-color: var(--color-green);">AS</span>
-                    <span class="profile-name">Aarav Sharma</span>
+                    <span class="profile-avatar" id="topbar-profile-avatar" style="background-color: var(--color-green);">--</span>
+                    <span class="profile-name" id="topbar-profile-name">Student</span>
                 </button>
                 <button class="icon-button" style="background-color: var(--color-red);" title="Log Out" aria-label="Log out" onclick="confirmStudentLogout(event)">
                     <!-- Log Out Icon -->
@@ -530,7 +530,7 @@
                     <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a;">Complete quests to reveal the puzzle and earn points!</p>
                 </div>
                 <div class="dashboard-status" style="background-color: var(--color-purple); color: white;">
-                    RANK #5 (Explorer)
+                    STUDENT PORTAL
                 </div>
             </section>
 
@@ -546,8 +546,8 @@
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value" id="stat-quizzes-played">12</div>
-                    <div class="stat-caption">Keep it up!</div>
+                    <div class="stat-value" id="stat-quizzes-played">0</div>
+                    <div class="stat-caption">Quizzes completed</div>
                 </div>
 
                 <!-- XP Points -->
@@ -560,8 +560,8 @@
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value" id="stat-xp">1,450</div>
-                    <div class="stat-caption">Gold Badge approaching</div>
+                    <div class="stat-value" id="stat-xp">0</div>
+                    <div class="stat-caption">Total earned XP</div>
                 </div>
 
                 <!-- Stars Collected -->
@@ -574,8 +574,8 @@
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value" id="stat-stars">36</div>
-                    <div class="stat-caption">Perfect score bonus!</div>
+                    <div class="stat-value" id="stat-stars">0</div>
+                    <div class="stat-caption">Stars collected</div>
                 </div>
 
                 <!-- Completion Rate -->
@@ -588,8 +588,8 @@
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value" id="stat-accuracy">92%</div>
-                    <div class="stat-caption">Awesome work!</div>
+                    <div class="stat-value" id="stat-accuracy">0%</div>
+                    <div class="stat-caption">Overall accuracy</div>
                 </div>
             </section>
 
@@ -603,172 +603,10 @@
                 </div>
 
                 <div class="student-quest-grid">
-                    <!-- Quest 1 -->
-                    <div class="quest-card cartoon-panel" data-title="Ancient Egypt Quest" data-subject="History" data-topic="Ancient Egypt Pharaohs Pyramids History">
-                        <div class="quiz-mgmt-card-header">
-                            <div>
-                                <h4 class="quiz-mgmt-card-title">Ancient Egypt Quest</h4>
-                                <span class="quiz-mgmt-card-subject">History</span>
-                            </div>
-                            <span class="quest-reward-badge" style="background-color: var(--color-green); color: var(--border-dark);">+100 XP</span>
-                        </div>
-                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Format</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TILE PUZZLE</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Teacher</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
-                            </div>
-                        </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-green); color: var(--border-dark);" onclick="openQuestGame('Ancient Egypt Quest', 4, 'History', 3, 'Professor Riley')">
-                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                <path d="M8 5v14l11-7z" fill="currentColor" />
-                            </svg>
-                            <span>LAUNCH QUEST</span>
-                        </button>
-                    </div>
-
-                    <!-- Quest 6: True or False -->
-                    <div class="quest-card cartoon-panel" data-title="Solar System True or False" data-subject="Science" data-topic="Solar System True False Space Astronomy Planets">
-                        <div class="quiz-mgmt-card-header">
-                            <div>
-                                <h4 class="quiz-mgmt-card-title">Solar System True or False</h4>
-                                <span class="quiz-mgmt-card-subject">Science</span>
-                            </div>
-                            <span class="quest-reward-badge" style="background-color: var(--color-yellow); color: var(--border-dark);">+110 XP</span>
-                        </div>
-                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Format</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TRUE OR FALSE</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Teacher</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
-                            </div>
-                        </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-yellow); color: var(--border-dark);" onclick="openTrueFalseGame('Solar System True or False', 'Science', null, 'Professor Riley')">
-                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                <path d="M8 5v14l11-7z" fill="currentColor" />
-                            </svg>
-                            <span>LAUNCH QUEST</span>
-                        </button>
-                    </div>
-
-                    <!-- Quest 5: Fill in the Blanks -->
-                    <div class="quest-card cartoon-panel" data-title="Geography & Science Blanks" data-subject="General Science" data-topic="Geography Science Blanks Capitals Planets Temperature Fill in Blanks">
-                        <div class="quiz-mgmt-card-header">
-                            <div>
-                                <h4 class="quiz-mgmt-card-title">Geography & Science Blanks</h4>
-                                <span class="quiz-mgmt-card-subject">General Science</span>
-                            </div>
-                            <span class="quest-reward-badge" style="background-color: var(--color-green); color: var(--border-dark);">+140 XP</span>
-                        </div>
-                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Format</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">FILL IN THE BLANKS</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Teacher</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
-                            </div>
-                        </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-green); color: var(--border-dark);" onclick="openFillBlanksGame('Geography & Science Blanks', 'General Science', null, 3, 'Professor Riley')">
-                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                <path d="M8 5v14l11-7z" fill="currentColor" />
-                            </svg>
-                            <span>LAUNCH QUEST</span>
-                        </button>
-                    </div>
-
-                    <!-- Quest 4: Match the Following -->
-                    <div class="quest-card cartoon-panel" data-title="World & Science Matching" data-subject="General Science" data-topic="World Science Capitals Geography Solar System Matching Pairs">
-                        <div class="quiz-mgmt-card-header">
-                            <div>
-                                <h4 class="quiz-mgmt-card-title">World & Science Matching</h4>
-                                <span class="quiz-mgmt-card-subject">General Science</span>
-                            </div>
-                            <span class="quest-reward-badge" style="background-color: var(--color-purple); color: white;">+130 XP</span>
-                        </div>
-                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Format</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">MATCH THE FOLLOWING</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Teacher</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
-                            </div>
-                        </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-purple); color: white;" onclick="openMatchGame('World & Science Matching', 'General Science', 'Professor Riley')">
-                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                <path d="M8 5v14l11-7z" fill="currentColor" />
-                            </svg>
-                            <span>LAUNCH QUEST</span>
-                        </button>
-                    </div>
-
-                    <!-- Quest 2 -->
-                    <div class="quest-card cartoon-panel" data-title="Math Galaxy Challenge" data-subject="Math" data-topic="Math Galaxy Challenge Algebra Numbers Geometry">
-                        <div class="quiz-mgmt-card-header">
-                            <div>
-                                <h4 class="quiz-mgmt-card-title">Math Galaxy Challenge</h4>
-                                <span class="quiz-mgmt-card-subject">Math</span>
-                            </div>
-                            <span class="quest-reward-badge" style="background-color: var(--color-orange); color: var(--border-dark);">+120 XP</span>
-                        </div>
-                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Format</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TILE PUZZLE</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Teacher</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
-                            </div>
-                        </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-orange); color: var(--border-dark);" onclick="openQuestGame('Math Galaxy Challenge', 9, 'Math', 2, 'Professor Riley')">
-                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                <path d="M8 5v14l11-7z" fill="currentColor" />
-                            </svg>
-                            <span>LAUNCH QUEST</span>
-                        </button>
-                    </div>
-
-                    <!-- Quest 3 -->
-                    <div class="quest-card cartoon-panel" data-title="Space Explorer Mission" data-subject="Science" data-topic="Space Explorer Mission Physics Astronomy Planets Stars">
-                        <div class="quiz-mgmt-card-header">
-                            <div>
-                                <h4 class="quiz-mgmt-card-title">Space Explorer Mission</h4>
-                                <span class="quiz-mgmt-card-subject">Science</span>
-                            </div>
-                            <span class="quest-reward-badge" style="background-color: var(--color-blue); color: white;">+150 XP</span>
-                        </div>
-                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Format</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TILE PUZZLE</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span>Teacher</span>
-                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
-                            </div>
-                        </div>
-                        <button type="button" class="play-quest-btn" style="background-color: var(--color-blue); color: white;" onclick="openQuestGame('Space Explorer Mission', 16, 'Science', 1, 'Professor Riley')">
-                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                <path d="M8 5v14l11-7z" fill="currentColor" />
-                            </svg>
-                            <span>LAUNCH QUEST</span>
-                        </button>
-                    </div>
-
-                    <!-- No Results State -->
+                    <!-- No Results / Empty State -->
                     <div id="no-quizzes-found" class="quiz-mgmt-no-results hidden" style="grid-column: 1 / -1;">
-                        <p class="quiz-mgmt-no-results-title">No quizzes found</p>
-                        <p class="quiz-mgmt-no-results-desc">Try searching with a different title, subject, or topic.</p>
+                        <p class="quiz-mgmt-no-results-title">No quizzes available</p>
+                        <p class="quiz-mgmt-no-results-desc">There are currently no quizzes assigned to your department. Please check back later!</p>
                     </div>
                 </div>
             </section>
@@ -788,33 +626,29 @@
             </header>
             <div class="orixa-modal-body">
                 <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 2px dashed rgba(26,26,36,0.15);">
-                    <div class="profile-avatar" style="width: 54px; height: 54px; font-size: 1.2rem; background-color: var(--color-green);">AS</div>
+                    <div class="profile-avatar" id="student-modal-avatar" style="width: 54px; height: 54px; font-size: 1.2rem; background-color: var(--color-green);">--</div>
                     <div>
-                        <h4 style="margin: 0; font-family: var(--font-header); font-size: 1.3rem; color: var(--border-dark);">Aarav Sharma</h4>
-                        <p style="margin: 2px 0 0 0; font-family: var(--font-header); font-size: 0.85rem; color: var(--color-purple-dark);">STU-2026-001</p>
+                        <h4 style="margin: 0; font-family: var(--font-header); font-size: 1.3rem; color: var(--border-dark);" id="student-modal-name">--</h4>
+                        <p style="margin: 2px 0 0 0; font-family: var(--font-header); font-size: 0.85rem; color: var(--color-purple-dark);" id="student-modal-login-id">--</p>
                     </div>
                 </div>
 
                 <div class="quiz-mgmt-card-body" style="gap: 10px; margin-top: 4px;">
                     <div class="quiz-mgmt-card-info-row">
                         <span style="font-weight: 700; color: #546e7a;">Student ID</span>
-                        <span style="font-family: var(--font-header); font-weight: 700;">STU-2026-001</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;" id="student-modal-id">--</span>
                     </div>
                     <div class="quiz-mgmt-card-info-row">
                         <span style="font-weight: 700; color: #546e7a;">Name</span>
-                        <span style="font-family: var(--font-header); font-weight: 700;">Aarav Sharma</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;" id="student-modal-full-name">--</span>
                     </div>
                     <div class="quiz-mgmt-card-info-row">
-                        <span style="font-weight: 700; color: #546e7a;">Class</span>
-                        <span style="font-family: var(--font-header); font-weight: 700;">B.Tech — Computer Engineering</span>
+                        <span style="font-weight: 700; color: #546e7a;">Role</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;" id="student-modal-role">STUDENT</span>
                     </div>
                     <div class="quiz-mgmt-card-info-row">
-                        <span style="font-weight: 700; color: #546e7a;">Department</span>
-                        <span style="font-family: var(--font-header); font-weight: 700;">Computer Engineering</span>
-                    </div>
-                    <div class="quiz-mgmt-card-info-row">
-                        <span style="font-weight: 700; color: #546e7a;">Academic Year</span>
-                        <span style="font-family: var(--font-header); font-weight: 700;">2026–27</span>
+                        <span style="font-weight: 700; color: #546e7a;">Status</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;" id="student-modal-status">ACTIVE</span>
                     </div>
                 </div>
             </div>

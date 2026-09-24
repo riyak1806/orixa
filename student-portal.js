@@ -6,11 +6,6 @@
    SHARED ORIXA SCORING, ACCURACY, STAR & COMPLETION ENGINE
    ========================================================================== */
 
-const STORAGE_KEYS = {
-    COMPLETED_QUIZZES: 'orixa_completed_quizzes',
-    STUDENT_STATS: 'orixa_student_stats'
-};
-
 let completedQuizzes = new Set();
 let activeGameTimeouts = [];
 
@@ -26,28 +21,6 @@ function setGameTimeout(fn, delay) {
 function clearGameTimeouts() {
     activeGameTimeouts.forEach(id => clearTimeout(id));
     activeGameTimeouts = [];
-}
-
-function loadCompletedQuizzesFromStorage() {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEYS.COMPLETED_QUIZZES);
-        if (stored) {
-            const arr = JSON.parse(stored);
-            if (Array.isArray(arr)) {
-                completedQuizzes = new Set(arr);
-            }
-        }
-    } catch (e) {
-        console.warn('Failed to load completed quizzes from localStorage:', e);
-    }
-}
-
-function saveCompletedQuizzesToStorage() {
-    try {
-        localStorage.setItem(STORAGE_KEYS.COMPLETED_QUIZZES, JSON.stringify(Array.from(completedQuizzes)));
-    } catch (e) {
-        console.warn('Failed to save completed quizzes to localStorage:', e);
-    }
 }
 
 function getQuestMaxXP(questName) {
@@ -158,7 +131,7 @@ function renderStarsRowHtml(starsCount) {
 let currentGameState = {
     questName: "",
     category: "",
-    questionCount: 4,
+    questionCount: 0,
     gridDimension: 2,
     questions: [],
     solvedTiles: new Set(),
@@ -167,74 +140,6 @@ let currentGameState = {
     score: 0,
     startTime: 0
 };
-
-function generateMockQuestions(category, count) {
-    const historyQuestions = [
-        { text: "Which river was essential to Ancient Egyptian civilization?", options: ["Nile River", "Amazon River", "Danube River", "Ganges River"], correctAnswer: 0 },
-        { text: "What served as monumental tombs for Pharaohs?", options: ["Pyramids", "Colosseum", "Parthenon", "Ziggurat"], correctAnswer: 0 },
-        { text: "Which writing paper material was invented by Ancient Egyptians?", options: ["Papyrus", "Vellum", "Parchment", "Cotton"], correctAnswer: 0 },
-        { text: "Who was the famous boy King of Ancient Egypt?", options: ["Tutankhamun", "Ramses II", "Cleopatra", "Akhenaten"], correctAnswer: 0 },
-        { text: "What system of picture writing was used in Ancient Egypt?", options: ["Hieroglyphics", "Cuneiform", "Latin", "Sanskrit"], correctAnswer: 0 },
-        { text: "What is the capital of modern Egypt?", options: ["Cairo", "Alexandria", "Luxor", "Giza"], correctAnswer: 0 },
-        { text: "Which sea borders Egypt to the north?", options: ["Mediterranean Sea", "Red Sea", "Black Sea", "Caspian Sea"], correctAnswer: 0 },
-        { text: "What large statue with a lion's body guards the Pyramids?", options: ["Great Sphinx", "Anubis", "Horus", "Obelisk"], correctAnswer: 0 },
-        { text: "Which queen was the last active ruler of the Ptolemaic Kingdom?", options: ["Cleopatra VII", "Nefertiti", "Hatshepsut", "Nefertari"], correctAnswer: 0 },
-        { text: "What process did Egyptians use to preserve dead bodies?", options: ["Mummification", "Embalming", "Fossilization", "Cremation"], correctAnswer: 0 },
-        { text: "Which Egyptian god was considered the god of the Sun?", options: ["Ra", "Osiris", "Anubis", "Seth"], correctAnswer: 0 },
-        { text: "Which ocean is nearest to Africa's eastern coast?", options: ["Indian Ocean", "Atlantic Ocean", "Pacific Ocean", "Arctic Ocean"], correctAnswer: 0 },
-        { text: "What is the longest river in the world?", options: ["Nile", "Amazon", "Mississippi", "Yangtze"], correctAnswer: 0 },
-        { text: "What landmark in Giza is one of the Seven Wonders of the Ancient World?", options: ["Great Pyramid", "Hanging Gardens", "Lighthouse", "Colossus"], correctAnswer: 0 },
-        { text: "Which crown symbolized unified Upper and Lower Egypt?", options: ["Pschent", "Deshret", "Hedjet", "Khepresh"], correctAnswer: 0 },
-        { text: "What metal was valued alongside gold in ancient trade?", options: ["Copper", "Bronze", "Silver", "Iron"], correctAnswer: 0 }
-    ];
-
-    const mathQuestions = [
-        { text: "Solve: 7 + 8 = ?", options: ["15", "14", "16", "13"], correctAnswer: 0 },
-        { text: "What is the square root of 64?", options: ["8", "6", "7", "9"], correctAnswer: 0 },
-        { text: "Solve: 12 × 5 = ?", options: ["60", "50", "55", "65"], correctAnswer: 0 },
-        { text: "What is a 5-sided polygon called?", options: ["Pentagon", "Hexagon", "Octagon", "Heptagon"], correctAnswer: 0 },
-        { text: "Solve: 100 ÷ 4 = ?", options: ["25", "20", "30", "15"], correctAnswer: 0 },
-        { text: "What is the value of Pi rounded to 2 decimal places?", options: ["3.14", "3.16", "3.12", "3.18"], correctAnswer: 0 },
-        { text: "Which of the following is a prime number?", options: ["17", "18", "20", "21"], correctAnswer: 0 },
-        { text: "Solve for x: 2x = 18", options: ["9", "8", "10", "6"], correctAnswer: 0 },
-        { text: "What is 15% of 200?", options: ["30", "20", "25", "35"], correctAnswer: 0 },
-        { text: "What is the perimeter of a square with side length 6 cm?", options: ["24 cm", "18 cm", "36 cm", "12 cm"], correctAnswer: 0 },
-        { text: "What is 3 squared plus 4 squared?", options: ["25", "20", "16", "24"], correctAnswer: 0 },
-        { text: "Solve: 1/2 + 1/4 = ?", options: ["3/4", "2/4", "1/3", "4/4"], correctAnswer: 0 },
-        { text: "What is the sum of angles in a triangle?", options: ["180°", "90°", "360°", "270°"], correctAnswer: 0 },
-        { text: "Solve: 9 × 9 = ?", options: ["81", "72", "90", "89"], correctAnswer: 0 },
-        { text: "What is the median of 3, 7, 9, 12, 15?", options: ["9", "7", "12", "8"], correctAnswer: 0 },
-        { text: "Solve: 50 - 23 = ?", options: ["27", "25", "28", "26"], correctAnswer: 0 }
-    ];
-
-    const scienceQuestions = [
-        { text: "Which planet is known as the Red Planet?", options: ["Mars", "Venus", "Jupiter", "Saturn"], correctAnswer: 0 },
-        { text: "What is the largest planet in our solar system?", options: ["Jupiter", "Saturn", "Neptune", "Uranus"], correctAnswer: 0 },
-        { text: "What gas do plants absorb during photosynthesis?", options: ["Carbon Dioxide", "Oxygen", "Nitrogen", "Hydrogen"], correctAnswer: 0 },
-        { text: "What is the speed of light in vacuum?", options: ["300,000 km/s", "150,000 km/s", "1,000,000 km/s", "50,000 km/s"], correctAnswer: 0 },
-        { text: "What is the chemical symbol for Gold?", options: ["Au", "Ag", "Fe", "Cu"], correctAnswer: 0 },
-        { text: "What organ pumps blood through the human body?", options: ["Heart", "Lungs", "Liver", "Kidney"], correctAnswer: 0 },
-        { text: "What force pulls objects toward Earth's center?", options: ["Gravity", "Friction", "Magnetism", "Inertia"], correctAnswer: 0 },
-        { text: "What is the boiling point of water at sea level?", options: ["100°C", "90°C", "120°C", "80°C"], correctAnswer: 0 },
-        { text: "Which galaxy contains our Solar System?", options: ["Milky Way", "Andromeda", "Sombrero", "Triangulum"], correctAnswer: 0 },
-        { text: "What is the hardest natural substance on Earth?", options: ["Diamond", "Quartz", "Granite", "Titanium"], correctAnswer: 0 },
-        { text: "What element does 'O' represent on the periodic table?", options: ["Oxygen", "Osmium", "Gold", "Oganesson"], correctAnswer: 0 },
-        { text: "How many planets are in our solar system?", options: ["8", "7", "9", "10"], correctAnswer: 0 },
-        { text: "What layer of Earth's atmosphere protects us from UV rays?", options: ["Ozone Layer", "Troposphere", "Thermosphere", "Mesosphere"], correctAnswer: 0 },
-        { text: "What particle carries a negative electric charge?", options: ["Electron", "Proton", "Neutron", "Photon"], correctAnswer: 0 },
-        { text: "What natural phenomenon is measured on the Richter scale?", options: ["Earthquakes", "Tornadoes", "Hurricanes", "Tsunamis"], correctAnswer: 0 },
-        { text: "What is the center of an atom called?", options: ["Nucleus", "Electron Cloud", "Orbit", "Core"], correctAnswer: 0 }
-    ];
-
-    let base = historyQuestions;
-    if (category.toLowerCase() === 'math') {
-        base = mathQuestions;
-    } else if (category.toLowerCase() === 'science') {
-        base = scienceQuestions;
-    }
-
-    return base.slice(0, count);
-}
 
 function getQuestThemeStyle(questName, subject) {
     const nameMap = {
@@ -256,11 +161,14 @@ function getQuestThemeStyle(questName, subject) {
     return { bg: "var(--color-purple)", text: "white" };
 }
 
-function openQuestGame(questName, rawCount, category, chances = 3, teacherName = 'Professor Riley', dbAttemptId = null, dbQuestions = null) {
-    // Enforce perfect square question count
-    let root = Math.round(Math.sqrt(rawCount));
-    if (root < 2) root = 2;
-    const questionCount = dbQuestions ? dbQuestions.length : root * root;
+function openQuestGame(questName, rawCount, category, chances = 3, teacherName = 'Teacher', dbAttemptId = null, dbQuestions = null) {
+    const questionsList = Array.isArray(dbQuestions) ? dbQuestions : [];
+    if (questionsList.length === 0) {
+        alert('No questions available for this quiz.');
+        return;
+    }
+
+    const questionCount = questionsList.length;
     const gridDim = Math.max(2, Math.ceil(Math.sqrt(questionCount)));
 
     const questionStats = Array.from({ length: questionCount }, () => ({
@@ -273,11 +181,11 @@ function openQuestGame(questName, rawCount, category, chances = 3, teacherName =
         questName: questName,
         subject: category,
         category: category,
-        teacherName: teacherName || 'Professor Riley',
+        teacherName: teacherName || 'Teacher',
         configuredChances: typeof chances === 'number' && chances > 0 ? chances : 3,
         questionCount: questionCount,
         gridDimension: gridDim,
-        questions: dbQuestions || generateMockQuestions(category, questionCount),
+        questions: questionsList,
         questionStats: questionStats,
         solvedTiles: new Set(),
         processedTiles: new Set(),
@@ -703,12 +611,11 @@ function hideCompletedQuizzes() {
 function addCompletedQuiz(questName, earnedXP = 0, accuracy = 100, stars = 3) {
     if (questName) {
         completedQuizzes.add(questName);
-        saveCompletedQuizzesToStorage();
     }
 
     const playedValueElement = document.getElementById('stat-quizzes-played');
     if (playedValueElement) {
-        let played = parseInt(playedValueElement.textContent, 10);
+        let played = parseInt(playedValueElement.textContent, 10) || 0;
         played++;
         playedValueElement.textContent = played;
     }
@@ -719,7 +626,7 @@ function addCompletedQuiz(questName, earnedXP = 0, accuracy = 100, stars = 3) {
 
     const starsValueElement = document.getElementById('stat-stars');
     if (starsValueElement) {
-        let currentStars = parseInt(starsValueElement.textContent, 10);
+        let currentStars = parseInt(starsValueElement.textContent, 10) || 0;
         currentStars += (typeof stars === 'number' ? stars : 0);
         starsValueElement.textContent = currentStars;
     }
@@ -828,21 +735,18 @@ let matchGameState = {
 
 let activeMatchDrag = null;
 
-function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3, dbAttemptId = null, dbQuestions = null) {
-    let pairs = [
-        { id: 'm1', text: "Capital of France?", answer: "Paris" },
-        { id: 'm2', text: "2 + 2?", answer: "4" },
-        { id: 'm3', text: "Largest planet?", answer: "Jupiter" },
-        { id: 'm4', text: "Red Planet?", answer: "Mars" }
-    ];
-
-    if (dbQuestions && dbQuestions.length > 0) {
-        pairs = dbQuestions.map((q, idx) => ({
-            id: q.dbQuestionId || `m${idx + 1}`,
-            text: q.text,
-            answer: q.answer
-        }));
+function openMatchGame(questName, category, teacherName = 'Teacher', chances = 3, dbAttemptId = null, dbQuestions = null) {
+    const rawPairs = Array.isArray(dbQuestions) ? dbQuestions : [];
+    if (rawPairs.length === 0) {
+        alert('No matching pairs available for this quiz.');
+        return;
     }
+
+    const pairs = rawPairs.map((q, idx) => ({
+        id: q.dbQuestionId || `m${idx + 1}`,
+        text: q.text,
+        answer: q.answer
+    }));
 
     // Left questions order
     const questions = pairs.map(p => ({ id: p.id, text: p.text }));
@@ -1399,29 +1303,12 @@ let fillBlanksGameState = {
     isProcessing: false
 };
 
-function openFillBlanksGame(questName, category, customQuestions = null, chances = 3, teacherName = 'Professor Riley', dbAttemptId = null) {
-    const defaultQuestions = [
-        {
-            statement: "The capital of France is Paris.",
-            blankAnswer: "Paris",
-            options: ["Paris", "London", "Berlin", "Madrid"],
-            correctAnswer: 0
-        },
-        {
-            statement: "The largest planet is Jupiter.",
-            blankAnswer: "Jupiter",
-            options: ["Earth", "Jupiter", "Saturn", "Mars"],
-            correctAnswer: 1
-        },
-        {
-            statement: "Water freezes at 0 degrees Celsius.",
-            blankAnswer: "0",
-            options: ["100", "50", "0", "-10"],
-            correctAnswer: 2
-        }
-    ];
-
-    const questionsSource = (customQuestions && customQuestions.length > 0) ? customQuestions : defaultQuestions;
+function openFillBlanksGame(questName, category, customQuestions = null, chances = 3, teacherName = 'Teacher', dbAttemptId = null) {
+    const questionsSource = Array.isArray(customQuestions) ? customQuestions : [];
+    if (questionsSource.length === 0) {
+        alert('No fill-in-the-blank questions available for this quiz.');
+        return;
+    }
 
     // Map & prepare questions with shuffled options while preserving correct answer logic
     const preparedQuestions = questionsSource.map(q => {
@@ -1905,23 +1792,12 @@ let trueFalseGameState = {
     isProcessing: false
 };
 
-function openTrueFalseGame(questName, category, customQuestions = null, teacherName = 'Professor Riley', chances = 1, dbAttemptId = null) {
-    const defaultQuestions = [
-        {
-            statement: "Water freezes at 0°C at standard atmospheric pressure.",
-            correctAnswer: true
-        },
-        {
-            statement: "The Sun revolves around the Earth.",
-            correctAnswer: false
-        },
-        {
-            statement: "Jupiter is the largest planet in our solar system.",
-            correctAnswer: true
-        }
-    ];
-
-    const rawSource = (customQuestions && customQuestions.length > 0) ? customQuestions : defaultQuestions;
+function openTrueFalseGame(questName, category, customQuestions = null, teacherName = 'Teacher', chances = 1, dbAttemptId = null) {
+    const rawSource = Array.isArray(customQuestions) ? customQuestions : [];
+    if (rawSource.length === 0) {
+        alert('No True/False statements available for this quiz.');
+        return;
+    }
 
     const preparedQuestions = rawSource.map(q => {
         const stmt = q.statement || q.text || "";
@@ -2293,6 +2169,7 @@ function confirmStudentLogout(event) {
     const confirmBtn = document.getElementById('confirm-student-logout-btn');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async () => {
+            completedQuizzes.clear();
             if (window.OrixaAuth) {
                 await window.OrixaAuth.signOut();
             }
@@ -2308,6 +2185,8 @@ window.confirmStudentLogout = confirmStudentLogout;
 async function fetchPublishedQuizzesFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    const grid = document.querySelector('.student-quest-grid');
+    const noResults = document.getElementById('no-quizzes-found');
 
     try {
         const { data: quizzes, error } = await client
@@ -2316,70 +2195,96 @@ async function fetchPublishedQuizzesFromSupabase() {
             .eq('status', 'PUBLISHED')
             .order('created_at', { ascending: false });
 
-        if (error || !quizzes || quizzes.length === 0) return;
+        if (error) {
+            console.error('Supabase query error while fetching quizzes:', error);
+            if (noResults) {
+                const titleEl = noResults.querySelector('.quiz-mgmt-no-results-title');
+                const descEl = noResults.querySelector('.quiz-mgmt-no-results-desc');
+                if (titleEl) titleEl.textContent = 'Unable to load quizzes';
+                if (descEl) descEl.textContent = 'There was an error connecting to the server. Please refresh or try again later.';
+                noResults.classList.remove('hidden');
+            }
+            return;
+        }
 
-        const grid = document.querySelector('.student-quest-grid');
-        if (!grid) return;
+        if (!quizzes || quizzes.length === 0) {
+            if (noResults) {
+                const titleEl = noResults.querySelector('.quiz-mgmt-no-results-title');
+                const descEl = noResults.querySelector('.quiz-mgmt-no-results-desc');
+                if (titleEl) titleEl.textContent = 'No quizzes available';
+                if (descEl) descEl.textContent = 'There are currently no quizzes assigned to your department. Please check back later!';
+                noResults.classList.remove('hidden');
+            }
+            return;
+        }
 
-        quizzes.forEach(q => {
-            const subjectName = q.subjects ? q.subjects.name : 'Computer Science';
-            const teacherName = q.profiles ? q.profiles.full_name : 'Professor Riley';
-            const gameTypeLabel = (q.game_type || 'TILE_PUZZLE').replace('_', ' ');
+        if (grid) {
+            quizzes.forEach(q => {
+                const subjectName = q.subjects ? q.subjects.name : 'Computer Science';
+                const teacherName = q.profiles ? q.profiles.full_name : 'Teacher';
+                const gameTypeLabel = (q.game_type || 'TILE_PUZZLE').replace(/_/g, ' ');
 
-            // Check if card already exists
-            const existing = grid.querySelector(`[data-supabase-id="${q.id}"]`);
-            if (existing) return;
+                const existing = grid.querySelector(`[data-supabase-id="${q.id}"]`);
+                if (existing) return;
 
-            const card = document.createElement('div');
-            card.className = 'quest-card cartoon-panel';
-            card.dataset.title = q.title;
-            card.dataset.subject = subjectName;
-            card.dataset.topic = `${q.title} ${subjectName} ${gameTypeLabel}`;
-            card.dataset.supabaseId = q.id;
+                const card = document.createElement('div');
+                card.className = 'quest-card cartoon-panel';
+                card.dataset.title = q.title;
+                card.dataset.subject = subjectName;
+                card.dataset.topic = `${q.title} ${subjectName} ${gameTypeLabel}`;
+                card.dataset.supabaseId = q.id;
 
-            let themeBg = 'var(--color-green)';
-            let themeText = 'var(--border-dark)';
-            if (q.game_type === 'MATCH_FOLLOWING') { themeBg = 'var(--color-purple)'; themeText = 'white'; }
-            else if (q.game_type === 'TRUE_FALSE') { themeBg = 'var(--color-yellow)'; }
-            else if (q.game_type === 'FILL_BLANKS') { themeBg = 'var(--color-green)'; }
+                let themeBg = 'var(--color-green)';
+                let themeText = 'var(--border-dark)';
+                if (q.game_type === 'MATCH_FOLLOWING') { themeBg = 'var(--color-purple)'; themeText = 'white'; }
+                else if (q.game_type === 'TRUE_FALSE') { themeBg = 'var(--color-yellow)'; }
+                else if (q.game_type === 'FILL_BLANKS') { themeBg = 'var(--color-green)'; }
 
-            card.innerHTML = `
-                <div class="quiz-mgmt-card-header">
-                    <div>
-                        <h4 class="quiz-mgmt-card-title">${escapeHTML(q.title)}</h4>
-                        <span class="quiz-mgmt-card-subject">${escapeHTML(subjectName)}</span>
+                card.innerHTML = `
+                    <div class="quiz-mgmt-card-header">
+                        <div>
+                            <h4 class="quiz-mgmt-card-title">${escapeHTML(q.title)}</h4>
+                            <span class="quiz-mgmt-card-subject">${escapeHTML(subjectName)}</span>
+                        </div>
+                        <span class="quest-reward-badge" style="background-color: ${themeBg}; color: ${themeText};">+${q.total_possible_xp || 100} XP</span>
                     </div>
-                    <span class="quest-reward-badge" style="background-color: ${themeBg}; color: ${themeText};">+${q.total_possible_xp || 100} XP</span>
-                </div>
-                <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                    <div class="quiz-mgmt-card-info-row">
-                        <span>Format</span>
-                        <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">${escapeHTML(gameTypeLabel)}</span>
+                    <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                        <div class="quiz-mgmt-card-info-row">
+                            <span>Format</span>
+                            <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">${escapeHTML(gameTypeLabel)}</span>
+                        </div>
+                        <div class="quiz-mgmt-card-info-row">
+                            <span>Teacher</span>
+                            <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(teacherName)}</span>
+                        </div>
                     </div>
-                    <div class="quiz-mgmt-card-info-row">
-                        <span>Teacher</span>
-                        <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(teacherName)}</span>
-                    </div>
-                </div>
-                <button type="button" class="play-quest-btn" style="background-color: ${themeBg}; color: ${themeText};">
-                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                        <path d="M8 5v14l11-7z" fill="currentColor" />
-                    </svg>
-                    <span>LAUNCH QUEST</span>
-                </button>
-            `;
+                    <button type="button" class="play-quest-btn" style="background-color: ${themeBg}; color: ${themeText};">
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                            <path d="M8 5v14l11-7z" fill="currentColor" />
+                        </svg>
+                        <span>LAUNCH QUEST</span>
+                    </button>
+                `;
 
-            const btn = card.querySelector('.play-quest-btn');
-            btn.addEventListener('click', () => {
-                launchSupabaseQuiz(q, subjectName, teacherName);
+                const btn = card.querySelector('.play-quest-btn');
+                btn.addEventListener('click', () => {
+                    launchSupabaseQuiz(q, subjectName, teacherName);
+                });
+
+                grid.prepend(card);
             });
-
-            grid.prepend(card);
-        });
+        }
 
         hideCompletedQuizzes();
     } catch (e) {
         console.warn('Failed to fetch published quizzes from Supabase:', e);
+        if (noResults) {
+            const titleEl = noResults.querySelector('.quiz-mgmt-no-results-title');
+            const descEl = noResults.querySelector('.quiz-mgmt-no-results-desc');
+            if (titleEl) titleEl.textContent = 'Unable to load quizzes';
+            if (descEl) descEl.textContent = 'An unexpected error occurred. Please try again later.';
+            noResults.classList.remove('hidden');
+        }
     }
 }
 
@@ -2460,20 +2365,46 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
     }
 }
 
+function hydrateStudentProfileUI(profile) {
+    if (!profile) return;
+
+    const name = profile.full_name || 'Student';
+    const loginId = profile.login_id || 'STU-USER';
+    const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'ST';
+
+    const avatarEls = document.querySelectorAll('#topbar-profile-avatar, #student-modal-avatar');
+    avatarEls.forEach(el => el.textContent = initials);
+
+    const topbarNameEl = document.getElementById('topbar-profile-name');
+    if (topbarNameEl) topbarNameEl.textContent = name;
+
+    const modalNameEl = document.getElementById('student-modal-name');
+    if (modalNameEl) modalNameEl.textContent = name;
+
+    const modalFullNameEl = document.getElementById('student-modal-full-name');
+    if (modalFullNameEl) modalFullNameEl.textContent = name;
+
+    const modalLoginIdEl = document.getElementById('student-modal-login-id');
+    if (modalLoginIdEl) modalLoginIdEl.textContent = loginId;
+
+    const modalIdEl = document.getElementById('student-modal-id');
+    if (modalIdEl) modalIdEl.textContent = loginId;
+
+    const modalRoleEl = document.getElementById('student-modal-role');
+    if (modalRoleEl) modalRoleEl.textContent = profile.role || 'STUDENT';
+
+    const modalStatusEl = document.getElementById('student-modal-status');
+    if (modalStatusEl) modalStatusEl.textContent = profile.is_active !== false ? 'ACTIVE' : 'INACTIVE';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     if (window.OrixaAuth) {
         const profile = await window.OrixaAuth.requireRole(['STUDENT'], 'student-login.html');
         if (!profile) return;
 
-        if (profile.full_name) {
-            const profileNameEls = document.querySelectorAll('.profile-name, #student-modal-name');
-            profileNameEls.forEach(el => {
-                el.textContent = profile.full_name;
-            });
-        }
+        hydrateStudentProfileUI(profile);
     }
 
-    loadCompletedQuizzesFromStorage();
     hideCompletedQuizzes();
     await fetchPublishedQuizzesFromSupabase();
 });

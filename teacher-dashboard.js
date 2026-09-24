@@ -341,13 +341,22 @@ let createQuizState = null;
 async function fetchTeacherQuizzesFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
+
     try {
         const { data, error } = await client
             .from('quizzes')
             .select('*, subjects(name), quiz_questions(count)')
+            .eq('teacher_id', user.id)
             .order('created_at', { ascending: false });
 
-        if (!error && data) {
+        if (error) {
+            console.error('Error fetching quizzes from Supabase:', error);
+            return;
+        }
+
+        if (data) {
             const mappedQuizzes = data.map(q => {
                 let statusLabel = 'Draft';
                 let iconName = 'clipboard';
@@ -390,13 +399,22 @@ async function fetchTeacherQuizzesFromSupabase() {
 async function fetchTeacherResultsFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
+
     try {
         const { data: attempts, error } = await client
             .from('quiz_attempts')
-            .select('*, quizzes(title, game_type, subjects(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
+            .select('*, quizzes!inner(title, game_type, teacher_id, subjects(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
+            .eq('quizzes.teacher_id', user.id)
             .order('created_at', { ascending: false });
 
-        if (!error && attempts) {
+        if (error) {
+            console.error('Error fetching results from Supabase:', error);
+            return;
+        }
+
+        if (attempts) {
             MOCK_DATA.results = attempts.map(att => {
                 const quizName = att.quizzes ? att.quizzes.title : 'Quiz';
                 const subjectName = (att.quizzes && att.quizzes.subjects) ? att.quizzes.subjects.name : 'Computer Science';
@@ -431,25 +449,42 @@ async function fetchTeacherResultsFromSupabase() {
 async function fetchTeacherStudentsFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
-    try {
-        const { data: students, error } = await client
-            .from('student_profiles')
-            .select('*, profiles(full_name, email, login_id)');
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
 
-        if (!error && students) {
-            MOCK_DATA.students = students.map(s => {
-                const prof = s.profiles || {};
-                return {
-                    id: prof.login_id || s.id,
-                    name: prof.full_name || 'Student',
-                    email: prof.email || `${prof.login_id || 'student'}@auth.orixa.internal`,
-                    grade: 'Grade 5',
-                    subject: 'Computer Science',
-                    status: 'Active',
-                    averageScore: 85,
-                    quizzesAttempted: 0
-                };
+    try {
+        const { data: assignments, error } = await client
+            .from('student_subject_assignments')
+            .select('*, student_profiles!inner(*, profiles(full_name, email, login_id))')
+            .eq('teacher_id', user.id)
+            .eq('is_active', true);
+
+        if (error) {
+            console.error('Error fetching students from Supabase:', error);
+            return;
+        }
+
+        if (assignments) {
+            const seen = new Set();
+            const studentsList = [];
+            assignments.forEach(a => {
+                const s = a.student_profiles;
+                if (s && !seen.has(s.profile_id)) {
+                    seen.add(s.profile_id);
+                    const prof = s.profiles || {};
+                    studentsList.push({
+                        id: prof.login_id || s.profile_id,
+                        name: prof.full_name || 'Student',
+                        email: prof.email || `${prof.login_id || 'student'}@auth.orixa.internal`,
+                        grade: 'Grade 5',
+                        subject: 'Computer Science',
+                        status: 'Active',
+                        averageScore: 85,
+                        quizzesAttempted: 0
+                    });
+                }
             });
+            MOCK_DATA.students = studentsList;
         }
     } catch (e) {
         console.warn('Could not fetch students from Supabase:', e);
@@ -459,12 +494,21 @@ async function fetchTeacherStudentsFromSupabase() {
 async function fetchQuestionBankFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
+
     try {
         const { data: questions, error } = await client
             .from('quiz_questions')
-            .select('*, quizzes(title, game_type, subjects(name))');
+            .select('*, quizzes!inner(title, game_type, teacher_id, subjects(name))')
+            .eq('quizzes.teacher_id', user.id);
 
-        if (!error && questions) {
+        if (error) {
+            console.error('Error fetching question bank from Supabase:', error);
+            return;
+        }
+
+        if (questions) {
             MOCK_DATA.questionBank = questions.map(q => {
                 const gameType = (q.quizzes && q.quizzes.game_type) || 'TILE_PUZZLE';
                 const subject = (q.quizzes && q.quizzes.subjects) ? q.quizzes.subjects.name : 'Computer Science';
@@ -508,16 +552,21 @@ async function fetchNotificationsFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
     try {
-        const profile = await window.OrixaAuth.getCurrentProfile();
-        if (!profile) return;
+        const user = await window.OrixaAuth.getCurrentUser();
+        if (!user) return;
 
         const { data: notifs, error } = await client
             .from('notifications')
             .select('*')
-            .eq('user_id', profile.id)
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false });
 
-        if (!error && notifs) {
+        if (error) {
+            console.error('Error fetching notifications from Supabase:', error);
+            return;
+        }
+
+        if (notifs) {
             MOCK_DATA.notifications = notifs.map(n => ({
                 id: n.id,
                 title: n.title,
@@ -2709,22 +2758,31 @@ window.editQuizDetails = function(id) {
     openOrixaModal(html);
 };
 
-window.saveQuizDetails = function(event, id) {
+window.saveQuizDetails = async function(event, id) {
     event.preventDefault();
     const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
     if (!quiz) return;
 
     const newTitle = document.getElementById('edit-quiz-title').value.trim();
-    const newSubject = document.getElementById('edit-quiz-subject').value;
-    const newQuestions = parseInt(document.getElementById('edit-quiz-questions').value, 10);
     const newStatus = document.getElementById('edit-quiz-status').value;
 
     if (newTitle) {
-        quiz.title = newTitle;
-        quiz.subject = newSubject;
-        quiz.questions = newQuestions;
-        quiz.status = newStatus;
-        quiz.lastUpdated = new Date().toISOString().split('T')[0];
+        let dbStatus = 'DRAFT';
+        if (newStatus === 'Live') dbStatus = 'PUBLISHED';
+        else if (newStatus === 'Closed') dbStatus = 'CLOSED';
+
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error } = await window.OrixaAuth.client
+                .from('quizzes')
+                .update({ title: newTitle, status: dbStatus, updated_at: new Date().toISOString() })
+                .eq('id', quiz.id);
+
+            if (error) {
+                console.error('Error updating quiz in Supabase:', error);
+            } else {
+                await fetchTeacherQuizzesFromSupabase();
+            }
+        }
 
         closeOrixaModal();
         renderQuizManagementPage();
@@ -2764,10 +2822,24 @@ window.deleteQuizConfirm = function(id) {
     openOrixaModal(html);
 };
 
-window.performDeleteQuiz = function(id) {
-    const index = MOCK_DATA.quizzes.findIndex(q => q.id === id);
-    if (index !== -1) {
-        MOCK_DATA.quizzes.splice(index, 1);
+window.performDeleteQuiz = async function(id) {
+    const targetQuiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
+    if (targetQuiz) {
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error } = await window.OrixaAuth.client
+                .from('quizzes')
+                .delete()
+                .eq('id', targetQuiz.id);
+
+            if (error) {
+                console.error('Error deleting quiz from Supabase:', error);
+            } else {
+                await fetchTeacherQuizzesFromSupabase();
+            }
+        } else {
+            const index = MOCK_DATA.quizzes.findIndex(q => String(q.id) === String(id));
+            if (index !== -1) MOCK_DATA.quizzes.splice(index, 1);
+        }
         closeOrixaModal();
         renderQuizManagementPage();
     }
@@ -4040,10 +4112,25 @@ window.deleteQuestionConfirm = function(id) {
     openOrixaModal(html);
 };
 
-window.performDeleteQuestion = function(id) {
-    const idx = MOCK_DATA.questionBank.findIndex(item => item.id === id);
-    if (idx !== -1) {
-        MOCK_DATA.questionBank.splice(idx, 1);
+window.performDeleteQuestion = async function(id) {
+    const targetQ = MOCK_DATA.questionBank.find(item => String(item.id) === String(id));
+    if (targetQ) {
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error } = await window.OrixaAuth.client
+                .from('quiz_questions')
+                .delete()
+                .eq('id', targetQ.id);
+
+            if (error) {
+                console.error('Error deleting question from Supabase:', error);
+            } else {
+                await fetchQuestionBankFromSupabase();
+            }
+        } else {
+            const idx = MOCK_DATA.questionBank.findIndex(item => String(item.id) === String(id));
+            if (idx !== -1) MOCK_DATA.questionBank.splice(idx, 1);
+        }
+
         selectedQuestionIds.delete(id);
         closeOrixaModal();
 

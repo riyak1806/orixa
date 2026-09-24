@@ -25,8 +25,31 @@
                 } else {
                     console.error('Supabase JS client library not loaded.');
                 }
+
+                if (this._client && this._client.auth) {
+                    this._client.auth.onAuthStateChange((event) => {
+                        if (event === 'SIGNED_OUT') {
+                            this._cachedProfile = null;
+                        }
+                    });
+                }
             }
             return this._client;
+        }
+
+        async getCurrentUser() {
+            const client = this.client;
+            if (!client) {
+                return null;
+            }
+            try {
+                const { data, error } = await client.auth.getUser();
+                if (error || !data) return null;
+                return data.user;
+            } catch (e) {
+                console.warn('Error fetching current user:', e);
+                return null;
+            }
         }
 
         toInternalEmail(loginId) {

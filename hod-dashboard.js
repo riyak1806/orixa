@@ -1263,11 +1263,21 @@ async function loadHodDataFromSupabase() {
 
     try {
         if (profile.department_id) {
-            const { data: dept } = await client
+            const { data: dept, error: deptError } = await client
                 .from('departments')
-                .select('*')
+                .select('id, name')
                 .eq('id', profile.department_id)
                 .maybeSingle();
+
+            if (deptError) {
+                console.error('Error fetching department info from Supabase:', {
+                    message: deptError.message,
+                    details: deptError.details,
+                    hint: deptError.hint,
+                    code: deptError.code
+                });
+            }
+
             if (dept) {
                 HOD_MOCK_DATA.deptInfo.name = dept.name;
                 HOD_MOCK_DATA.deptInfo.id = dept.id;
@@ -1276,36 +1286,54 @@ async function loadHodDataFromSupabase() {
 
         // Note: email column does not exist on public.profiles or public.teacher_profiles / public.student_profiles (stored in auth.users).
         // A schema migration is required if public email selection is needed.
-        const { data: teachers } = await client
+        const { data: teachers, error: teacherError } = await client
             .from('teacher_profiles')
-            .select('*, profiles(full_name, login_id)')
-            .eq('department_id', profile.department_id);
+            .select('profile_id, employee_id, profiles!inner(full_name, login_id, department_id)')
+            .eq('profiles.department_id', profile.department_id);
+
+        if (teacherError) {
+            console.error('Error fetching HOD teachers from Supabase:', {
+                message: teacherError.message,
+                details: teacherError.details,
+                hint: teacherError.hint,
+                code: teacherError.code
+            });
+        }
 
         if (teachers) {
             HOD_MOCK_DATA.teachers = teachers.map(t => {
                 const prof = t.profiles || {};
                 return {
-                    id: t.id,
+                    id: t.profile_id,
                     name: prof.full_name || 'Teacher',
-                    empId: prof.login_id || 'EMP',
+                    empId: prof.login_id || t.employee_id || 'EMP',
                     subjects: ['Computer Science'],
                     years: ['1st Year', '2nd Year', '3rd Year', '4th Year']
                 };
             });
         }
 
-        const { data: students } = await client
+        const { data: students, error: studentError } = await client
             .from('student_profiles')
-            .select('*, profiles!student_profiles_profile_id_fkey(full_name, login_id)')
-            .eq('department_id', profile.department_id);
+            .select('profile_id, student_id, profiles!student_profiles_profile_id_fkey!inner(full_name, login_id, department_id)')
+            .eq('profiles.department_id', profile.department_id);
+
+        if (studentError) {
+            console.error('Error fetching HOD students from Supabase:', {
+                message: studentError.message,
+                details: studentError.details,
+                hint: studentError.hint,
+                code: studentError.code
+            });
+        }
 
         if (students) {
             HOD_MOCK_DATA.students = students.map(s => {
                 const prof = s.profiles || {};
                 return {
-                    id: s.id,
+                    id: s.profile_id,
                     name: prof.full_name || 'Student',
-                    studentId: prof.login_id || 'STD',
+                    studentId: prof.login_id || s.student_id || 'STD',
                     year: '1st Year',
                     subject: 'Computer Science',
                     teacher: 'Department Faculty'
@@ -1313,7 +1341,12 @@ async function loadHodDataFromSupabase() {
             });
         }
     } catch (e) {
-        console.warn('Error fetching HOD data from Supabase:', e);
+        console.error('Error fetching HOD data from Supabase:', {
+            message: e?.message,
+            details: e?.details,
+            hint: e?.hint,
+            code: e?.code
+        }, e);
     }
 }
 

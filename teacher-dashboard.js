@@ -347,7 +347,7 @@ async function fetchTeacherQuizzesFromSupabase() {
     try {
         const { data, error } = await client
             .from('quizzes')
-            .select('*, subjects(name), quiz_questions(count)')
+            .select('*, subjects!quizzes_subject_id_fkey(name), quiz_questions(count)')
             .eq('teacher_id', user.id)
             .order('created_at', { ascending: false });
 
@@ -405,7 +405,7 @@ async function fetchTeacherResultsFromSupabase() {
     try {
         const { data: attempts, error } = await client
             .from('quiz_attempts')
-            .select('*, quizzes!inner(title, game_type, teacher_id, subjects(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
+            .select('*, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
             .eq('quizzes.teacher_id', user.id)
             .order('created_at', { ascending: false });
 
@@ -455,7 +455,7 @@ async function fetchTeacherStudentsFromSupabase() {
     try {
         const { data: assignments, error } = await client
             .from('student_subject_assignments')
-            .select('*, student_profiles!inner(*, profiles(full_name, email, login_id))')
+            .select('*, profiles!student_subject_assignments_student_id_fkey(id, full_name, email, login_id, student_profiles(*))')
             .eq('teacher_id', user.id)
             .eq('is_active', true);
 
@@ -468,12 +468,11 @@ async function fetchTeacherStudentsFromSupabase() {
             const seen = new Set();
             const studentsList = [];
             assignments.forEach(a => {
-                const s = a.student_profiles;
-                if (s && !seen.has(s.profile_id)) {
-                    seen.add(s.profile_id);
-                    const prof = s.profiles || {};
+                const prof = a.profiles;
+                if (prof && !seen.has(prof.id)) {
+                    seen.add(prof.id);
                     studentsList.push({
-                        id: prof.login_id || s.profile_id,
+                        id: prof.login_id || prof.id,
                         name: prof.full_name || 'Student',
                         email: prof.email || `${prof.login_id || 'student'}@auth.orixa.internal`,
                         grade: 'Grade 5',
@@ -500,7 +499,7 @@ async function fetchQuestionBankFromSupabase() {
     try {
         const { data: questions, error } = await client
             .from('quiz_questions')
-            .select('*, quizzes!inner(title, game_type, teacher_id, subjects(name))')
+            .select('*, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name))')
             .eq('quizzes.teacher_id', user.id);
 
         if (error) {

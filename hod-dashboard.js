@@ -2,122 +2,22 @@
    ORIXA - COMPUTER DEPARTMENT HOD DASHBOARD CONTROLLER (jspmntccs)
    ========================================================================== */
 
-const DEFAULT_HOD_MOCK_DATA = {
+const HOD_MOCK_DATA = {
     deptInfo: {
-        id: 'jspmntccs',
-        name: 'Computer Engineering Department',
-        hodName: 'Dr. Rajesh Sharma',
-        hodEmpId: 'HOD-CS-01',
+        id: '',
+        name: '',
+        hodName: '',
+        hodEmpId: '',
         academicYear: '2024–2025'
     },
-    teachers: [
-        {
-            id: 'T-101',
-            name: 'Prof. Sarah Jenkins',
-            empId: 'EMP-CS-01',
-            subjects: ['Data Structures', 'Web Technologies'],
-            years: ['1st Year', '3rd Year']
-        },
-        {
-            id: 'T-102',
-            name: 'Prof. Alan Turing',
-            empId: 'EMP-CS-02',
-            subjects: ['Cloud Computing', 'Database Management'],
-            years: ['2nd Year', '4th Year']
-        },
-        {
-            id: 'T-103',
-            name: 'Teacher A',
-            empId: 'EMP-CS-03',
-            subjects: ['DBMS'],
-            years: ['2nd Year']
-        },
-        {
-            id: 'T-104',
-            name: 'Teacher B',
-            empId: 'EMP-CS-04',
-            subjects: ['AI'],
-            years: ['2nd Year']
-        }
-    ],
-    students: [
-        {
-            id: 'STU-CS-101',
-            name: 'Aarav Sharma',
-            studentId: 'STU-CS-101',
-            year: '1st Year',
-            subject: 'Data Structures',
-            teacher: 'Prof. Sarah Jenkins'
-        },
-        {
-            id: 'STU-CS-102',
-            name: 'Ananya Deshmukh',
-            studentId: 'STU-CS-102',
-            year: '2nd Year',
-            subject: 'Database Management',
-            teacher: 'Prof. Alan Turing'
-        },
-        {
-            id: 'STU-CS-103',
-            name: 'Rahul',
-            studentId: 'STU-CS-103',
-            year: '2nd Year',
-            subject: 'DBMS',
-            teacher: 'Teacher A'
-        },
-        {
-            id: 'STU-CS-104',
-            name: 'Priya',
-            studentId: 'STU-CS-104',
-            year: '2nd Year',
-            subject: 'AI',
-            teacher: 'Teacher B'
-        }
-    ],
-    performance: [
-        { id: 'STU-CS-101', name: 'Aarav Sharma', year: '1st Year', subject: 'Data Structures', teacher: 'Prof. Sarah Jenkins', quizzesCompleted: 14, avgAccuracy: 94, status: 'Top Performer' },
-        { id: 'STU-CS-102', name: 'Ananya Deshmukh', year: '2nd Year', subject: 'Database Management', teacher: 'Prof. Alan Turing', quizzesCompleted: 11, avgAccuracy: 88, status: 'Above Average' },
-        { id: 'STU-CS-103', name: 'Rahul', year: '2nd Year', subject: 'DBMS', teacher: 'Teacher A', quizzesCompleted: 9, avgAccuracy: 85, status: 'Above Average' },
-        { id: 'STU-CS-104', name: 'Priya', year: '2nd Year', subject: 'AI', teacher: 'Teacher B', quizzesCompleted: 7, avgAccuracy: 78, status: 'Average' },
-        { id: 'STU-CS-105', name: 'Sanya Malhotra', year: '3rd Year', subject: 'Web Technologies', teacher: 'Prof. Sarah Jenkins', quizzesCompleted: 12, avgAccuracy: 91, status: 'Top Performer' },
-        { id: 'STU-CS-106', name: 'Isha Gupta', year: '4th Year', subject: 'Cloud Computing', teacher: 'Prof. Alan Turing', quizzesCompleted: 13, avgAccuracy: 89, status: 'Above Average' }
-    ]
+    teachers: [],
+    students: [],
+    performance: []
 };
 
 let currentHodTeacherFilter = 'ALL';
 let currentHodSubjectFilter = 'ALL';
 let currentHodYearFilter = 'ALL';
-
-function loadHodMockData() {
-    try {
-        const stored = localStorage.getItem('orixa_hod_mock_data');
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed && Array.isArray(parsed.teachers) && Array.isArray(parsed.students)) {
-                if (!Array.isArray(parsed.performance)) {
-                    parsed.performance = JSON.parse(JSON.stringify(DEFAULT_HOD_MOCK_DATA.performance));
-                }
-                return parsed;
-            }
-        }
-    } catch (e) {
-        console.warn('Could not load HOD mock data from localStorage:', e);
-    }
-    return JSON.parse(JSON.stringify(DEFAULT_HOD_MOCK_DATA));
-}
-
-function saveHodMockData() {
-    try {
-        localStorage.setItem('orixa_hod_mock_data', JSON.stringify(HOD_MOCK_DATA));
-    } catch (e) {
-        console.warn('Could not save HOD mock data to localStorage:', e);
-    }
-}
-
-// Isolated frontend mock state for Computer Department HOD
-const HOD_MOCK_DATA = loadHodMockData();
-// Ensure initial data is persisted to localStorage
-saveHodMockData();
 
 /* ==========================================================================
    DOM RENDERING FUNCTIONS
@@ -1361,6 +1261,66 @@ function confirmStudentImport() {
     resetStudentUploadState();
 }
 
+async function loadHodDataFromSupabase() {
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    const client = window.OrixaAuth.client;
+    const profile = await window.OrixaAuth.getCurrentProfile();
+    if (!profile) return;
+
+    try {
+        if (profile.department_id) {
+            const { data: dept } = await client
+                .from('departments')
+                .select('*')
+                .eq('id', profile.department_id)
+                .maybeSingle();
+            if (dept) {
+                HOD_MOCK_DATA.deptInfo.name = dept.name;
+                HOD_MOCK_DATA.deptInfo.id = dept.id;
+            }
+        }
+
+        const { data: teachers } = await client
+            .from('teacher_profiles')
+            .select('*, profiles(full_name, email, login_id)')
+            .eq('department_id', profile.department_id);
+
+        if (teachers) {
+            HOD_MOCK_DATA.teachers = teachers.map(t => {
+                const prof = t.profiles || {};
+                return {
+                    id: t.id,
+                    name: prof.full_name || 'Teacher',
+                    empId: prof.login_id || 'EMP',
+                    subjects: ['Computer Science'],
+                    years: ['1st Year', '2nd Year', '3rd Year', '4th Year']
+                };
+            });
+        }
+
+        const { data: students } = await client
+            .from('student_profiles')
+            .select('*, profiles(full_name, email, login_id)')
+            .eq('department_id', profile.department_id);
+
+        if (students) {
+            HOD_MOCK_DATA.students = students.map(s => {
+                const prof = s.profiles || {};
+                return {
+                    id: s.id,
+                    name: prof.full_name || 'Student',
+                    studentId: prof.login_id || 'STD',
+                    year: '1st Year',
+                    subject: 'Computer Science',
+                    teacher: 'Department Faculty'
+                };
+            });
+        }
+    } catch (e) {
+        console.warn('Error fetching HOD data from Supabase:', e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     if (window.OrixaAuth) {
         const profile = await window.OrixaAuth.requireRole(['HOD'], 'hod-login.html');
@@ -1370,6 +1330,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             HOD_MOCK_DATA.deptInfo.hodName = profile.full_name;
         }
     }
+
+    await loadHodDataFromSupabase();
 
     renderHodStats();
     renderTeacherList();

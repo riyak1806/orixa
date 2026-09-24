@@ -119,12 +119,6 @@
                     console.warn('Error during signOut:', e);
                 }
             }
-            try {
-                localStorage.removeItem('orixa_current_teacher');
-                localStorage.removeItem('orixa_current_student');
-            } catch (e) {
-                // Ignore localStorage errors
-            }
         }
 
         async getCurrentSession() {

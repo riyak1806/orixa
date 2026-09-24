@@ -1,6 +1,11 @@
 /* ==========================================================================
    ORIXA - TEACHER DASHBOARD CONTROLLER
-   Dummy data and navigation-ready frontend components only.
+   RECOMMENDED DATABASE INDEXES FOR OPTIMAL PERFORMANCE:
+   - CREATE INDEX IF NOT EXISTS idx_quizzes_teacher_created ON public.quizzes(teacher_id, created_at DESC);
+   - CREATE INDEX IF NOT EXISTS idx_quiz_attempts_started ON public.quiz_attempts(started_at DESC);
+   - CREATE INDEX IF NOT EXISTS idx_student_subject_assignments_teacher_active ON public.student_subject_assignments(teacher_id, is_active);
+   - CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz_id ON public.quiz_questions(quiz_id);
+   - CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications(user_id, created_at DESC);
    ========================================================================== */
 
 const ICONS = {
@@ -341,13 +346,23 @@ let createQuizState = null;
 async function fetchTeacherQuizzesFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
+
     try {
         const { data, error } = await client
             .from('quizzes')
-            .select('*, subjects(name), quiz_questions(count)')
-            .order('created_at', { ascending: false });
+            .select('id, title, status, game_type, description, created_at, subjects!quizzes_subject_id_fkey(name), quiz_questions(count)')
+            .eq('teacher_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(100);
 
-        if (!error && data) {
+        if (error) {
+            console.error('Error fetching quizzes from Supabase:', error);
+            return;
+        }
+
+        if (data) {
             const mappedQuizzes = data.map(q => {
                 let statusLabel = 'Draft';
                 let iconName = 'clipboard';
@@ -390,20 +405,31 @@ async function fetchTeacherQuizzesFromSupabase() {
 async function fetchTeacherResultsFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
+
     try {
         const { data: attempts, error } = await client
             .from('quiz_attempts')
-            .select('*, quizzes(title, game_type, subjects(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
-            .order('created_at', { ascending: false });
+            .select('id, final_earned_xp, final_accuracy_pct, started_at, completed_at, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name)), profiles!quiz_attempts_student_id_fkey(full_name, login_id)')
+            .eq('quizzes.teacher_id', user.id)
+            .order('started_at', { ascending: false })
+            .limit(100);
 
-        if (!error && attempts) {
+        if (error) {
+            console.error('Error fetching results from Supabase:', error);
+            return;
+        }
+
+        if (attempts) {
             MOCK_DATA.results = attempts.map(att => {
                 const quizName = att.quizzes ? att.quizzes.title : 'Quiz';
                 const subjectName = (att.quizzes && att.quizzes.subjects) ? att.quizzes.subjects.name : 'Computer Science';
                 const studentName = att.profiles ? (att.profiles.full_name || att.profiles.login_id) : 'Student';
                 const studentId = att.profiles ? att.profiles.login_id : 'STD';
-                const totalXP = att.earned_xp || 0;
-                const percentage = att.score_percentage || 0;
+                const totalXP = att.final_earned_xp || 0;
+                const percentage = att.final_accuracy_pct || 0;
+                const attemptDate = att.completed_at || att.started_at;
 
                 return {
                     id: att.id,
@@ -418,7 +444,7 @@ async function fetchTeacherResultsFromSupabase() {
                     correctCount: percentage >= 50 ? 1 : 0,
                     incorrectCount: percentage < 50 ? 1 : 0,
                     daysOffset: 0,
-                    dateAttempted: att.created_at ? att.created_at.split('T')[0] : '',
+                    dateAttempted: attemptDate ? attemptDate.split('T')[0] : '',
                     questionsBreakdown: []
                 };
             });
@@ -431,25 +457,45 @@ async function fetchTeacherResultsFromSupabase() {
 async function fetchTeacherStudentsFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
-    try {
-        const { data: students, error } = await client
-            .from('student_profiles')
-            .select('*, profiles(full_name, email, login_id)');
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
 
-        if (!error && students) {
-            MOCK_DATA.students = students.map(s => {
-                const prof = s.profiles || {};
-                return {
-                    id: prof.login_id || s.id,
-                    name: prof.full_name || 'Student',
-                    email: prof.email || `${prof.login_id || 'student'}@auth.orixa.internal`,
-                    grade: 'Grade 5',
-                    subject: 'Computer Science',
-                    status: 'Active',
-                    averageScore: 85,
-                    quizzesAttempted: 0
-                };
+    try {
+        // Note: email column does not exist on public.profiles or public.student_profiles (stored in auth.users).
+        // A schema migration is required if public email selection is needed. Generated internal auth email is used as fallback.
+        const { data: assignments, error } = await client
+            .from('student_subject_assignments')
+            .select('student_id, profiles!student_subject_assignments_student_id_fkey(id, full_name, login_id, student_profiles!student_profiles_profile_id_fkey(student_id, roll_number))')
+            .eq('teacher_id', user.id)
+            .eq('is_active', true)
+            .limit(100);
+
+        if (error) {
+            console.error('Error fetching students from Supabase:', error);
+            return;
+        }
+
+        if (assignments) {
+            const seen = new Set();
+            const studentsList = [];
+            assignments.forEach(a => {
+                const prof = a.profiles;
+                if (prof && !seen.has(prof.id)) {
+                    seen.add(prof.id);
+                    const cleanLoginId = prof.login_id || 'student';
+                    studentsList.push({
+                        id: prof.login_id || prof.id,
+                        name: prof.full_name || 'Student',
+                        email: `${cleanLoginId}@auth.orixa.internal`,
+                        grade: 'Grade 5',
+                        subject: 'Computer Science',
+                        status: 'Active',
+                        averageScore: 85,
+                        quizzesAttempted: 0
+                    });
+                }
             });
+            MOCK_DATA.students = studentsList;
         }
     } catch (e) {
         console.warn('Could not fetch students from Supabase:', e);
@@ -459,12 +505,22 @@ async function fetchTeacherStudentsFromSupabase() {
 async function fetchQuestionBankFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    const user = await window.OrixaAuth.getCurrentUser();
+    if (!user) return;
+
     try {
         const { data: questions, error } = await client
             .from('quiz_questions')
-            .select('*, quizzes(title, game_type, subjects(name))');
+            .select('id, question_text, game_payload, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name))')
+            .eq('quizzes.teacher_id', user.id)
+            .limit(100);
 
-        if (!error && questions) {
+        if (error) {
+            console.error('Error fetching question bank from Supabase:', error);
+            return;
+        }
+
+        if (questions) {
             MOCK_DATA.questionBank = questions.map(q => {
                 const gameType = (q.quizzes && q.quizzes.game_type) || 'TILE_PUZZLE';
                 const subject = (q.quizzes && q.quizzes.subjects) ? q.quizzes.subjects.name : 'Computer Science';
@@ -508,16 +564,22 @@ async function fetchNotificationsFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
     try {
-        const profile = await window.OrixaAuth.getCurrentProfile();
-        if (!profile) return;
+        const user = await window.OrixaAuth.getCurrentUser();
+        if (!user) return;
 
         const { data: notifs, error } = await client
             .from('notifications')
-            .select('*')
-            .eq('user_id', profile.id)
-            .order('created_at', { ascending: false });
+            .select('id, title, message, category, priority, is_read, created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(100);
 
-        if (!error && notifs) {
+        if (error) {
+            console.error('Error fetching notifications from Supabase:', error);
+            return;
+        }
+
+        if (notifs) {
             MOCK_DATA.notifications = notifs.map(n => ({
                 id: n.id,
                 title: n.title,
@@ -2709,22 +2771,31 @@ window.editQuizDetails = function(id) {
     openOrixaModal(html);
 };
 
-window.saveQuizDetails = function(event, id) {
+window.saveQuizDetails = async function(event, id) {
     event.preventDefault();
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const newTitle = document.getElementById('edit-quiz-title').value.trim();
-    const newSubject = document.getElementById('edit-quiz-subject').value;
-    const newQuestions = parseInt(document.getElementById('edit-quiz-questions').value, 10);
     const newStatus = document.getElementById('edit-quiz-status').value;
 
     if (newTitle) {
-        quiz.title = newTitle;
-        quiz.subject = newSubject;
-        quiz.questions = newQuestions;
-        quiz.status = newStatus;
-        quiz.lastUpdated = new Date().toISOString().split('T')[0];
+        let dbStatus = 'DRAFT';
+        if (newStatus === 'Live') dbStatus = 'PUBLISHED';
+        else if (newStatus === 'Closed') dbStatus = 'CLOSED';
+
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error } = await window.OrixaAuth.client
+                .from('quizzes')
+                .update({ title: newTitle, status: dbStatus, updated_at: new Date().toISOString() })
+                .eq('id', quiz.id);
+
+            if (error) {
+                console.error('Error updating quiz in Supabase:', error);
+            } else {
+                await fetchTeacherQuizzesFromSupabase();
+            }
+        }
 
         closeOrixaModal();
         renderQuizManagementPage();
@@ -2764,10 +2835,24 @@ window.deleteQuizConfirm = function(id) {
     openOrixaModal(html);
 };
 
-window.performDeleteQuiz = function(id) {
-    const index = MOCK_DATA.quizzes.findIndex(q => q.id === id);
-    if (index !== -1) {
-        MOCK_DATA.quizzes.splice(index, 1);
+window.performDeleteQuiz = async function(id) {
+    const targetQuiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
+    if (targetQuiz) {
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error } = await window.OrixaAuth.client
+                .from('quizzes')
+                .delete()
+                .eq('id', targetQuiz.id);
+
+            if (error) {
+                console.error('Error deleting quiz from Supabase:', error);
+            } else {
+                await fetchTeacherQuizzesFromSupabase();
+            }
+        } else {
+            const index = MOCK_DATA.quizzes.findIndex(q => String(q.id) === String(id));
+            if (index !== -1) MOCK_DATA.quizzes.splice(index, 1);
+        }
         closeOrixaModal();
         renderQuizManagementPage();
     }
@@ -4040,10 +4125,25 @@ window.deleteQuestionConfirm = function(id) {
     openOrixaModal(html);
 };
 
-window.performDeleteQuestion = function(id) {
-    const idx = MOCK_DATA.questionBank.findIndex(item => item.id === id);
-    if (idx !== -1) {
-        MOCK_DATA.questionBank.splice(idx, 1);
+window.performDeleteQuestion = async function(id) {
+    const targetQ = MOCK_DATA.questionBank.find(item => String(item.id) === String(id));
+    if (targetQ) {
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error } = await window.OrixaAuth.client
+                .from('quiz_questions')
+                .delete()
+                .eq('id', targetQ.id);
+
+            if (error) {
+                console.error('Error deleting question from Supabase:', error);
+            } else {
+                await fetchQuestionBankFromSupabase();
+            }
+        } else {
+            const idx = MOCK_DATA.questionBank.findIndex(item => String(item.id) === String(id));
+            if (idx !== -1) MOCK_DATA.questionBank.splice(idx, 1);
+        }
+
         selectedQuestionIds.delete(id);
         closeOrixaModal();
 

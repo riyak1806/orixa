@@ -252,13 +252,29 @@ function initAddTeacherForm() {
         const subjects = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
         const years = yearsRaw.split(',').map(y => y.trim()).filter(Boolean);
 
-        const newTeacherUuid = crypto.randomUUID();
         const client = window.OrixaAuth ? window.OrixaAuth.client : null;
         const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
+        let teacherUserId = null;
 
         if (client && currentProfile) {
+            const authRes = await window.OrixaAuth.createUserAccount(empId, 'Password123!', {
+                login_id: empId,
+                full_name: name,
+                role: 'TEACHER'
+            });
+
+            if (!authRes.success) {
+                console.error('Error creating auth account for teacher:', authRes);
+                if (formMsg) {
+                    formMsg.textContent = `Failed to create auth account: ${authRes.error || 'Unknown error'}`;
+                    formMsg.className = 'teacher-form-msg error';
+                }
+                return;
+            }
+            teacherUserId = authRes.userId;
+
             const { error: profErr } = await client.from('profiles').insert({
-                id: newTeacherUuid,
+                id: teacherUserId,
                 college_id: currentProfile.college_id,
                 department_id: currentProfile.department_id,
                 role: 'TEACHER',
@@ -266,6 +282,7 @@ function initAddTeacherForm() {
                 login_id: empId,
                 is_active: true
             });
+
             if (profErr) {
                 console.error('Error inserting profile for teacher:', {
                     message: profErr.message,
@@ -273,14 +290,20 @@ function initAddTeacherForm() {
                     hint: profErr.hint,
                     code: profErr.code
                 });
+                if (formMsg) {
+                    formMsg.textContent = `Error inserting profile: ${profErr.message}`;
+                    formMsg.className = 'teacher-form-msg error';
+                }
+                return;
             }
 
             const { error: tProfErr } = await client.from('teacher_profiles').insert({
-                profile_id: newTeacherUuid,
+                profile_id: teacherUserId,
                 college_id: currentProfile.college_id,
                 role: 'TEACHER',
                 employee_id: empId
             });
+
             if (tProfErr) {
                 console.error('Error inserting teacher_profile:', {
                     message: tProfErr.message,
@@ -288,11 +311,16 @@ function initAddTeacherForm() {
                     hint: tProfErr.hint,
                     code: tProfErr.code
                 });
+                if (formMsg) {
+                    formMsg.textContent = `Error inserting teacher profile: ${tProfErr.message}`;
+                    formMsg.className = 'teacher-form-msg error';
+                }
+                return;
             }
         }
 
         const newTeacher = {
-            id: newTeacherUuid,
+            id: teacherUserId || crypto.randomUUID(),
             name: name,
             empId: empId,
             subjects: subjects,
@@ -409,11 +437,27 @@ function initAddStudentForm() {
 
         if (!isValid) return;
 
-        const newStudentUuid = crypto.randomUUID();
         const client = window.OrixaAuth ? window.OrixaAuth.client : null;
         const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
+        let studentUserId = null;
 
         if (client && currentProfile) {
+            const authRes = await window.OrixaAuth.createUserAccount(studentId, 'Password123!', {
+                login_id: studentId,
+                full_name: name,
+                role: 'STUDENT'
+            });
+
+            if (!authRes.success) {
+                console.error('Error creating auth account for student:', authRes);
+                if (formMsg) {
+                    formMsg.textContent = `Failed to create student auth account: ${authRes.error || 'Unknown error'}`;
+                    formMsg.className = 'teacher-form-msg error';
+                }
+                return;
+            }
+            studentUserId = authRes.userId;
+
             let levelId = null;
             const { data: level } = await client
                 .from('academic_levels')
@@ -429,7 +473,7 @@ function initAddStudentForm() {
             }
 
             const { error: profErr } = await client.from('profiles').insert({
-                id: newStudentUuid,
+                id: studentUserId,
                 college_id: currentProfile.college_id,
                 department_id: currentProfile.department_id,
                 role: 'STUDENT',
@@ -437,6 +481,7 @@ function initAddStudentForm() {
                 login_id: studentId,
                 is_active: true
             });
+
             if (profErr) {
                 console.error('Error inserting profile for student:', {
                     message: profErr.message,
@@ -444,16 +489,22 @@ function initAddStudentForm() {
                     hint: profErr.hint,
                     code: profErr.code
                 });
+                if (formMsg) {
+                    formMsg.textContent = `Error inserting student profile: ${profErr.message}`;
+                    formMsg.className = 'teacher-form-msg error';
+                }
+                return;
             }
 
             if (levelId) {
                 const { error: sProfErr } = await client.from('student_profiles').insert({
-                    profile_id: newStudentUuid,
+                    profile_id: studentUserId,
                     college_id: currentProfile.college_id,
                     role: 'STUDENT',
                     student_id: studentId,
                     academic_level_id: levelId
                 });
+
                 if (sProfErr) {
                     console.error('Error inserting student_profile:', {
                         message: sProfErr.message,
@@ -461,12 +512,17 @@ function initAddStudentForm() {
                         hint: sProfErr.hint,
                         code: sProfErr.code
                     });
+                    if (formMsg) {
+                        formMsg.textContent = `Error inserting student profile metadata: ${sProfErr.message}`;
+                        formMsg.className = 'teacher-form-msg error';
+                    }
+                    return;
                 }
             }
         }
 
         const newStudent = {
-            id: newStudentUuid,
+            id: studentUserId || studentId,
             name: name,
             studentId: studentId,
             year: year,
@@ -1110,10 +1166,22 @@ async function confirmTeacherImport() {
     const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
 
     for (const r of validRecords) {
-        const newTeacherUuid = crypto.randomUUID();
         if (client && currentProfile) {
+            const authRes = await window.OrixaAuth.createUserAccount(r.empId, 'Password123!', {
+                login_id: r.empId,
+                full_name: r.name,
+                role: 'TEACHER'
+            });
+
+            if (!authRes.success) {
+                console.error('Error creating auth account for teacher import:', r.empId, authRes);
+                continue;
+            }
+
+            const teacherUserId = authRes.userId;
+
             const { error: profErr } = await client.from('profiles').insert({
-                id: newTeacherUuid,
+                id: teacherUserId,
                 college_id: currentProfile.college_id,
                 department_id: currentProfile.department_id,
                 role: 'TEACHER',
@@ -1121,6 +1189,7 @@ async function confirmTeacherImport() {
                 login_id: r.empId,
                 is_active: true
             });
+
             if (profErr) {
                 console.error('Error importing teacher profile:', {
                     message: profErr.message,
@@ -1128,14 +1197,16 @@ async function confirmTeacherImport() {
                     hint: profErr.hint,
                     code: profErr.code
                 });
+                continue;
             }
 
             const { error: tProfErr } = await client.from('teacher_profiles').insert({
-                profile_id: newTeacherUuid,
+                profile_id: teacherUserId,
                 college_id: currentProfile.college_id,
                 role: 'TEACHER',
                 employee_id: r.empId
             });
+
             if (tProfErr) {
                 console.error('Error importing teacher_profile:', {
                     message: tProfErr.message,
@@ -1143,17 +1214,17 @@ async function confirmTeacherImport() {
                     hint: tProfErr.hint,
                     code: tProfErr.code
                 });
+                continue;
             }
-        }
 
-        const newTeacher = {
-            id: newTeacherUuid,
-            name: r.name,
-            empId: r.empId,
-            subjects: r.subjects,
-            years: r.years
-        };
-        HOD_MOCK_DATA.teachers.push(newTeacher);
+            HOD_MOCK_DATA.teachers.push({
+                id: teacherUserId,
+                name: r.name,
+                empId: r.empId,
+                subjects: r.subjects,
+                years: r.years
+            });
+        }
     }
 
     renderHodStats();
@@ -1385,10 +1456,22 @@ async function confirmStudentImport() {
     }
 
     for (const r of validRecords) {
-        const newStudentUuid = crypto.randomUUID();
         if (client && currentProfile) {
+            const authRes = await window.OrixaAuth.createUserAccount(r.studentId, 'Password123!', {
+                login_id: r.studentId,
+                full_name: r.name,
+                role: 'STUDENT'
+            });
+
+            if (!authRes.success) {
+                console.error('Error creating auth account for student import:', r.studentId, authRes);
+                continue;
+            }
+
+            const studentUserId = authRes.userId;
+
             const { error: profErr } = await client.from('profiles').insert({
-                id: newStudentUuid,
+                id: studentUserId,
                 college_id: currentProfile.college_id,
                 department_id: currentProfile.department_id,
                 role: 'STUDENT',
@@ -1396,6 +1479,7 @@ async function confirmStudentImport() {
                 login_id: r.studentId,
                 is_active: true
             });
+
             if (profErr) {
                 console.error('Error importing student profile:', {
                     message: profErr.message,
@@ -1403,16 +1487,18 @@ async function confirmStudentImport() {
                     hint: profErr.hint,
                     code: profErr.code
                 });
+                continue;
             }
 
             if (levelId) {
                 const { error: sProfErr } = await client.from('student_profiles').insert({
-                    profile_id: newStudentUuid,
+                    profile_id: studentUserId,
                     college_id: currentProfile.college_id,
                     role: 'STUDENT',
                     student_id: r.studentId,
                     academic_level_id: levelId
                 });
+
                 if (sProfErr) {
                     console.error('Error importing student_profile:', {
                         message: sProfErr.message,
@@ -1420,19 +1506,19 @@ async function confirmStudentImport() {
                         hint: sProfErr.hint,
                         code: sProfErr.code
                     });
+                    continue;
                 }
             }
-        }
 
-        const newStudent = {
-            id: newStudentUuid,
-            name: r.name,
-            studentId: r.studentId,
-            year: r.year,
-            subject: r.subject,
-            teacher: r.teacher
-        };
-        HOD_MOCK_DATA.students.push(newStudent);
+            HOD_MOCK_DATA.students.push({
+                id: studentUserId,
+                name: r.name,
+                studentId: r.studentId,
+                year: r.year,
+                subject: r.subject,
+                teacher: r.teacher
+            });
+        }
     }
 
     renderHodStats();

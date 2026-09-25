@@ -52,6 +52,72 @@
             }
         }
 
+        async createUserAccount(loginId, password, metadata = {}) {
+            const config = window.ORIXA_CONFIG || {};
+            const url = config.SUPABASE_URL || 'http://127.0.0.1:54321';
+            const key = config.SUPABASE_ANON_KEY || 'placeholder-anon-key';
+
+            let anonClient = null;
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                anonClient = window.supabase.createClient(url, key, { auth: { persistSession: false } });
+            } else if (typeof createClient === 'function') {
+                anonClient = createClient(url, key, { auth: { persistSession: false } });
+            }
+
+            if (!anonClient) {
+                return { success: false, error: 'Supabase client library not initialized.' };
+            }
+
+            const cleanLoginId = (loginId || '').trim();
+            if (!cleanLoginId) {
+                return { success: false, error: 'Login ID is required.' };
+            }
+
+            const internalEmail = this.toInternalEmail(cleanLoginId);
+            const userPassword = password || 'Password123!';
+
+            try {
+                const { data, error } = await anonClient.auth.signUp({
+                    email: internalEmail,
+                    password: userPassword,
+                    options: { data: metadata }
+                });
+
+                if (error) {
+                    if (error.message && error.message.includes('already exists')) {
+                        const primaryClient = this.client;
+                        if (primaryClient) {
+                            const { data: existingProf } = await primaryClient
+                                .from('profiles')
+                                .select('id')
+                                .eq('login_id', cleanLoginId)
+                                .maybeSingle();
+
+                            if (existingProf && existingProf.id) {
+                                return { success: true, userId: existingProf.id };
+                            }
+                        }
+                    }
+                    return {
+                        success: false,
+                        error: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    };
+                }
+
+                if (data && data.user && data.user.id) {
+                    return { success: true, userId: data.user.id };
+                }
+
+                return { success: false, error: 'Auth user creation did not return a valid user ID.' };
+            } catch (err) {
+                console.error('Error in OrixaAuth.createUserAccount:', err);
+                return { success: false, error: err?.message || 'Failed to create user account.' };
+            }
+        }
+
         toInternalEmail(loginId) {
             if (!loginId || typeof loginId !== 'string') {
                 return '';

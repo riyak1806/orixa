@@ -3506,49 +3506,66 @@ window.saveStudentProfile = async function(event) {
                     });
                 }
             } else {
-                const studentUuid = crypto.randomUUID();
-                const { data: level } = await client
-                    .from('academic_levels')
-                    .select('id')
-                    .eq('college_id', currentProfile.college_id)
-                    .maybeSingle();
-
-                const levelId = level ? level.id : 'e0000000-0000-0000-0000-000000000001';
-
-                const { error: profErr } = await client.from('profiles').insert({
-                    id: studentUuid,
-                    college_id: currentProfile.college_id,
-                    department_id: currentProfile.department_id,
-                    role: 'STUDENT',
-                    full_name: nameVal,
+                const authRes = await window.OrixaAuth.createUserAccount(idVal, 'Password123!', {
                     login_id: idVal,
-                    is_active: statusVal === 'Active'
+                    full_name: nameVal,
+                    role: 'STUDENT'
                 });
 
-                if (profErr) {
-                    console.error('Error inserting student profile in Supabase:', {
-                        message: profErr.message,
-                        details: profErr.details,
-                        hint: profErr.hint,
-                        code: profErr.code
-                    });
-                }
+                if (!authRes.success) {
+                    console.error('Error creating auth account for student:', idVal, authRes);
+                } else {
+                    const studentUserId = authRes.userId;
 
-                const { error: sProfErr } = await client.from('student_profiles').insert({
-                    profile_id: studentUuid,
-                    college_id: currentProfile.college_id,
-                    role: 'STUDENT',
-                    student_id: idVal,
-                    academic_level_id: levelId
-                });
+                    let levelId = null;
+                    const { data: level } = await client
+                        .from('academic_levels')
+                        .select('id')
+                        .eq('college_id', currentProfile.college_id)
+                        .maybeSingle();
 
-                if (sProfErr) {
-                    console.error('Error inserting student_profiles in Supabase:', {
-                        message: sProfErr.message,
-                        details: sProfErr.details,
-                        hint: sProfErr.hint,
-                        code: sProfErr.code
+                    if (level) {
+                        levelId = level.id;
+                    } else {
+                        const { data: anyLevel } = await client.from('academic_levels').select('id').limit(1).maybeSingle();
+                        if (anyLevel) levelId = anyLevel.id;
+                    }
+
+                    const { error: profErr } = await client.from('profiles').insert({
+                        id: studentUserId,
+                        college_id: currentProfile.college_id,
+                        department_id: currentProfile.department_id,
+                        role: 'STUDENT',
+                        full_name: nameVal,
+                        login_id: idVal,
+                        is_active: statusVal === 'Active'
                     });
+
+                    if (profErr) {
+                        console.error('Error inserting student profile in Supabase:', {
+                            message: profErr.message,
+                            details: profErr.details,
+                            hint: profErr.hint,
+                            code: profErr.code
+                        });
+                    } else if (levelId) {
+                        const { error: sProfErr } = await client.from('student_profiles').insert({
+                            profile_id: studentUserId,
+                            college_id: currentProfile.college_id,
+                            role: 'STUDENT',
+                            student_id: idVal,
+                            academic_level_id: levelId
+                        });
+
+                        if (sProfErr) {
+                            console.error('Error inserting student_profiles in Supabase:', {
+                                message: sProfErr.message,
+                                details: sProfErr.details,
+                                hint: sProfErr.hint,
+                                code: sProfErr.code
+                            });
+                        }
+                    }
                 }
             }
         }

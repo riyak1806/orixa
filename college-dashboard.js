@@ -297,38 +297,48 @@ function initAddDepartmentForm() {
             }
 
             if (hodName && hodEmpId) {
-                const newHodUuid = crypto.randomUUID();
-                const { error: hodProfErr } = await client.from('profiles').insert({
-                    id: newHodUuid,
-                    college_id: currentProfile.college_id,
-                    department_id: newDeptUuid,
-                    role: 'HOD',
-                    full_name: hodName,
+                const authRes = await window.OrixaAuth.createUserAccount(hodEmpId, 'Password123!', {
                     login_id: hodEmpId,
-                    is_active: true
+                    full_name: hodName,
+                    role: 'HOD'
                 });
-                if (hodProfErr) {
-                    console.error('Error inserting HOD profile:', {
-                        message: hodProfErr.message,
-                        details: hodProfErr.details,
-                        hint: hodProfErr.hint,
-                        code: hodProfErr.code
-                    });
-                }
 
-                const { error: hodAssignErr } = await client.from('hod_assignments').insert({
-                    profile_id: newHodUuid,
-                    department_id: newDeptUuid,
-                    role: 'HOD',
-                    is_active: true
-                });
-                if (hodAssignErr) {
-                    console.error('Error inserting HOD assignment:', {
-                        message: hodAssignErr.message,
-                        details: hodAssignErr.details,
-                        hint: hodAssignErr.hint,
-                        code: hodAssignErr.code
+                if (!authRes.success) {
+                    console.error('Error creating auth user for HOD:', hodEmpId, authRes);
+                } else {
+                    const newHodUuid = authRes.userId;
+                    const { error: hodProfErr } = await client.from('profiles').insert({
+                        id: newHodUuid,
+                        college_id: currentProfile.college_id,
+                        department_id: newDeptUuid,
+                        role: 'HOD',
+                        full_name: hodName,
+                        login_id: hodEmpId,
+                        is_active: true
                     });
+                    if (hodProfErr) {
+                        console.error('Error inserting HOD profile:', {
+                            message: hodProfErr.message,
+                            details: hodProfErr.details,
+                            hint: hodProfErr.hint,
+                            code: hodProfErr.code
+                        });
+                    }
+
+                    const { error: hodAssignErr } = await client.from('hod_assignments').insert({
+                        profile_id: newHodUuid,
+                        department_id: newDeptUuid,
+                        role: 'HOD',
+                        is_active: true
+                    });
+                    if (hodAssignErr) {
+                        console.error('Error inserting HOD assignment:', {
+                            message: hodAssignErr.message,
+                            details: hodAssignErr.details,
+                            hint: hodAssignErr.hint,
+                            code: hodAssignErr.code
+                        });
+                    }
                 }
             }
         }

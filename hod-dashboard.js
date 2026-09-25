@@ -1282,28 +1282,44 @@ async function loadHodDataFromSupabase() {
 
         // Note: email column does not exist on public.profiles or public.teacher_profiles / public.student_profiles (stored in auth.users).
         // A schema migration is required if public email selection is needed.
-        const { data: teachers } = await client
+        const { data: teachers, error: tErr } = await client
             .from('teacher_profiles')
-            .select('*, profiles(full_name, login_id)')
-            .eq('department_id', profile.department_id);
+            .select('*, profiles!teacher_profiles_profile_id_fkey!inner(full_name, login_id, department_id)')
+            .eq('profiles.department_id', profile.department_id);
 
-        if (teachers) {
+        if (tErr) {
+            console.error('Error fetching teacher profiles from Supabase:', {
+                message: tErr.message,
+                details: tErr.details,
+                hint: tErr.hint,
+                code: tErr.code
+            });
+        } else if (teachers) {
             HOD_MOCK_DATA.teachers = teachers.map(t => {
                 const prof = t.profiles || {};
                 return {
-                    id: t.id,
+                    id: t.profile_id || t.id,
                     name: prof.full_name || 'Teacher',
-                    empId: prof.login_id || 'EMP',
+                    empId: prof.login_id || t.employee_id || 'EMP',
                     subjects: ['Computer Science'],
                     years: ['1st Year', '2nd Year', '3rd Year', '4th Year']
                 };
             });
         }
 
-        const { data: students } = await client
+        const { data: students, error: sErr } = await client
             .from('student_profiles')
-            .select('*, profiles!student_profiles_profile_id_fkey(full_name, login_id)')
-            .eq('department_id', profile.department_id);
+            .select('*, profiles!student_profiles_profile_id_fkey!inner(full_name, login_id, department_id)')
+            .eq('profiles.department_id', profile.department_id);
+
+        if (sErr) {
+            console.error('Error fetching student profiles from Supabase:', {
+                message: sErr.message,
+                details: sErr.details,
+                hint: sErr.hint,
+                code: sErr.code
+            });
+        }
 
         if (students) {
             HOD_MOCK_DATA.students = students.map(s => {

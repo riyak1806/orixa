@@ -7246,6 +7246,30 @@ function handleHelpReportSubmit(e) {
         return;
     }
 
+    if (window.OrixaAuth && window.OrixaAuth.client) {
+        try {
+            const client = window.OrixaAuth.client;
+            const profile = await window.OrixaAuth.getCurrentProfile();
+            const { error: fbErr } = await client.from('feedback').insert({
+                user_id: profile ? profile.id : null,
+                problem_type: problemType,
+                subject: subject,
+                description: description
+            });
+
+            if (fbErr) {
+                console.error('Error persisting feedback to Supabase:', {
+                    message: fbErr.message,
+                    details: fbErr.details,
+                    hint: fbErr.hint,
+                    code: fbErr.code
+                });
+            }
+        } catch (err) {
+            console.error('Unexpected error persisting feedback:', err);
+        }
+    }
+
     // Reset form fields
     const form = document.getElementById('help-report-form');
     if (form) {

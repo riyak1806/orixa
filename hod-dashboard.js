@@ -1288,7 +1288,7 @@ async function loadHodDataFromSupabase() {
         // A schema migration is required if public email selection is needed.
         const { data: teachers, error: teacherError } = await client
             .from('teacher_profiles')
-            .select('profile_id, employee_id, profiles!inner(full_name, login_id, department_id)')
+            .select('profile_id, employee_id, profiles!teacher_profiles_profile_id_fkey!inner(full_name, login_id, department_id)')
             .eq('profiles.department_id', profile.department_id);
 
         if (teacherError) {

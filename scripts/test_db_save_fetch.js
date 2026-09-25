@@ -26,10 +26,13 @@ async function runDatabaseTests() {
         });
     }
 
-    // Authenticate as Teacher (Prof. Sarah Jenkins)
+    const testEmail = process.env.TEST_TEACHER_EMAIL || 'emp-cs-01@auth.orixa.internal';
+    const testPassword = process.env.TEST_TEACHER_PASSWORD || 'Password123!';
+
+    // Authenticate as Teacher
     const { data: authData, error: authErr } = await client.auth.signInWithPassword({
-        email: 'emp-cs-01@auth.orixa.internal',
-        password: 'Password123!'
+        email: testEmail,
+        password: testPassword
     });
 
     if (authErr) {

@@ -7235,7 +7235,7 @@ function renderHelpPage() {
     }
 }
 
-function handleHelpReportSubmit(e) {
+async function handleHelpReportSubmit(e) {
     e.preventDefault();
 
     const problemType = document.getElementById('help-problem-type').value;

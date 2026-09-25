@@ -209,7 +209,7 @@ function initAddTeacherForm() {
 
     if (!form) return;
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
 
         const name = nameInput.value.trim();
@@ -252,8 +252,47 @@ function initAddTeacherForm() {
         const subjects = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
         const years = yearsRaw.split(',').map(y => y.trim()).filter(Boolean);
 
+        const newTeacherUuid = crypto.randomUUID();
+        const client = window.OrixaAuth ? window.OrixaAuth.client : null;
+        const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
+
+        if (client && currentProfile) {
+            const { error: profErr } = await client.from('profiles').insert({
+                id: newTeacherUuid,
+                college_id: currentProfile.college_id,
+                department_id: currentProfile.department_id,
+                role: 'TEACHER',
+                full_name: name,
+                login_id: empId,
+                is_active: true
+            });
+            if (profErr) {
+                console.error('Error inserting profile for teacher:', {
+                    message: profErr.message,
+                    details: profErr.details,
+                    hint: profErr.hint,
+                    code: profErr.code
+                });
+            }
+
+            const { error: tProfErr } = await client.from('teacher_profiles').insert({
+                profile_id: newTeacherUuid,
+                college_id: currentProfile.college_id,
+                role: 'TEACHER',
+                employee_id: empId
+            });
+            if (tProfErr) {
+                console.error('Error inserting teacher_profile:', {
+                    message: tProfErr.message,
+                    details: tProfErr.details,
+                    hint: tProfErr.hint,
+                    code: tProfErr.code
+                });
+            }
+        }
+
         const newTeacher = {
-            id: `T-${Date.now().toString().slice(-4)}`,
+            id: newTeacherUuid,
             name: name,
             empId: empId,
             subjects: subjects,
@@ -322,7 +361,7 @@ function initAddStudentForm() {
         });
     }
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
 
         const name = nameInput.value.trim();
@@ -370,8 +409,64 @@ function initAddStudentForm() {
 
         if (!isValid) return;
 
+        const newStudentUuid = crypto.randomUUID();
+        const client = window.OrixaAuth ? window.OrixaAuth.client : null;
+        const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
+
+        if (client && currentProfile) {
+            let levelId = null;
+            const { data: level } = await client
+                .from('academic_levels')
+                .select('id')
+                .eq('college_id', currentProfile.college_id)
+                .maybeSingle();
+
+            if (level) {
+                levelId = level.id;
+            } else {
+                const { data: anyLevel } = await client.from('academic_levels').select('id').limit(1).maybeSingle();
+                if (anyLevel) levelId = anyLevel.id;
+            }
+
+            const { error: profErr } = await client.from('profiles').insert({
+                id: newStudentUuid,
+                college_id: currentProfile.college_id,
+                department_id: currentProfile.department_id,
+                role: 'STUDENT',
+                full_name: name,
+                login_id: studentId,
+                is_active: true
+            });
+            if (profErr) {
+                console.error('Error inserting profile for student:', {
+                    message: profErr.message,
+                    details: profErr.details,
+                    hint: profErr.hint,
+                    code: profErr.code
+                });
+            }
+
+            if (levelId) {
+                const { error: sProfErr } = await client.from('student_profiles').insert({
+                    profile_id: newStudentUuid,
+                    college_id: currentProfile.college_id,
+                    role: 'STUDENT',
+                    student_id: studentId,
+                    academic_level_id: levelId
+                });
+                if (sProfErr) {
+                    console.error('Error inserting student_profile:', {
+                        message: sProfErr.message,
+                        details: sProfErr.details,
+                        hint: sProfErr.hint,
+                        code: sProfErr.code
+                    });
+                }
+            }
+        }
+
         const newStudent = {
-            id: studentId,
+            id: newStudentUuid,
             name: name,
             studentId: studentId,
             year: year,
@@ -1007,20 +1102,59 @@ function renderTeacherPreview() {
     }
 }
 
-function confirmTeacherImport() {
+async function confirmTeacherImport() {
     const validRecords = parsedTeacherRecords.filter(r => r.isValid);
     if (validRecords.length === 0) return;
 
-    validRecords.forEach(r => {
+    const client = window.OrixaAuth ? window.OrixaAuth.client : null;
+    const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
+
+    for (const r of validRecords) {
+        const newTeacherUuid = crypto.randomUUID();
+        if (client && currentProfile) {
+            const { error: profErr } = await client.from('profiles').insert({
+                id: newTeacherUuid,
+                college_id: currentProfile.college_id,
+                department_id: currentProfile.department_id,
+                role: 'TEACHER',
+                full_name: r.name,
+                login_id: r.empId,
+                is_active: true
+            });
+            if (profErr) {
+                console.error('Error importing teacher profile:', {
+                    message: profErr.message,
+                    details: profErr.details,
+                    hint: profErr.hint,
+                    code: profErr.code
+                });
+            }
+
+            const { error: tProfErr } = await client.from('teacher_profiles').insert({
+                profile_id: newTeacherUuid,
+                college_id: currentProfile.college_id,
+                role: 'TEACHER',
+                employee_id: r.empId
+            });
+            if (tProfErr) {
+                console.error('Error importing teacher_profile:', {
+                    message: tProfErr.message,
+                    details: tProfErr.details,
+                    hint: tProfErr.hint,
+                    code: tProfErr.code
+                });
+            }
+        }
+
         const newTeacher = {
-            id: `T-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 100)}`,
+            id: newTeacherUuid,
             name: r.name,
             empId: r.empId,
             subjects: r.subjects,
             years: r.years
         };
         HOD_MOCK_DATA.teachers.push(newTeacher);
-    });
+    }
 
     renderHodStats();
     renderTeacherList();
@@ -1228,13 +1362,70 @@ function renderStudentPreview() {
     }
 }
 
-function confirmStudentImport() {
+async function confirmStudentImport() {
     const validRecords = parsedStudentRecords.filter(r => r.isValid);
     if (validRecords.length === 0) return;
 
-    validRecords.forEach(r => {
+    const client = window.OrixaAuth ? window.OrixaAuth.client : null;
+    const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
+
+    let levelId = null;
+    if (client && currentProfile) {
+        const { data: level } = await client
+            .from('academic_levels')
+            .select('id')
+            .eq('college_id', currentProfile.college_id)
+            .maybeSingle();
+        if (level) {
+            levelId = level.id;
+        } else {
+            const { data: anyLevel } = await client.from('academic_levels').select('id').limit(1).maybeSingle();
+            if (anyLevel) levelId = anyLevel.id;
+        }
+    }
+
+    for (const r of validRecords) {
+        const newStudentUuid = crypto.randomUUID();
+        if (client && currentProfile) {
+            const { error: profErr } = await client.from('profiles').insert({
+                id: newStudentUuid,
+                college_id: currentProfile.college_id,
+                department_id: currentProfile.department_id,
+                role: 'STUDENT',
+                full_name: r.name,
+                login_id: r.studentId,
+                is_active: true
+            });
+            if (profErr) {
+                console.error('Error importing student profile:', {
+                    message: profErr.message,
+                    details: profErr.details,
+                    hint: profErr.hint,
+                    code: profErr.code
+                });
+            }
+
+            if (levelId) {
+                const { error: sProfErr } = await client.from('student_profiles').insert({
+                    profile_id: newStudentUuid,
+                    college_id: currentProfile.college_id,
+                    role: 'STUDENT',
+                    student_id: r.studentId,
+                    academic_level_id: levelId
+                });
+                if (sProfErr) {
+                    console.error('Error importing student_profile:', {
+                        message: sProfErr.message,
+                        details: sProfErr.details,
+                        hint: sProfErr.hint,
+                        code: sProfErr.code
+                    });
+                }
+            }
+        }
+
         const newStudent = {
-            id: r.studentId,
+            id: newStudentUuid,
             name: r.name,
             studentId: r.studentId,
             year: r.year,
@@ -1242,7 +1433,7 @@ function confirmStudentImport() {
             teacher: r.teacher
         };
         HOD_MOCK_DATA.students.push(newStudent);
-    });
+    }
 
     renderHodStats();
     renderStudentList();

@@ -3388,7 +3388,7 @@ function renderStudentForm(dynamicPage) {
     renderIcons(dynamicPage);
 }
 
-window.saveStudentProfile = function(event) {
+window.saveStudentProfile = async function(event) {
     event.preventDefault();
 
     // Clear previous errors
@@ -3480,39 +3480,113 @@ window.saveStudentProfile = function(event) {
 
     const todayDate = new Date().toISOString().split('T')[0];
 
-    if (isEdit) {
-        const s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
-        if (s) {
-            s.name = nameVal;
-            s.email = emailVal;
-            s.grade = gradeVal;
-            s.subject = subjectVal;
-            s.status = statusVal;
-            s.lastActivity = todayDate;
-        }
-    } else {
-        const newStudent = {
-            id: idVal,
-            name: nameVal,
-            grade: gradeVal,
-            email: emailVal,
-            quizzesAttempted: 0,
-            averageScore: 0,
-            status: statusVal,
-            lastActivity: todayDate,
-            subject: subjectVal,
-            bestScore: 0,
-            recentQuizzes: []
-        };
-        MOCK_DATA.students.unshift(newStudent);
+    if (window.OrixaAuth && window.OrixaAuth.client) {
+        const client = window.OrixaAuth.client;
+        const currentProfile = await window.OrixaAuth.getCurrentProfile();
 
-        // Add to search list
-        MOCK_DATA.searchableItems.push({
-            title: nameVal,
-            type: "Student",
-            category: "students",
-            target: "students"
-        });
+        if (currentProfile) {
+            if (isEdit) {
+                const s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
+                const targetId = s ? (s.profile_id || s.id) : studentsPageState.editingStudentId;
+
+                const { error: updErr } = await client
+                    .from('profiles')
+                    .update({
+                        full_name: nameVal,
+                        is_active: statusVal === 'Active'
+                    })
+                    .eq('login_id', idVal);
+
+                if (updErr) {
+                    console.error('Error updating student profile in Supabase:', {
+                        message: updErr.message,
+                        details: updErr.details,
+                        hint: updErr.hint,
+                        code: updErr.code
+                    });
+                }
+            } else {
+                const studentUuid = crypto.randomUUID();
+                const { data: level } = await client
+                    .from('academic_levels')
+                    .select('id')
+                    .eq('college_id', currentProfile.college_id)
+                    .maybeSingle();
+
+                const levelId = level ? level.id : 'e0000000-0000-0000-0000-000000000001';
+
+                const { error: profErr } = await client.from('profiles').insert({
+                    id: studentUuid,
+                    college_id: currentProfile.college_id,
+                    department_id: currentProfile.department_id,
+                    role: 'STUDENT',
+                    full_name: nameVal,
+                    login_id: idVal,
+                    is_active: statusVal === 'Active'
+                });
+
+                if (profErr) {
+                    console.error('Error inserting student profile in Supabase:', {
+                        message: profErr.message,
+                        details: profErr.details,
+                        hint: profErr.hint,
+                        code: profErr.code
+                    });
+                }
+
+                const { error: sProfErr } = await client.from('student_profiles').insert({
+                    profile_id: studentUuid,
+                    college_id: currentProfile.college_id,
+                    role: 'STUDENT',
+                    student_id: idVal,
+                    academic_level_id: levelId
+                });
+
+                if (sProfErr) {
+                    console.error('Error inserting student_profiles in Supabase:', {
+                        message: sProfErr.message,
+                        details: sProfErr.details,
+                        hint: sProfErr.hint,
+                        code: sProfErr.code
+                    });
+                }
+            }
+        }
+        await fetchTeacherStudentsFromSupabase();
+    } else {
+        if (isEdit) {
+            const s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
+            if (s) {
+                s.name = nameVal;
+                s.email = emailVal;
+                s.grade = gradeVal;
+                s.subject = subjectVal;
+                s.status = statusVal;
+                s.lastActivity = todayDate;
+            }
+        } else {
+            const newStudent = {
+                id: idVal,
+                name: nameVal,
+                grade: gradeVal,
+                email: emailVal,
+                quizzesAttempted: 0,
+                averageScore: 0,
+                status: statusVal,
+                lastActivity: todayDate,
+                subject: subjectVal,
+                bestScore: 0,
+                recentQuizzes: []
+            };
+            MOCK_DATA.students.unshift(newStudent);
+
+            MOCK_DATA.searchableItems.push({
+                title: nameVal,
+                type: "Student",
+                category: "students",
+                target: "students"
+            });
+        }
     }
 
     studentsPageState.formMode = 'list';
@@ -3580,11 +3654,29 @@ window.toggleStudentStatusConfirm = function(id) {
     openOrixaModal(html);
 };
 
-window.performToggleStudentStatus = function(id) {
+window.performToggleStudentStatus = async function(id) {
     const s = MOCK_DATA.students.find(student => student.id === id);
     if (s) {
-        s.status = s.status === 'Active' ? 'Inactive' : 'Active';
-        s.lastActivity = new Date().toISOString().split('T')[0];
+        const newStatus = s.status === 'Active' ? 'Inactive' : 'Active';
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error: updErr } = await window.OrixaAuth.client
+                .from('profiles')
+                .update({ is_active: newStatus === 'Active' })
+                .eq('login_id', s.studentId || s.id);
+
+            if (updErr) {
+                console.error('Error toggling student status in Supabase:', {
+                    message: updErr.message,
+                    details: updErr.details,
+                    hint: updErr.hint,
+                    code: updErr.code
+                });
+            }
+            await fetchTeacherStudentsFromSupabase();
+        } else {
+            s.status = newStatus;
+            s.lastActivity = new Date().toISOString().split('T')[0];
+        }
         closeOrixaModal();
         renderStudentsPage();
     }
@@ -4373,7 +4465,7 @@ function renderQuestionForm(dynamicPage) {
     });
 }
 
-window.saveQuestionDetails = function(event) {
+window.saveQuestionDetails = async function(event) {
     event.preventDefault();
 
     const errorSpans = document.querySelectorAll('.field-error');
@@ -4520,34 +4612,99 @@ window.saveQuestionDetails = function(event) {
     const isEdit = questionBankState.formMode === 'edit';
     const todayDate = new Date().toISOString().split('T')[0];
 
-    if (isEdit) {
-        const q = MOCK_DATA.questionBank.find(item => item.id === questionBankState.editingQuestionId);
-        if (q) {
-            q.text = textVal;
-            q.subject = subjectVal;
-            q.topic = topicVal;
-            q.difficulty = difficultyVal;
-            q.type = typeVal;
-            q.options = options;
-            q.correctAnswer = correctAnswer;
-            q.marks = marksVal;
-            q.lastUpdated = todayDate;
-        }
-    } else {
-        const newId = MOCK_DATA.questionBank.length > 0 ? Math.max(...MOCK_DATA.questionBank.map(item => item.id)) + 1 : 1;
-        const newQuestion = {
-            id: newId,
-            text: textVal,
-            subject: subjectVal,
-            topic: topicVal,
-            difficulty: difficultyVal,
-            type: typeVal,
+    if (window.OrixaAuth && window.OrixaAuth.client) {
+        const client = window.OrixaAuth.client;
+        const gamePayload = {
+            statement: textVal,
             options: options,
             correctAnswer: correctAnswer,
-            marks: marksVal,
-            lastUpdated: todayDate
+            subject: subjectVal,
+            topic: topicVal,
+            difficulty: difficultyVal
         };
-        MOCK_DATA.questionBank.unshift(newQuestion);
+
+        if (isEdit) {
+            const { error: editErr } = await client
+                .from('quiz_questions')
+                .update({
+                    question_text: textVal,
+                    game_payload: gamePayload,
+                    max_points: marksVal
+                })
+                .eq('id', questionBankState.editingQuestionId);
+
+            if (editErr) {
+                console.error('Error updating question in Supabase:', {
+                    message: editErr.message,
+                    details: editErr.details,
+                    hint: editErr.hint,
+                    code: editErr.code
+                });
+            }
+        } else {
+            let quizId = null;
+            const { data: userQuizzes } = await client
+                .from('quizzes')
+                .select('id')
+                .limit(1);
+
+            if (userQuizzes && userQuizzes.length > 0) {
+                quizId = userQuizzes[0].id;
+            }
+
+            if (quizId) {
+                const { error: insErr } = await client
+                    .from('quiz_questions')
+                    .insert({
+                        id: crypto.randomUUID(),
+                        quiz_id: quizId,
+                        question_order: 1,
+                        question_text: textVal,
+                        game_payload: gamePayload,
+                        max_points: marksVal
+                    });
+
+                if (insErr) {
+                    console.error('Error inserting question in Supabase:', {
+                        message: insErr.message,
+                        details: insErr.details,
+                        hint: insErr.hint,
+                        code: insErr.code
+                    });
+                }
+            }
+        }
+        await fetchQuestionBankFromSupabase();
+    } else {
+        if (isEdit) {
+            const q = MOCK_DATA.questionBank.find(item => item.id === questionBankState.editingQuestionId);
+            if (q) {
+                q.text = textVal;
+                q.subject = subjectVal;
+                q.topic = topicVal;
+                q.difficulty = difficultyVal;
+                q.type = typeVal;
+                q.options = options;
+                q.correctAnswer = correctAnswer;
+                q.marks = marksVal;
+                q.lastUpdated = todayDate;
+            }
+        } else {
+            const newId = MOCK_DATA.questionBank.length > 0 ? Math.max(...MOCK_DATA.questionBank.map(item => item.id)) + 1 : 1;
+            const newQuestion = {
+                id: newId,
+                text: textVal,
+                subject: subjectVal,
+                topic: topicVal,
+                difficulty: difficultyVal,
+                type: typeVal,
+                options: options,
+                correctAnswer: correctAnswer,
+                marks: marksVal,
+                lastUpdated: todayDate
+            };
+            MOCK_DATA.questionBank.unshift(newQuestion);
+        }
     }
 
     questionBankState.formMode = 'list';
@@ -6254,16 +6411,49 @@ function renderFilteredNotifications() {
     renderIcons(listContainer);
 }
 
-window.toggleNotificationRead = function(id) {
+window.toggleNotificationRead = async function(id) {
     const noti = MOCK_DATA.notifications.find(n => n.id === id);
     if (noti) {
         noti.read = !noti.read;
+        if (window.OrixaAuth && window.OrixaAuth.client) {
+            const { error } = await window.OrixaAuth.client
+                .from('notifications')
+                .update({ is_read: noti.read })
+                .eq('id', noti.id);
+            if (error) {
+                console.error('Error toggling notification read status in Supabase:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
+            }
+            await fetchNotificationsFromSupabase();
+        }
         renderNotificationsPage();
     }
 };
 
-window.markAllNotificationsRead = function() {
+window.markAllNotificationsRead = async function() {
     MOCK_DATA.notifications.forEach(n => n.read = true);
+    if (window.OrixaAuth && window.OrixaAuth.client) {
+        const user = await window.OrixaAuth.getCurrentUser();
+        if (user) {
+            const { error } = await window.OrixaAuth.client
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('user_id', user.id);
+            if (error) {
+                console.error('Error marking all notifications read in Supabase:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
+            }
+            await fetchNotificationsFromSupabase();
+        }
+    }
     renderNotificationsPage();
 };
 
@@ -6300,13 +6490,30 @@ window.deleteNotificationConfirm = function(id) {
     openOrixaModal(html);
 };
 
-window.performDeleteNotification = function(id) {
-    const idx = MOCK_DATA.notifications.findIndex(n => n.id === id);
-    if (idx !== -1) {
-        MOCK_DATA.notifications.splice(idx, 1);
-        closeOrixaModal();
-        renderNotificationsPage();
+window.performDeleteNotification = async function(id) {
+    if (window.OrixaAuth && window.OrixaAuth.client) {
+        const { error } = await window.OrixaAuth.client
+            .from('notifications')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error deleting notification from Supabase:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+        }
+        await fetchNotificationsFromSupabase();
+    } else {
+        const idx = MOCK_DATA.notifications.findIndex(n => n.id === id);
+        if (idx !== -1) {
+            MOCK_DATA.notifications.splice(idx, 1);
+        }
     }
+    closeOrixaModal();
+    renderNotificationsPage();
 };
 
 window.clearAllNotificationsConfirm = function() {
@@ -6341,8 +6548,28 @@ window.clearAllNotificationsConfirm = function() {
     openOrixaModal(html);
 };
 
-window.performClearAllNotifications = function() {
-    MOCK_DATA.notifications = [];
+window.performClearAllNotifications = async function() {
+    if (window.OrixaAuth && window.OrixaAuth.client) {
+        const user = await window.OrixaAuth.getCurrentUser();
+        if (user) {
+            const { error } = await window.OrixaAuth.client
+                .from('notifications')
+                .delete()
+                .eq('user_id', user.id);
+
+            if (error) {
+                console.error('Error clearing notifications from Supabase:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
+            }
+            await fetchNotificationsFromSupabase();
+        }
+    } else {
+        MOCK_DATA.notifications = [];
+    }
     closeOrixaModal();
     renderNotificationsPage();
 };
@@ -6897,7 +7124,28 @@ function setupSettingsListeners() {
                 return;
             }
 
-            // Save values to MOCK_DATA
+            // Save values to MOCK_DATA and Supabase
+            if (window.OrixaAuth && window.OrixaAuth.client) {
+                window.OrixaAuth.getCurrentUser().then(user => {
+                    if (user) {
+                        window.OrixaAuth.client
+                            .from('profiles')
+                            .update({ full_name: nameVal })
+                            .eq('id', user.id)
+                            .then(({ error }) => {
+                                if (error) {
+                                    console.error('Error updating profile in Supabase:', {
+                                        message: error.message,
+                                        details: error.details,
+                                        hint: error.hint,
+                                        code: error.code
+                                    });
+                                }
+                            });
+                    }
+                });
+            }
+
             MOCK_DATA.teacher.name = nameVal;
             MOCK_DATA.teacher.email = emailVal;
             MOCK_DATA.teacher.department = deptVal;

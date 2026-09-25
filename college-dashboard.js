@@ -243,7 +243,7 @@ function initAddDepartmentForm() {
 
     if (!form) return;
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
         event.preventDefault();
 
         const name = nameInput.value.trim();
@@ -275,9 +275,66 @@ function initAddDepartmentForm() {
 
         if (!isValid) return;
 
-        // Create new department object in isolated local mock state
+        const client = window.OrixaAuth ? window.OrixaAuth.client : null;
+        const currentProfile = window.OrixaAuth ? await window.OrixaAuth.getCurrentProfile() : null;
+        const newDeptUuid = crypto.randomUUID();
+        const deptCode = name.replace(/\s+/g, '_').toUpperCase().slice(0, 15) || `DEPT_${Date.now().toString().slice(-4)}`;
+
+        if (client && currentProfile) {
+            const { error: deptErr } = await client.from('departments').insert({
+                id: newDeptUuid,
+                college_id: currentProfile.college_id,
+                code: deptCode,
+                name: name
+            });
+            if (deptErr) {
+                console.error('Error inserting department:', {
+                    message: deptErr.message,
+                    details: deptErr.details,
+                    hint: deptErr.hint,
+                    code: deptErr.code
+                });
+            }
+
+            if (hodName && hodEmpId) {
+                const newHodUuid = crypto.randomUUID();
+                const { error: hodProfErr } = await client.from('profiles').insert({
+                    id: newHodUuid,
+                    college_id: currentProfile.college_id,
+                    department_id: newDeptUuid,
+                    role: 'HOD',
+                    full_name: hodName,
+                    login_id: hodEmpId,
+                    is_active: true
+                });
+                if (hodProfErr) {
+                    console.error('Error inserting HOD profile:', {
+                        message: hodProfErr.message,
+                        details: hodProfErr.details,
+                        hint: hodProfErr.hint,
+                        code: hodProfErr.code
+                    });
+                }
+
+                const { error: hodAssignErr } = await client.from('hod_assignments').insert({
+                    profile_id: newHodUuid,
+                    department_id: newDeptUuid,
+                    role: 'HOD',
+                    is_active: true
+                });
+                if (hodAssignErr) {
+                    console.error('Error inserting HOD assignment:', {
+                        message: hodAssignErr.message,
+                        details: hodAssignErr.details,
+                        hint: hodAssignErr.hint,
+                        code: hodAssignErr.code
+                    });
+                }
+            }
+        }
+
         const newDept = {
-            id: `DEPT-${Date.now().toString().slice(-4)}`,
+            id: newDeptUuid,
             name: name,
             hodName: hodName,
             hodEmpId: hodEmpId,

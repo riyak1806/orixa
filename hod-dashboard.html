@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOD Dashboard | Computer Department | ORIXA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="teacher-dashboard.css">
+    <style>
+        .hod-container {
+            width: min(100%, 1280px);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--t-space-3);
+            z-index: 10;
+            position: relative;
+            padding-bottom: var(--t-space-4);
+        }
+
+        .hod-topbar {
+            min-height: 72px;
+            padding: var(--t-space-2) var(--t-space-3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--t-space-2);
+            background: var(--surface-white);
+        }
+
+        .hod-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--t-space-2);
+        }
+
+        .hod-title-group h1 {
+            font-family: var(--font-header);
+            font-size: 1.55rem;
+            color: var(--border-dark);
+            margin: 0;
+            line-height: 1.2;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .hod-academic-year {
+            font-family: var(--font-header);
+            font-size: 0.8rem;
+            background: var(--color-yellow);
+            color: var(--border-dark);
+            border: 2px solid var(--border-dark);
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-weight: 700;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .hod-logout-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-header);
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--border-dark);
+            text-decoration: none;
+            background: var(--color-red);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            padding: 8px 16px;
+            box-shadow: var(--shadow-chunky-pressed);
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .hod-logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-chunky-small);
+        }
+
+        .hod-logout-btn:active {
+            transform: translateY(1px);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        .stat-card .stat-label {
+            color: #000000;
+        }
+
+        .hod-empid-col {
+            white-space: nowrap;
+            min-width: 140px;
+        }
+
+        .hod-bottom-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: var(--t-space-2);
+            align-items: start;
+        }
+
+        .hod-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .hod-data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            text-align: left;
+        }
+
+        .hod-data-table th {
+            font-family: var(--font-header);
+            font-size: 0.82rem;
+            color: #78909c;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 14px;
+            border-bottom: 2px dashed rgba(26, 26, 36, 0.15);
+            background: var(--surface-white);
+        }
+
+        .hod-data-table td {
+            padding: 12px 14px;
+            border-bottom: 2px dashed rgba(26, 26, 36, 0.1);
+            font-family: var(--font-body);
+            font-size: 0.92rem;
+            color: var(--border-dark);
+            vertical-align: middle;
+        }
+
+        .hod-data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .hod-code-badge {
+            font-family: monospace;
+            background: var(--color-cream);
+            border: 1px solid var(--border-dark);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--border-dark);
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .hod-badge {
+            font-family: var(--font-header);
+            background: var(--color-blue);
+            border: 2px solid var(--border-dark);
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--border-dark);
+            display: inline-block;
+        }
+
+        .hod-badge-green {
+            background: var(--color-green);
+        }
+
+        .hod-badge-yellow {
+            background: var(--color-yellow);
+        }
+
+        .hod-badge-purple {
+            background: var(--color-purple);
+            color: #ffffff;
+        }
+
+        .hod-no-results {
+            text-align: center;
+            color: #78909c;
+            padding: 24px;
+            font-family: var(--font-body);
+            font-weight: 700;
+        }
+
+        .cartoon-select {
+            width: 100%;
+            height: var(--t-input-height);
+            box-sizing: border-box;
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--border-dark);
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 16px;
+            padding: 0 var(--t-space-2);
+            outline: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+            box-shadow: var(--shadow-chunky-small);
+            cursor: pointer;
+        }
+
+        .cartoon-select:focus {
+            background: var(--surface-white);
+            box-shadow: 0 6px 0 var(--border-dark);
+            transform: translateY(-2px);
+        }
+
+        .assignment-rel-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: var(--color-cream);
+            border: 1px solid var(--border-dark);
+            border-radius: 10px;
+            font-family: var(--font-body);
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .rel-arrow {
+            color: #78909c;
+            font-weight: 900;
+        }
+
+        .form-drawer-panel {
+            padding: var(--t-space-2);
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 16px;
+            margin-bottom: var(--t-space-2);
+            box-shadow: var(--shadow-chunky-pressed);
+            transition: all 0.25s ease;
+        }
+
+        .hod-modal-card {
+            width: min(100%, 540px);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 960px) {
+            .hod-bottom-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hod-topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body class="dashboard-body">
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="decorative-bg-logo-wrapper">
+        <div class="decorative-bg-logo bounce-anim" aria-hidden="true">ORIXA</div>
+    </div>
+
+    <div class="hod-container">
+        <!-- Top Bar Header -->
+        <header class="hod-topbar cartoon-panel">
+            <div class="hod-brand">
+                <h1 class="topbar-logo" style="margin: 0; color: var(--color-purple);">ORIXA</h1>
+                <div class="hod-title-group">
+                    <h1>
+                        <span class="hod-academic-year">Academic Year 2024–2025</span>
+                        <span>Computer Engineering Department HOD Dashboard</span>
+                    </h1>
+                </div>
+            </div>
+            <button type="button" class="hod-logout-btn" onclick="confirmHodLogout(event)">
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" fill="currentColor" />
+                </svg>
+                <span>LOG OUT</span>
+            </button>
+        </header>
+
+        <!-- 1. FOUR TOP BOXES -->
+        <section class="stats-grid" aria-label="HOD statistics overview">
+            <div class="stat-card is-orange cartoon-panel" style="border-color: var(--border-dark);">
+                <div class="stat-topline">
+                    <div>
+                        <span class="stat-label">TOTAL TEACHERS</span>
+                        <div class="stat-value" id="stat-total-teachers">0</div>
+                    </div>
+                    <div class="stat-icon" aria-hidden="true">
+                        <svg class="monotone-icon" viewBox="0 0 24 24">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-caption">Department Faculty Members</div>
+            </div>
+
+            <div class="stat-card is-blue cartoon-panel">
+                <div class="stat-topline">
+                    <div>
+                        <span class="stat-label">TOTAL STUDENTS</span>
+                        <div class="stat-value" id="stat-total-students">0</div>
+                    </div>
+                    <div class="stat-icon" aria-hidden="true">
+                        <svg class="monotone-icon" viewBox="0 0 24 24">
+                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-caption">Enrolled Computer Dept Students</div>
+            </div>
+
+            <div class="stat-card is-green cartoon-panel">
+                <div class="stat-topline">
+                    <div>
+                        <span class="stat-label">SUBJECTS OFFERED</span>
+                        <div class="stat-value" id="stat-total-subjects">0</div>
+                    </div>
+                    <div class="stat-icon" aria-hidden="true">
+                        <svg class="monotone-icon" viewBox="0 0 24 24">
+                            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-caption">Curriculum Subjects</div>
+            </div>
+
+            <div class="stat-card is-yellow cartoon-panel">
+                <div class="stat-topline">
+                    <div>
+                        <span class="stat-label">ACTIVE ASSIGNMENTS</span>
+                        <div class="stat-value" id="stat-total-assignments">0</div>
+                    </div>
+                    <div class="stat-icon" aria-hidden="true">
+                        <svg class="monotone-icon" viewBox="0 0 24 24">
+                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-caption">Student-Teacher Assignments</div>
+            </div>
+        </section>
+
+        <!-- 2. DEPARTMENT ANALYTICS (Full Available Width directly below stat boxes) -->
+        <section class="dashboard-panel cartoon-panel" aria-labelledby="hod-perf-heading">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Department Analytics</p>
+                    <h3 id="hod-perf-heading">Computer Department Performance Analytics</h3>
+                </div>
+                <span id="hod-performance-count" style="font-family: var(--font-header); font-size: 0.85rem; color: #78909c;"></span>
+            </div>
+
+            <!-- Multi-parameter Filter Toolbar for Computer Department -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--t-space-1); padding: var(--t-space-2); background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; margin-bottom: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
+                <select id="hod-filter-teacher" class="cartoon-select" style="flex: 1; min-width: 140px; height: 42px; font-family: var(--font-header); font-size: 0.85rem;" aria-label="Filter by teacher">
+                    <option value="ALL">All Department Teachers</option>
+                </select>
+
+                <select id="hod-filter-subject" class="cartoon-select" style="flex: 1; min-width: 140px; height: 42px; font-family: var(--font-header); font-size: 0.85rem;" aria-label="Filter by subject">
+                    <option value="ALL">All Department Subjects</option>
+                </select>
+
+                <select id="hod-filter-year" class="cartoon-select" style="flex: 1; min-width: 140px; height: 42px; font-family: var(--font-header); font-size: 0.85rem;" aria-label="Filter by year">
+                    <option value="ALL">All Classes / Years</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                </select>
+
+                <button type="button" id="hod-clear-filters-btn" class="cartoon-action-btn" style="height: 42px; padding: 0 16px; font-family: var(--font-header); font-size: 0.85rem; background: var(--color-orange); border: var(--border-comic-thin); border-radius: 12px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; white-space: nowrap;">
+                    <span>CLEAR FILTERS</span>
+                </button>
+            </div>
+
+            <!-- Performance Data Table -->
+            <div class="hod-table-wrapper">
+                <table class="hod-data-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Student ID</th>
+                            <th>Class / Year</th>
+                            <th>Subject</th>
+                            <th>Assigned Teacher</th>
+                            <th>Quizzes Done</th>
+                            <th>Avg Accuracy / Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hod-performance-table-body">
+                        <!-- Populated dynamically by hod-dashboard.js -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 3. FACULTY LIST + STUDENT LIST (Side by Side Bottom Section) -->
+        <section class="hod-bottom-grid">
+            <!-- LEFT CARD: FACULTY LIST -->
+            <div class="dashboard-panel cartoon-panel" aria-labelledby="teacher-management-heading">
+                <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <p class="panel-kicker">Faculty Administration</p>
+                        <h3 id="teacher-management-heading">Faculty List</h3>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button type="button" id="toggle-add-teacher-btn" class="cartoon-action-btn primary-yellow-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                            <span>+ ADD</span>
+                        </button>
+                        <button type="button" id="toggle-upload-teacher-btn" class="cartoon-action-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; background: var(--color-blue); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
+                            <span>UPLOAD EXCEL</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Full-Page Overlay Modal for Uploading Faculty Excel -->
+                <div id="upload-teacher-drawer" class="orixa-modal-overlay" style="display: none;">
+                    <div class="orixa-modal-card hod-modal-card" style="width: min(100%, 680px);">
+                        <header class="orixa-modal-header" style="background: var(--color-yellow);">
+                            <h3 class="orixa-modal-title" style="color: var(--border-dark);">Upload Faculty Excel</h3>
+                            <button type="button" class="sidebar-toggle-btn" id="close-upload-teacher-btn" aria-label="Close modal" style="width: 32px; height: 32px;">
+                                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>
+                            </button>
+                        </header>
+                        <div class="orixa-modal-body" style="padding: var(--t-space-3);">
+                            <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-chunky-pressed);">
+                                <p style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; color: var(--border-dark); margin: 0 0 6px 0;">Excel column order:</p>
+                                <p style="font-family: var(--font-header); font-size: 0.9rem; color: var(--color-purple); margin: 0 0 6px 0; font-weight: 700;">
+                                    Faculty Name &rarr; Employee ID &rarr; Subjects &rarr; Classes/Years
+                                </p>
+                                <p style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a; margin: 0 0 12px 0; font-weight: 600;">
+                                    Please keep the columns in this order so the data can be imported correctly.
+                                </p>
+                                <button type="button" id="download-teacher-template-btn" class="cartoon-action-btn" style="height: 34px; padding: 0 14px; font-family: var(--font-header); font-size: 0.82rem; background: var(--color-yellow); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
+                                    <span>DOWNLOAD TEMPLATE</span>
+                                </button>
+                            </div>
+
+                            <div id="teacher-file-dropzone" style="border: 2px dashed var(--border-dark); border-radius: 16px; padding: 20px; text-align: center; background: var(--surface-white); cursor: pointer; transition: background 0.2s ease;">
+                                <input type="file" id="teacher-excel-input" accept=".xlsx, .xls, .csv" style="display: none;">
+                                <label for="teacher-excel-input" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 36px; height: 36px; color: var(--border-dark);"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
+                                    <span style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; color: var(--border-dark);">Select or Drag Excel / CSV file here</span>
+                                    <span style="font-family: var(--font-body); font-size: 0.8rem; color: #78909c;">Supports .xlsx, .xls, .csv</span>
+                                </label>
+                            </div>
+
+                            <div id="teacher-preview-container" style="display: none; flex-direction: column; gap: 12px;">
+                                <div id="teacher-preview-summary" style="padding: 12px 16px; border-radius: 12px; border: 2px solid var(--border-dark); font-family: var(--font-header); font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                                </div>
+                                <div class="hod-table-wrapper" style="max-height: 260px; overflow-y: auto;">
+                                    <table class="hod-data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Faculty Name</th>
+                                                <th>Employee ID</th>
+                                                <th>Subjects</th>
+                                                <th>Classes/Years</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="teacher-preview-tbody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                                <button type="button" id="cancel-upload-teacher-btn" class="quiz-mgmt-action-btn" style="background: var(--color-cream); max-width: 120px;">Cancel</button>
+                                <button type="button" id="reset-upload-teacher-btn" class="quiz-mgmt-action-btn" style="background: var(--color-orange); max-width: 140px; display: none;">Choose Another</button>
+                                <button type="button" id="confirm-upload-teacher-btn" class="quiz-mgmt-action-btn" style="background: var(--color-yellow); max-width: 220px; display: none;">Import Records</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full-Page Overlay Modal for Adding Teacher -->
+                <div id="add-teacher-drawer" class="orixa-modal-overlay" style="display: none;">
+                    <div class="orixa-modal-card hod-modal-card">
+                        <header class="orixa-modal-header" style="background: var(--color-yellow);">
+                            <h3 class="orixa-modal-title" style="color: var(--border-dark);">Add Faculty Member</h3>
+                            <button type="button" class="sidebar-toggle-btn" id="close-add-teacher-btn" aria-label="Close modal" style="width: 32px; height: 32px;">
+                                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>
+                            </button>
+                        </header>
+                        <div class="orixa-modal-body" style="padding: var(--t-space-3);">
+                            <form id="add-teacher-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
+                                <div class="form-field">
+                                    <label for="teacher-name" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                                        </svg>
+                                        <span>TEACHER NAME</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="text" id="teacher-name" name="teacher_name" class="cartoon-input"
+                                            placeholder="e.g. Teacher A" autocomplete="off">
+                                    </div>
+                                    <span class="field-error" id="teacher-name-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="teacher-empid" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5zm10 15H4V9h16v11z" fill="currentColor" />
+                                        </svg>
+                                        <span>EMPLOYEE ID</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="text" id="teacher-empid" name="teacher_empid" class="cartoon-input"
+                                            placeholder="e.g. EMP-CS-101" autocomplete="off">
+                                    </div>
+                                    <span class="field-error" id="teacher-empid-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="teacher-subjects" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor" />
+                                        </svg>
+                                        <span>SUBJECTS TAUGHT</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="text" id="teacher-subjects" name="teacher_subjects" class="cartoon-input"
+                                            placeholder="e.g. DBMS, Data Structures" autocomplete="off">
+                                    </div>
+                                    <span class="field-error" id="teacher-subjects-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="teacher-years" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="currentColor" />
+                                        </svg>
+                                        <span>CLASSES / YEARS TAUGHT</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="text" id="teacher-years" name="teacher_years" class="cartoon-input"
+                                            placeholder="e.g. 2nd Year, 3rd Year" autocomplete="off">
+                                    </div>
+                                    <span class="field-error" id="teacher-years-error"></span>
+                                </div>
+
+                                <button type="submit" class="cartoon-action-btn primary-yellow-btn teacher-submit-btn" style="padding: 10px 20px; font-size: 1rem; margin-top: 4px;">
+                                    <span>ADD TEACHER</span>
+                                </button>
+
+                                <p class="teacher-form-msg" id="teacher-form-msg" role="status" aria-live="polite"></p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hod-table-wrapper">
+                    <table class="hod-data-table">
+                        <thead>
+                            <tr>
+                                <th>Teacher Name</th>
+                                <th class="hod-empid-col">Employee ID</th>
+                                <th>Subjects Taught</th>
+                                <th>Classes / Years</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacher-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RIGHT CARD: STUDENT LIST -->
+            <div class="dashboard-panel cartoon-panel" aria-labelledby="student-management-heading">
+                <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <p class="panel-kicker">Student Roster</p>
+                        <h3 id="student-management-heading">Student List</h3>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button type="button" id="toggle-add-student-btn" class="cartoon-action-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; background: var(--color-green); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                            <span>+ ADD</span>
+                        </button>
+                        <button type="button" id="toggle-upload-student-btn" class="cartoon-action-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; background: var(--color-blue); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
+                            <span>UPLOAD EXCEL</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Full-Page Overlay Modal for Uploading Student Excel -->
+                <div id="upload-student-drawer" class="orixa-modal-overlay" style="display: none;">
+                    <div class="orixa-modal-card hod-modal-card" style="width: min(100%, 720px);">
+                        <header class="orixa-modal-header" style="background: var(--color-green);">
+                            <h3 class="orixa-modal-title" style="color: var(--border-dark);">Upload Student Excel</h3>
+                            <button type="button" class="sidebar-toggle-btn" id="close-upload-student-btn" aria-label="Close modal" style="width: 32px; height: 32px;">
+                                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>
+                            </button>
+                        </header>
+                        <div class="orixa-modal-body" style="padding: var(--t-space-3);">
+                            <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-chunky-pressed);">
+                                <p style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; color: var(--border-dark); margin: 0 0 6px 0;">Excel column order:</p>
+                                <p style="font-family: var(--font-header); font-size: 0.9rem; color: var(--color-purple); margin: 0 0 6px 0; font-weight: 700;">
+                                    Student Name &rarr; Student ID &rarr; Year/Class &rarr; Teacher &rarr; Subject
+                                </p>
+                                <p style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a; margin: 0 0 12px 0; font-weight: 600;">
+                                    Please keep the columns in this order so the data can be imported correctly.
+                                </p>
+                                <button type="button" id="download-student-template-btn" class="cartoon-action-btn" style="height: 34px; padding: 0 14px; font-family: var(--font-header); font-size: 0.82rem; background: var(--color-green); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
+                                    <span>DOWNLOAD TEMPLATE</span>
+                                </button>
+                            </div>
+
+                            <div id="student-file-dropzone" style="border: 2px dashed var(--border-dark); border-radius: 16px; padding: 20px; text-align: center; background: var(--surface-white); cursor: pointer; transition: background 0.2s ease;">
+                                <input type="file" id="student-excel-input" accept=".xlsx, .xls, .csv" style="display: none;">
+                                <label for="student-excel-input" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 36px; height: 36px; color: var(--border-dark);"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
+                                    <span style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; color: var(--border-dark);">Select or Drag Excel / CSV file here</span>
+                                    <span style="font-family: var(--font-body); font-size: 0.8rem; color: #78909c;">Supports .xlsx, .xls, .csv</span>
+                                </label>
+                            </div>
+
+                            <div id="student-preview-container" style="display: none; flex-direction: column; gap: 12px;">
+                                <div id="student-preview-summary" style="padding: 12px 16px; border-radius: 12px; border: 2px solid var(--border-dark); font-family: var(--font-header); font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                                </div>
+                                <div class="hod-table-wrapper" style="max-height: 260px; overflow-y: auto;">
+                                    <table class="hod-data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Student Name</th>
+                                                <th>Student ID</th>
+                                                <th>Year/Class</th>
+                                                <th>Teacher</th>
+                                                <th>Subject</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="student-preview-tbody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                                <button type="button" id="cancel-upload-student-btn" class="quiz-mgmt-action-btn" style="background: var(--color-cream); max-width: 120px;">Cancel</button>
+                                <button type="button" id="reset-upload-student-btn" class="quiz-mgmt-action-btn" style="background: var(--color-orange); max-width: 140px; display: none;">Choose Another</button>
+                                <button type="button" id="confirm-upload-student-btn" class="quiz-mgmt-action-btn" style="background: var(--color-green); max-width: 220px; display: none;">Import Records</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full-Page Overlay Modal for Adding Student -->
+                <div id="add-student-drawer" class="orixa-modal-overlay" style="display: none;">
+                    <div class="orixa-modal-card hod-modal-card">
+                        <header class="orixa-modal-header" style="background: var(--color-green);">
+                            <h3 class="orixa-modal-title" style="color: var(--border-dark);">Add & Assign Student</h3>
+                            <button type="button" class="sidebar-toggle-btn" id="close-add-student-btn" aria-label="Close modal" style="width: 32px; height: 32px;">
+                                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>
+                            </button>
+                        </header>
+                        <div class="orixa-modal-body" style="padding: var(--t-space-3);">
+                            <form id="add-student-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
+                                <div class="form-field">
+                                    <label for="student-name" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                                        </svg>
+                                        <span>STUDENT NAME</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="text" id="student-name" name="student_name" class="cartoon-input"
+                                            placeholder="e.g. Rahul" autocomplete="off">
+                                    </div>
+                                    <span class="field-error" id="student-name-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="student-id" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5zm10 15H4V9h16v11z" fill="currentColor" />
+                                        </svg>
+                                        <span>STUDENT ID</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="text" id="student-id" name="student_id" class="cartoon-input"
+                                            placeholder="e.g. STU-CS-201" autocomplete="off">
+                                    </div>
+                                    <span class="field-error" id="student-id-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="student-year" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="currentColor" />
+                                        </svg>
+                                        <span>YEAR / CLASS</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <select id="student-year" name="student_year" class="cartoon-select">
+                                            <option value="">-- Select Year / Class --</option>
+                                            <option value="1st Year">1st Year (FE)</option>
+                                            <option value="2nd Year">2nd Year (SE)</option>
+                                            <option value="3rd Year">3rd Year (TE)</option>
+                                            <option value="4th Year">4th Year (BE)</option>
+                                        </select>
+                                    </div>
+                                    <span class="field-error" id="student-year-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="student-subject" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z" fill="currentColor" />
+                                        </svg>
+                                        <span>SUBJECT</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <select id="student-subject" name="student_subject" class="cartoon-select">
+                                            <option value="">-- Select Subject --</option>
+                                        </select>
+                                    </div>
+                                    <span class="field-error" id="student-subject-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="student-teacher" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                                        </svg>
+                                        <span>ASSIGNED TEACHER</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <select id="student-teacher" name="student_teacher" class="cartoon-select">
+                                            <option value="">-- Select Teacher --</option>
+                                        </select>
+                                    </div>
+                                    <span class="field-error" id="student-teacher-error"></span>
+                                </div>
+
+                                <button type="submit" class="cartoon-action-btn teacher-submit-btn" style="background: var(--color-green); padding: 10px 20px; font-size: 1rem; margin-top: 4px;">
+                                    <span>ASSIGN STUDENT</span>
+                                </button>
+
+                                <p class="teacher-form-msg" id="student-form-msg" role="status" aria-live="polite"></p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hod-table-wrapper">
+                    <table class="hod-data-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th style="min-width: 170px; white-space: nowrap;">Student ID</th>
+                                <th>Year / Class</th>
+                                <th>Subject</th>
+                                <th>Assigned Teacher</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="orixa-config.js"></script>
+    <script src="orixa-auth.js"></script>
+    <script src="teacher.js"></script>
+    <script src="xlsx.full.min.js"></script>
+    <script src="hod-dashboard.js"></script>
+</body>
+
+</html>

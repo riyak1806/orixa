@@ -1,0 +1,12 @@
+{
+  "name": "orixa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ORIXA - Educational Game & Assessment Platform",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2"
+  },
+  "devDependencies": {
+    "supabase": "^2.117.0"
+  }
+}

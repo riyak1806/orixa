@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard | ORIXA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="teacher-dashboard.css">
+</head>
+
+<body class="dashboard-body">
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="dashboard-shell is-sidebar-collapsed" id="dashboard">
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+        <div class="decorative-bg-logo-wrapper">
+            <div class="decorative-bg-logo bounce-anim" aria-hidden="true">ORIXA</div>
+        </div>
+        <aside class="dashboard-sidebar cartoon-panel" aria-label="Teacher navigation">
+            <div class="sidebar-header">
+                <span class="sidebar-role">MENU</span>
+                <button id="sidebar-toggle" class="sidebar-toggle-btn" type="button" aria-label="Toggle sidebar">
+                    <span data-icon="chevronRight" aria-hidden="true"></span>
+                </button>
+            </div>
+            <nav class="sidebar-nav" id="sidebar-nav"></nav>
+        </aside>
+
+        <div class="dashboard-content-shell">
+            <header class="dashboard-topbar cartoon-panel">
+                <div class="topbar-brand-container">
+                    <button id="mobile-menu-toggle" class="icon-button mobile-only-btn" type="button" aria-label="Toggle menu">
+                        <span data-icon="menu" aria-hidden="true"></span>
+                    </button>
+                </div>
+
+                <form class="dashboard-search" role="search" onsubmit="event.preventDefault();">
+                    <span class="search-icon" data-icon="search" aria-hidden="true"></span>
+                    <input type="search" id="dashboard-search" placeholder="Search quizzes, students, results"
+                        aria-label="Search dashboard" autocomplete="off">
+                    <div id="search-dropdown" class="search-dropdown-panel cartoon-panel hidden"></div>
+                </form>
+
+                <div class="topbar-actions">
+                    <button class="icon-button" type="button" data-target="notifications" aria-label="Notifications">
+                        <span data-icon="bell" aria-hidden="true"></span>
+                        <span class="notification-dot" aria-hidden="true"></span>
+                    </button>
+                    <button class="profile-chip" type="button" data-target="profile" aria-label="Teacher profile">
+                        <span class="profile-avatar">TR</span>
+                        <span class="profile-name">Teacher</span>
+                    </button>
+                    <button class="icon-button" style="background-color: var(--color-red);" title="Log Out" aria-label="Log out" onclick="confirmTeacherLogout(event)">
+                        <svg class="monotone-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px;">
+                            <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" fill="currentColor" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <main class="dashboard-main" id="main-content-view" aria-label="Teacher dashboard overview">
+                <!-- Swappable Dynamic Page Wrapper -->
+                <div id="dashboard-overview-page" class="view-page">
+                    <section class="dashboard-title-row" aria-labelledby="dashboard-heading">
+                        <div>
+                            <h2 id="dashboard-heading">Today in Orixa</h2>
+                        </div>
+                    </section>
+
+                    <section class="stats-grid" id="stats-grid" aria-label="Dashboard statistics"></section>
+
+                    <section class="dashboard-panels">
+                        <article class="dashboard-panel cartoon-panel" aria-labelledby="activity-heading">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="panel-kicker">Activity</p>
+                                    <h3 id="activity-heading">Recent Activity</h3>
+                                </div>
+                                <button class="panel-tool" type="button" aria-label="Refresh activity">
+                                    <span data-icon="refresh" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <div class="activity-list" id="activity-list"></div>
+                        </article>
+
+                        <article class="dashboard-panel cartoon-panel" aria-labelledby="quizzes-heading">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="panel-kicker">Quizzes</p>
+                                    <h3 id="quizzes-heading">Recent Quizzes</h3>
+                                </div>
+                                <button class="panel-tool" type="button" data-target="quiz-management"
+                                    aria-label="Open quiz management">
+                                    <span data-icon="arrowRight" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <div class="quiz-list" id="quiz-list"></div>
+                        </article>
+                    </section>
+                </div>
+                <div id="dynamic-placeholder-page" class="view-page hidden"></div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="orixa-config.js"></script>
+    <script src="orixa-auth.js"></script>
+    <script src="teacher.js"></script>
+    <script src="teacher-dashboard.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,895 @@
+/* ==========================================================================
+   ORIXA - PLAYFUL BRIGHT CARTOON DESIGN SYSTEM
+   ========================================================================== */
+
+:root {
+    /* Playful Cartoon Palette */
+    --bg-bright-sky: #e0f7fa;
+    --border-dark: #1a1a24;
+
+    /* Surface Colors */
+    --surface-white: #ffffff;
+    --color-blue: #4fc3f7;
+    --color-blue-dark: #0288d1;
+    --color-yellow: #ffd54f;
+    --color-yellow-dark: #ffb300;
+    --color-green: #81c784;
+    --color-green-dark: #388e3c;
+    --color-red: #e57373;
+    --color-red-dark: #d32f2f;
+    --color-orange: #ffb74d;
+    --color-orange-dark: #f57c00;
+    --color-purple: #ba68c8;
+    --color-purple-dark: #7b1fa2;
+    --color-cream: #fffde7;
+
+    /* Comic Book Outlines */
+    --border-comic: 4px solid var(--border-dark);
+    --border-comic-thin: 3px solid var(--border-dark);
+
+    /* Cartoon 3D Shadows */
+    --shadow-chunky: 0 8px 0 var(--border-dark);
+    --shadow-chunky-small: 0 4px 0 var(--border-dark);
+    --shadow-chunky-pressed: 0 2px 0 var(--border-dark);
+
+    /* Typography */
+    --font-header: 'Fredoka', sans-serif;
+    --font-body: 'Quicksand', sans-serif;
+}
+
+/* Core Resets & Layout */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-bright-sky);
+    background-image: radial-gradient(circle at 50% 50%, #e0f7fa 0%, #80deea 100%);
+    color: var(--border-dark);
+    font-family: var(--font-body);
+    font-weight: 600;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    padding: 20px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Background Particle Canvas */
+#particles-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Helper: Cartoon Panel */
+.cartoon-panel {
+    background: var(--surface-white);
+    border: var(--border-comic);
+    border-radius: 20px;
+    box-shadow: var(--shadow-chunky);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+}
+
+.cartoon-logo {
+    font-family: var(--font-header);
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--color-yellow);
+    -webkit-text-stroke: 3px var(--border-dark);
+    text-shadow: 4px 4px 0 var(--border-dark);
+    letter-spacing: 4px;
+    margin: 0;
+}
+
+.cartoon-subtitle {
+    font-family: var(--font-header);
+    font-size: 1.15rem;
+    color: #546e7a;
+    font-weight: 600;
+    margin-top: -10px;
+}
+
+/* Checkbox style */
+.cartoon-checkbox-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 1.05rem;
+    gap: 10px;
+    user-select: none;
+    padding: 10px;
+}
+
+.cartoon-checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.custom-checkbox {
+    height: 24px;
+    width: 24px;
+    background-color: var(--surface-white);
+    border: var(--border-comic-thin);
+    border-radius: 6px;
+    box-shadow: var(--shadow-chunky-pressed);
+    display: inline-block;
+    position: relative;
+}
+
+.cartoon-checkbox-container input:checked ~ .custom-checkbox {
+    background-color: var(--color-green);
+}
+
+.custom-checkbox:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 7px;
+    top: 3px;
+    width: 6px;
+    height: 11px;
+    border: solid var(--border-dark);
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+}
+
+.cartoon-checkbox-container input:checked ~ .custom-checkbox:after {
+    display: block;
+}
+
+.checkbox-text {
+    font-family: var(--font-header);
+    font-size: 0.95rem;
+    color: var(--border-dark);
+}
+
+/* Cartoon Button */
+.cartoon-action-btn {
+    border: var(--border-comic);
+    border-radius: 16px;
+    padding: 16px 36px;
+    font-family: var(--font-header);
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    outline: none;
+    text-shadow: 1px 1px 0 rgba(255,255,255,0.4);
+}
+
+.primary-yellow-btn {
+    background: var(--color-yellow);
+    box-shadow: 0 6px 0 var(--border-dark);
+}
+
+.primary-yellow-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 9px 0 var(--border-dark);
+    background: #ffeb3b;
+}
+
+.primary-yellow-btn:active {
+    transform: translateY(3px);
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+/* Monotone SVGs styled with theme border color */
+.monotone-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--border-dark);
+    fill: currentColor;
+    display: inline-block;
+    vertical-align: middle;
+    transition: transform 0.2s ease;
+}
+
+@keyframes bounce-anim {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.bounce-anim {
+    animation: bounce-anim 3s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   ORIXA GAME FOUNDATION SHARED ANIMATIONS & STYLES
+   ========================================================================== */
+
+/* Game Card / Screen Enter Transition */
+.orixa-game-slide-enter {
+    animation: orixa-slide-fade-in 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes orixa-slide-fade-in {
+    0% {
+        opacity: 0;
+        transform: translateY(16px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Question / Statement Slide-In */
+.orixa-question-slide {
+    animation: orixa-question-in 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes orixa-question-in {
+    0% {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Unified ORIXA Visual Progress Bar */
+.orixa-progress-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.orixa-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-header);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--border-dark);
+}
+
+.orixa-progress-track {
+    width: 100%;
+    height: 12px;
+    background: #e0e0e0;
+    border: 2px solid var(--border-dark);
+    border-radius: 9999px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.orixa-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-yellow) 0%, var(--color-green) 100%);
+    border-radius: 9999px;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Staggered 3-Star Reveal Animations & Glossy Reward Style */
+.orixa-stars-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 12px 0;
+}
+
+.orixa-star-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    line-height: 1;
+}
+
+.orixa-star-svg {
+    width: 52px;
+    height: 52px;
+    display: block;
+    overflow: visible;
+}
+
+/* Earned Stars - Energetic Pop & Bounce Entrance */
+.orixa-star-item.is-earned {
+    opacity: 0;
+    transform: scale(0) rotate(-25deg);
+    filter: drop-shadow(0 4px 0 var(--border-dark));
+    animation: orixa-star-pop-in 0.48s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.orixa-star-item.is-earned:nth-child(1) { animation-delay: 0.12s; }
+.orixa-star-item.is-earned:nth-child(2) { animation-delay: 0.38s; }
+.orixa-star-item.is-earned:nth-child(3) { animation-delay: 0.64s; }
+
+@keyframes orixa-star-pop-in {
+    0% {
+        opacity: 0;
+        transform: scale(0) rotate(-25deg);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.38) rotate(12deg);
+    }
+    82% {
+        transform: scale(0.92) rotate(-4deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* Unearned Stars - Static & Dimmed Background Placement */
+.orixa-star-item.is-unearned {
+    opacity: 0.35;
+    transform: scale(0.9);
+    filter: grayscale(0.8) drop-shadow(0 2px 0 var(--border-dark));
+}
+
+/* Secondary Shine / Glint Highlight Moment */
+.orixa-star-glint {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle, #ffffff 0%, rgba(255,255,255,0.8) 40%, rgba(255,255,255,0) 80%);
+    clip-path: polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%);
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+}
+
+.orixa-star-item.is-earned .orixa-star-glint {
+    animation: orixa-star-glint-anim 0.5s ease-out forwards;
+}
+
+.orixa-star-item.is-earned:nth-child(1) .orixa-star-glint { animation-delay: 0.42s; }
+.orixa-star-item.is-earned:nth-child(2) .orixa-star-glint { animation-delay: 0.68s; }
+.orixa-star-item.is-earned:nth-child(3) .orixa-star-glint { animation-delay: 0.94s; }
+
+@keyframes orixa-star-glint-anim {
+    0% {
+        opacity: 0;
+        transform: scale(0) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.6) rotate(45deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8) rotate(90deg);
+    }
+}
+
+/* Accessibility: Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .orixa-star-item.is-earned,
+    .orixa-star-glint {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/* Unified Victory Analytics Screen Card */
+.orixa-victory-analytics-card {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border: 3px solid var(--border-dark);
+    border-radius: 20px;
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    box-shadow: var(--shadow-chunky-pressed);
+    margin: 8px 0;
+}
+
+.orixa-stat-box {
+    text-align: center;
+    padding: 10px 8px;
+    background: var(--color-cream);
+    border: 2px solid var(--border-dark);
+    border-radius: 14px;
+}
+
+.orixa-stat-box-label {
+    font-family: var(--font-header);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #78909c;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.orixa-stat-box-value {
+    font-family: var(--font-header);
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--border-dark);
+}
+
+/* Unified DONE Button Style */
+.orixa-done-btn {
+    border: var(--border-comic);
+    border-radius: 18px;
+    padding: 14px 44px;
+    font-family: var(--font-header);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    background: var(--color-yellow);
+    box-shadow: 0 6px 0 var(--border-dark);
+    cursor: pointer;
+    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease, background-color 0.15s ease;
+    min-width: 180px;
+}
+
+.orixa-done-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 9px 0 var(--border-dark);
+    background: #ffeb3b;
+}
+
+.orixa-done-btn:active {
+    transform: translateY(2px);
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+/* ==========================================================================
+   MATCH THE FOLLOWING GAME STYLING
+   ========================================================================== */
+
+.match-game-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.match-columns-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 72px;
+    position: relative;
+    z-index: 2;
+}
+
+.match-column {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+}
+
+.match-column-title {
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 4px 0;
+    padding-bottom: 6px;
+    border-bottom: 2px dashed rgba(26,26,36,0.15);
+    width: 100%;
+}
+
+.match-card {
+    background: var(--surface-white);
+    border: var(--border-comic-thin);
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-family: var(--font-header);
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    box-shadow: var(--shadow-chunky-pressed);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    position: relative;
+    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+    width: 100%;
+    max-width: 300px;
+    box-sizing: border-box;
+}
+
+.match-card:hover:not(.is-matched) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--border-dark);
+    background: var(--color-cream);
+}
+
+.match-card.is-selected {
+    background: #fff9c4 !important;
+    border-color: #f57f17 !important;
+    box-shadow: 0 0 0 3px #f57f17, 0 6px 0 var(--border-dark) !important;
+    transform: scale(1.02);
+}
+
+.match-card.is-hovered {
+    background: #e1f5fe !important;
+    border-color: #0288d1 !important;
+    box-shadow: 0 0 0 3px #0288d1, 0 6px 0 var(--border-dark) !important;
+}
+
+.match-card.is-matched {
+    background: #e8f5e9 !important;
+    border-color: var(--color-green-dark) !important;
+    color: #1b5e20 !important;
+    cursor: default;
+    opacity: 0.9;
+}
+
+.match-card.is-wrong {
+    animation: match-card-shake 0.4s ease-in-out;
+    background: #ffebee !important;
+    border-color: var(--color-red-dark) !important;
+}
+
+@keyframes match-card-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+.match-card-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border-dark);
+    background: #cfd8dc;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.match-card.is-selected .match-card-dot {
+    background: var(--color-yellow);
+    transform: scale(1.2);
+}
+
+.match-card.is-matched .match-card-dot {
+    background: var(--color-green);
+}
+
+.match-svg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.match-connection-line {
+    stroke-linecap: round;
+    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+@media (max-width: 640px) {
+    .match-columns-grid {
+        gap: 30px;
+    }
+
+    .match-card {
+        padding: 12px 14px;
+        font-size: 0.92rem;
+        min-height: 48px;
+    }
+}
+
+/* Fill in the Blanks Student Game Styles */
+.fitb-game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 20px 10px;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    user-select: none;
+}
+
+.fitb-progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    color: var(--border-dark);
+}
+
+.fitb-sentence-box {
+    width: 100%;
+    padding: 28px 24px;
+    background: #ffffff;
+    border: 3px solid var(--border-dark);
+    border-radius: 20px;
+    box-shadow: var(--shadow-chunky-pressed);
+    font-family: var(--font-header);
+    font-size: 1.4rem;
+    line-height: 2.2rem;
+    color: var(--border-dark);
+    text-align: center;
+    word-break: break-word;
+}
+
+.fitb-drop-target {
+    display: inline-block;
+    min-width: 120px;
+    padding: 4px 16px;
+    margin: 0 8px;
+    background: var(--color-cream, #fffbe6);
+    border: 3px dashed var(--border-dark);
+    border-radius: 14px;
+    font-family: var(--font-header);
+    font-size: 1.3rem;
+    color: var(--border-dark);
+    text-align: center;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+}
+
+.fitb-drop-target.is-target-active {
+    background: var(--color-yellow-light, #fff9c4);
+    border-style: solid;
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(255, 213, 79, 0.8);
+}
+
+.fitb-drop-target.is-correct {
+    background: var(--color-green);
+    border-style: solid;
+    color: var(--border-dark);
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.fitb-drop-target.is-incorrect {
+    background: var(--color-red);
+    border-style: solid;
+    color: #ffffff;
+    animation: fitb-shake 0.4s ease-in-out;
+}
+
+.fitb-options-box {
+    width: 100%;
+    padding: 20px;
+    background: var(--color-cream, #fffbe6);
+    border: 3px solid var(--border-dark);
+    border-radius: 20px;
+    box-shadow: var(--shadow-chunky-pressed);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    min-height: 100px;
+}
+
+.fitb-option-card {
+    padding: 12px 24px;
+    background: #ffffff;
+    border: 3px solid var(--border-dark);
+    border-radius: 14px;
+    font-family: var(--font-header);
+    font-size: 1.15rem;
+    color: var(--border-dark);
+    cursor: grab;
+    box-shadow: var(--shadow-chunky-pressed);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    touch-action: none;
+    will-change: transform;
+}
+
+.fitb-option-card:hover {
+    transform: translateY(-3px);
+    background: var(--color-yellow-light, #fff9c4);
+}
+
+.fitb-option-card:active, .fitb-option-card.is-dragging {
+    cursor: grabbing;
+    transform: scale(1.08) rotate(-2deg);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+    opacity: 0.9;
+    z-index: 1000;
+}
+
+.fitb-option-card.is-selected {
+    background: var(--color-yellow);
+    transform: translateY(-4px);
+    box-shadow: 0 0 10px var(--border-dark);
+}
+
+@keyframes fitb-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+/* True or False Student Game Styles */
+.tf-game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 20px 10px;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    user-select: none;
+}
+
+.tf-progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    color: var(--border-dark);
+}
+
+.tf-statement-card {
+    width: 100%;
+    min-height: 180px;
+    padding: 32px 24px;
+    background: #ffffff;
+    border: 3px solid var(--border-dark);
+    border-radius: 24px;
+    box-shadow: var(--shadow-chunky-pressed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.tf-statement-card.is-correct {
+    background: #e8f5e9;
+    border-color: var(--color-green-dark);
+}
+
+.tf-statement-card.is-incorrect {
+    background: #ffebee;
+    border-color: var(--color-red-dark);
+    animation: tf-shake 0.4s ease-in-out;
+}
+
+.tf-statement-text {
+    font-family: var(--font-header);
+    font-size: 1.5rem;
+    line-height: 2.2rem;
+    color: var(--border-dark);
+    word-break: break-word;
+    margin: 0;
+}
+
+.tf-buttons-row {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.tf-choice-btn {
+    flex: 1;
+    max-width: 220px;
+    padding: 18px 24px;
+    border: 3px solid var(--border-dark);
+    border-radius: 18px;
+    font-family: var(--font-header);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--border-dark);
+    cursor: pointer;
+    box-shadow: var(--shadow-chunky-pressed);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease, background-color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.tf-choice-btn.btn-true {
+    background: var(--color-green);
+}
+
+.tf-choice-btn.btn-true:hover:not(:disabled) {
+    background: #a5d6a7;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 0 var(--border-dark);
+}
+
+.tf-choice-btn.btn-false {
+    background: var(--color-red);
+}
+
+.tf-choice-btn.btn-false:hover:not(:disabled) {
+    background: #ef9a9a;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 0 var(--border-dark);
+}
+
+.tf-choice-btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: var(--shadow-chunky-pressed);
+}
+
+.tf-choice-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.tf-choice-btn.selected-correct {
+    background: var(--color-green) !important;
+    border-color: var(--color-green-dark) !important;
+    box-shadow: 0 0 0 4px var(--color-green-dark) !important;
+}
+
+.tf-choice-btn.selected-incorrect {
+    background: var(--color-red) !important;
+    border-color: var(--color-red-dark) !important;
+    box-shadow: 0 0 0 4px var(--color-red-dark) !important;
+}
+
+@keyframes tf-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-10px); }
+    40%, 80% { transform: translateX(10px); }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .cartoon-logo {
+        font-size: 3.2rem;
+    }
+
+    .cartoon-action-btn {
+        padding: 14px 28px;
+        font-size: 1.15rem;
+    }
+}

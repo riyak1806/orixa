@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal | ORIXA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="teacher-dashboard.css">
+    <style>
+        /* Student customized overrides of dashboard layout */
+        .stats-grid .stat-label {
+            color: var(--border-dark);
+        }
+
+        .student-portal-shell {
+            position: relative;
+            z-index: 10;
+            width: min(100%, 1200px);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--t-space-2);
+            min-width: 0;
+        }
+
+        .student-topbar {
+            grid-template-columns: auto 1fr auto;
+        }
+
+        .student-quest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: var(--t-space-2);
+            margin-bottom: var(--t-space-3);
+        }
+
+        .quest-card {
+            background: var(--surface-white);
+            border: var(--border-comic-thin);
+            border-radius: 18px;
+            padding: var(--t-space-2);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: var(--t-space-2);
+            box-shadow: var(--shadow-chunky-small);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+        }
+
+        .quest-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 0 var(--border-dark);
+        }
+
+        .quest-reward-badge {
+            background: var(--color-purple);
+            color: var(--border-dark);
+            font-family: var(--font-header);
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border: 2px solid var(--border-dark);
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .play-quest-btn {
+            background: var(--color-green);
+            color: var(--border-dark);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-family: var(--font-header);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow-chunky-pressed);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        }
+
+        .play-quest-btn:hover,
+        .play-quest-btn:focus-visible {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-chunky-small);
+            outline: none;
+        }
+
+        .play-quest-btn:active {
+            filter: brightness(0.95);
+            transform: translateY(1px);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        /* ==========================================================================
+           TILE PUZZLE GAME ENGINE STYLES
+           ========================================================================== */
+
+        .tile-game-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 15, 25, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .tile-game-window {
+            position: relative;
+            width: min(100%, 640px);
+            max-height: 92vh;
+            background: var(--surface-white);
+            border: var(--border-comic);
+            border-radius: 24px;
+            box-shadow: var(--shadow-chunky);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: tile-modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes tile-modal-pop {
+            0% { transform: scale(0.88) translateY(20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Header Bar */
+        .tile-game-header {
+            background: var(--color-cream);
+            border-bottom: var(--border-comic-thin);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .tile-game-title {
+            font-family: var(--font-header);
+            font-size: 1.3rem;
+            color: var(--border-dark);
+            margin: 0;
+        }
+
+        .tile-game-close-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: var(--border-comic-thin);
+            background: var(--color-red);
+            color: var(--border-dark);
+            font-family: var(--font-header);
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-chunky-pressed);
+            transition: transform 0.15s ease;
+        }
+
+        .tile-game-close-btn:hover {
+            transform: scale(1.08);
+        }
+
+        /* Phase 1: Entrance Screen */
+        .tile-entrance-screen {
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 20px;
+        }
+
+        .tile-entrance-title {
+            font-family: var(--font-header);
+            font-size: 2.2rem;
+            color: var(--border-dark);
+            -webkit-text-stroke: 1.5px var(--border-dark);
+            text-shadow: 3px 3px 0 var(--color-yellow);
+            animation: tile-title-bounce 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) infinite alternate;
+        }
+
+        @keyframes tile-title-bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-8px); }
+        }
+
+        .tile-entrance-badge {
+            background: var(--color-purple);
+            color: var(--border-dark);
+            border: 2px solid var(--border-dark);
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-family: var(--font-header);
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .tile-entrance-desc {
+            font-family: var(--font-body);
+            font-size: 1.05rem;
+            color: #546e7a;
+            max-width: 440px;
+            line-height: 1.5;
+        }
+
+        /* Phase 2: Game Board View */
+        .tile-board-view {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .tile-progress-bar-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 14px;
+            padding: 8px 16px;
+            box-shadow: var(--shadow-chunky-pressed);
+            font-family: var(--font-header);
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .tile-grid-container {
+            width: min(100%, 420px);
+            aspect-ratio: 1 / 1;
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            background: #cfd8dc;
+            border: var(--border-comic);
+            border-radius: 20px;
+            box-shadow: var(--shadow-chunky-small);
+            position: relative;
+        }
+
+        .tile-button {
+            aspect-ratio: 1 / 1;
+            background: var(--color-yellow);
+            border: var(--border-comic-thin);
+            border-radius: 14px;
+            box-shadow: var(--shadow-chunky-small);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-header);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--border-dark);
+            user-select: none;
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+
+        .tile-button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 6px 0 var(--border-dark);
+            background: #ffeb3b;
+        }
+
+        .tile-button:active {
+            transform: scale(0.95);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        .tile-button.flipping {
+            animation: tile-flip-anim 0.3s ease-in-out;
+        }
+
+        @keyframes tile-flip-anim {
+            0% { transform: rotateY(0deg); }
+            50% { transform: rotateY(90deg) scale(1.05); }
+            100% { transform: rotateY(0deg); }
+        }
+
+        .tile-button.solved {
+            background: var(--color-green);
+            color: var(--border-dark);
+            box-shadow: var(--shadow-chunky-pressed);
+            cursor: default;
+            transform: none !important;
+        }
+
+        /* REQUIREMENT 3: TRUE MODAL OVERLAY IN FRONT OF TILE GRID */
+        .tile-question-dim-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 25, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .tile-question-dim-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .tile-question-card {
+            position: relative;
+            z-index: 101;
+            width: min(100%, 460px);
+            max-height: 85vh;
+            background: var(--surface-white);
+            border: var(--border-comic);
+            border-radius: 20px;
+            box-shadow: 0 12px 0 var(--border-dark);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transform: scale(0.85);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow-y: auto;
+        }
+
+        .tile-question-dim-overlay.active .tile-question-card {
+            transform: scale(1);
+        }
+
+        .tile-question-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px dashed rgba(26, 26, 36, 0.15);
+            padding-bottom: 8px;
+        }
+
+        .tile-question-number-badge {
+            background: var(--color-yellow);
+            border: 2px solid var(--border-dark);
+            border-radius: 8px;
+            padding: 4px 12px;
+            font-family: var(--font-header);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .tile-question-text {
+            font-family: var(--font-header);
+            font-size: 1.2rem;
+            color: var(--border-dark);
+            line-height: 1.35;
+            margin: 0;
+        }
+
+        .tile-options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .tile-option-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            box-shadow: var(--shadow-chunky-pressed);
+            font-family: var(--font-body);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--border-dark);
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tile-option-btn:hover {
+            background: var(--color-yellow);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-chunky-small);
+        }
+
+        .tile-option-btn.selected {
+            background: var(--color-yellow) !important;
+            border-color: var(--border-dark) !important;
+            box-shadow: 0 4px 0 var(--border-dark) !important;
+            transform: translateY(-2px);
+        }
+
+        .tile-option-btn.correct {
+            background: #c8e6c9 !important;
+            border-color: var(--color-green-dark) !important;
+            color: var(--color-green-dark) !important;
+        }
+
+        .tile-option-btn.incorrect {
+            background: #ffcdd2 !important;
+            border-color: var(--color-red-dark) !important;
+            color: var(--color-red-dark) !important;
+        }
+
+        .tile-feedback-box {
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid var(--border-dark);
+            font-family: var(--font-header);
+            font-size: 1rem;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .tile-feedback-box.correct {
+            background: #e8f5e9;
+            color: var(--color-green-dark);
+        }
+
+        .tile-feedback-box.incorrect {
+            background: #ffebee;
+            color: var(--color-red-dark);
+        }
+
+        /* Victory Completion Modal */
+        .tile-victory-screen {
+            padding: 28px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 16px;
+        }
+
+        .tile-stars-display {
+            font-size: 3rem;
+            line-height: 1;
+            letter-spacing: 8px;
+            animation: stars-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes stars-pop {
+            0% { transform: scale(0.3); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .xp-text {
+            color: var(--color-purple-dark);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body class="dashboard-body">
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="student-portal-shell">
+        <div class="decorative-bg-logo-wrapper">
+            <div class="decorative-bg-logo bounce-anim" aria-hidden="true">ORIXA</div>
+        </div>
+
+        <!-- Student Top Bar -->
+        <header class="dashboard-topbar cartoon-panel student-topbar">
+            <div class="topbar-brand-container">
+                <div class="topbar-brand">
+                    <span class="topbar-logo bounce-anim">ORIXA</span>
+                    <span class="topbar-label" style="color: var(--color-green);">STUDENT AREA</span>
+                </div>
+            </div>
+
+            <div class="dashboard-search">
+                <span class="search-icon">
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+                    </svg>
+                </span>
+                <input type="text" id="student-quiz-search" placeholder="Search quizzes..." aria-label="Search quizzes" oninput="filterQuizzes()">
+            </div>
+
+            <div class="topbar-actions">
+                <button class="profile-chip" type="button" aria-label="Student profile" onclick="openStudentProfileModal()">
+                    <span class="profile-avatar" style="background-color: var(--color-green);">AS</span>
+                    <span class="profile-name">Aarav Sharma</span>
+                </button>
+                <button class="icon-button" style="background-color: var(--color-red);" title="Log Out" aria-label="Log out" onclick="confirmStudentLogout(event)">
+                    <!-- Log Out Icon -->
+                    <svg class="monotone-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px;">
+                        <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" fill="currentColor" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Hub Content -->
+        <main class="dashboard-main">
+            <!-- Header section -->
+            <section class="dashboard-title-row" aria-labelledby="portal-heading" style="margin-bottom: 5px;">
+                <div>
+                    <h2 id="portal-heading">Ready for Your Next Quiz?</h2>
+                    <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a;">Complete quests to reveal the puzzle and earn points!</p>
+                </div>
+                <div class="dashboard-status" style="background-color: var(--color-purple); color: white;">
+                    RANK #5 (Explorer)
+                </div>
+            </section>
+
+            <!-- Stats Grid -->
+            <section class="stats-grid" aria-label="Student statistics">
+                <!-- Quizzes Played -->
+                <div class="stat-card cartoon-panel is-yellow">
+                    <div class="stat-topline">
+                        <span class="stat-label">QUIZZES PLAYED</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-quizzes-played">12</div>
+                    <div class="stat-caption">Keep it up!</div>
+                </div>
+
+                <!-- XP Points -->
+                <div class="stat-card cartoon-panel is-green">
+                    <div class="stat-topline">
+                        <span class="stat-label">TOTAL SCORE (XP)</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 17.9V19H7v2h10v-2h-4v-1.1a5.01 5.01 0 003.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-xp">1,450</div>
+                    <div class="stat-caption">Gold Badge approaching</div>
+                </div>
+
+                <!-- Stars Collected -->
+                <div class="stat-card cartoon-panel is-blue">
+                    <div class="stat-topline">
+                        <span class="stat-label">STARS EARNED</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-stars">36</div>
+                    <div class="stat-caption">Perfect score bonus!</div>
+                </div>
+
+                <!-- Completion Rate -->
+                <div class="stat-card cartoon-panel is-orange">
+                    <div class="stat-topline">
+                        <span class="stat-label">ACCURACY RATE</span>
+                        <div class="stat-icon">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-accuracy">92%</div>
+                    <div class="stat-caption">Awesome work!</div>
+                </div>
+            </section>
+
+            <!-- Quests Section -->
+            <section aria-labelledby="quests-heading">
+                <div class="panel-header" style="margin-bottom: 12px;">
+                    <div>
+                        <p class="panel-kicker">AVAILABLE QUESTS</p>
+                        <h3 id="quests-heading" style="font-size: 1.5rem;">Pick Your Quest</h3>
+                    </div>
+                </div>
+
+                <div class="student-quest-grid">
+                    <!-- Quest 1 -->
+                    <div class="quest-card cartoon-panel" data-title="Ancient Egypt Quest" data-subject="History" data-topic="Ancient Egypt Pharaohs Pyramids History">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Ancient Egypt Quest</h4>
+                                <span class="quiz-mgmt-card-subject">History</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-green); color: var(--border-dark);">+100 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Format</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TILE PUZZLE</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Teacher</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-green); color: var(--border-dark);" onclick="openQuestGame('Ancient Egypt Quest', 4, 'History', 3, 'Professor Riley')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- Quest 6: True or False -->
+                    <div class="quest-card cartoon-panel" data-title="Solar System True or False" data-subject="Science" data-topic="Solar System True False Space Astronomy Planets">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Solar System True or False</h4>
+                                <span class="quiz-mgmt-card-subject">Science</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-yellow); color: var(--border-dark);">+110 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Format</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TRUE OR FALSE</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Teacher</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-yellow); color: var(--border-dark);" onclick="openTrueFalseGame('Solar System True or False', 'Science', null, 'Professor Riley')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- Quest 5: Fill in the Blanks -->
+                    <div class="quest-card cartoon-panel" data-title="Geography & Science Blanks" data-subject="General Science" data-topic="Geography Science Blanks Capitals Planets Temperature Fill in Blanks">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Geography & Science Blanks</h4>
+                                <span class="quiz-mgmt-card-subject">General Science</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-green); color: var(--border-dark);">+140 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Format</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">FILL IN THE BLANKS</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Teacher</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-green); color: var(--border-dark);" onclick="openFillBlanksGame('Geography & Science Blanks', 'General Science', null, 3, 'Professor Riley')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- Quest 4: Match the Following -->
+                    <div class="quest-card cartoon-panel" data-title="World & Science Matching" data-subject="General Science" data-topic="World Science Capitals Geography Solar System Matching Pairs">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">World & Science Matching</h4>
+                                <span class="quiz-mgmt-card-subject">General Science</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-purple); color: white;">+130 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Format</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">MATCH THE FOLLOWING</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Teacher</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-purple); color: white;" onclick="openMatchGame('World & Science Matching', 'General Science', 'Professor Riley')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- Quest 2 -->
+                    <div class="quest-card cartoon-panel" data-title="Math Galaxy Challenge" data-subject="Math" data-topic="Math Galaxy Challenge Algebra Numbers Geometry">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Math Galaxy Challenge</h4>
+                                <span class="quiz-mgmt-card-subject">Math</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-orange); color: var(--border-dark);">+120 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Format</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TILE PUZZLE</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Teacher</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-orange); color: var(--border-dark);" onclick="openQuestGame('Math Galaxy Challenge', 9, 'Math', 2, 'Professor Riley')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- Quest 3 -->
+                    <div class="quest-card cartoon-panel" data-title="Space Explorer Mission" data-subject="Science" data-topic="Space Explorer Mission Physics Astronomy Planets Stars">
+                        <div class="quiz-mgmt-card-header">
+                            <div>
+                                <h4 class="quiz-mgmt-card-title">Space Explorer Mission</h4>
+                                <span class="quiz-mgmt-card-subject">Science</span>
+                            </div>
+                            <span class="quest-reward-badge" style="background-color: var(--color-blue); color: white;">+150 XP</span>
+                        </div>
+                        <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Format</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">TILE PUZZLE</span>
+                            </div>
+                            <div class="quiz-mgmt-card-info-row">
+                                <span>Teacher</span>
+                                <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Professor Riley</span>
+                            </div>
+                        </div>
+                        <button type="button" class="play-quest-btn" style="background-color: var(--color-blue); color: white;" onclick="openQuestGame('Space Explorer Mission', 16, 'Science', 1, 'Professor Riley')">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                <path d="M8 5v14l11-7z" fill="currentColor" />
+                            </svg>
+                            <span>LAUNCH QUEST</span>
+                        </button>
+                    </div>
+
+                    <!-- No Results State -->
+                    <div id="no-quizzes-found" class="quiz-mgmt-no-results hidden" style="grid-column: 1 / -1;">
+                        <p class="quiz-mgmt-no-results-title">No quizzes found</p>
+                        <p class="quiz-mgmt-no-results-desc">Try searching with a different title, subject, or topic.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Student Profile Information Modal Overlay -->
+    <div id="student-profile-modal" class="orixa-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
+        <div class="orixa-modal-card">
+            <header class="orixa-modal-header">
+                <h3 class="orixa-modal-title" id="modal-profile-title">Student Profile</h3>
+                <button type="button" class="sidebar-toggle-btn" onclick="closeStudentProfileModal()" aria-label="Close modal">
+                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor" />
+                    </svg>
+                </button>
+            </header>
+            <div class="orixa-modal-body">
+                <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 2px dashed rgba(26,26,36,0.15);">
+                    <div class="profile-avatar" style="width: 54px; height: 54px; font-size: 1.2rem; background-color: var(--color-green);">AS</div>
+                    <div>
+                        <h4 style="margin: 0; font-family: var(--font-header); font-size: 1.3rem; color: var(--border-dark);">Aarav Sharma</h4>
+                        <p style="margin: 2px 0 0 0; font-family: var(--font-header); font-size: 0.85rem; color: var(--color-purple-dark);">STU-2026-001</p>
+                    </div>
+                </div>
+
+                <div class="quiz-mgmt-card-body" style="gap: 10px; margin-top: 4px;">
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Student ID</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">STU-2026-001</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Name</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">Aarav Sharma</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Class</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">B.Tech — Computer Engineering</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Department</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">Computer Engineering</span>
+                    </div>
+                    <div class="quiz-mgmt-card-info-row">
+                        <span style="font-weight: 700; color: #546e7a;">Academic Year</span>
+                        <span style="font-family: var(--font-header); font-weight: 700;">2026–27</span>
+                    </div>
+                </div>
+            </div>
+            <div class="orixa-modal-footer">
+                <button type="button" class="quiz-mgmt-action-btn quiz-btn-delete" style="max-width: 120px; height: 42px;" onclick="closeStudentProfileModal()">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Tile Puzzle Game Viewport Window -->
+    <div id="quest-modal" class="tile-game-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tile-modal-title">
+        <div class="tile-game-window" id="tile-game-window">
+            <!-- Dynamic view elements rendered via student-portal.js -->
+        </div>
+    </div>
+
+    <!-- Particle script loading -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="orixa-config.js"></script>
+    <script src="orixa-auth.js"></script>
+    <script src="student.js"></script>
+    <script src="student-portal.js"></script>
+</body>
+
+</html>

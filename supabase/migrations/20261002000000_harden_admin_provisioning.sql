@@ -187,7 +187,7 @@ BEGIN
             created_at,
             updated_at
         ) VALUES (
-            gen_random_uuid()::text,
+            gen_random_uuid(),
             v_user_id,
             jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email, 'email_verified', true),
             'email',
@@ -421,7 +421,7 @@ BEGIN
             created_at,
             updated_at
         ) VALUES (
-            gen_random_uuid()::text,
+            gen_random_uuid(),
             v_user_id,
             jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email, 'email_verified', true),
             'email',
@@ -659,7 +659,7 @@ BEGIN
             created_at,
             updated_at
         ) VALUES (
-            gen_random_uuid()::text,
+            gen_random_uuid(),
             v_user_id,
             jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email, 'email_verified', true),
             'email',

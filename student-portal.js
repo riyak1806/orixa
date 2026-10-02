@@ -625,7 +625,8 @@ function hideCompletedQuizzes() {
     const questCards = document.querySelectorAll('.student-quest-grid .quest-card');
     questCards.forEach(card => {
         const title = (card.getAttribute('data-title') || card.querySelector('.quiz-mgmt-card-title')?.textContent || '').trim();
-        if (title && completedQuizzes.has(title)) {
+        const id = card.getAttribute('data-supabase-id');
+        if ((title && completedQuizzes.has(title)) || (id && completedQuizzes.has(id))) {
             card.classList.add('completed-hidden');
             card.style.display = 'none';
         }
@@ -702,8 +703,8 @@ function filterQuizzes() {
             const descEl = noResults.querySelector('.quiz-mgmt-no-results-desc');
 
             if (totalAvailable === 0) {
-                if (titleEl) titleEl.textContent = 'All quizzes done for now!';
-                if (descEl) descEl.textContent = 'There are currently no more quizzes available. Please check back later for new quests!';
+                if (titleEl) titleEl.textContent = 'No quizzes available';
+                if (descEl) descEl.textContent = 'There are currently no published quizzes available for you to play.';
             } else {
                 if (titleEl) titleEl.textContent = 'No quizzes found';
                 if (descEl) descEl.textContent = 'Try searching with a different title, subject, or topic.';
@@ -2192,81 +2193,219 @@ window.openOrixaModal = openOrixaModal;
 window.closeOrixaModal = closeOrixaModal;
 window.confirmStudentLogout = confirmStudentLogout;
 
+function getStudentInitials(name) {
+    if (!name) return '??';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+async function loadStudentProfileAndStats(profile) {
+    if (!profile) return;
+    const client = window.OrixaAuth ? window.OrixaAuth.client : null;
+
+    const initials = getStudentInitials(profile.full_name);
+    const topbarAvatar = document.getElementById('student-topbar-avatar');
+    const topbarName = document.getElementById('student-topbar-name');
+    const modalAvatar = document.getElementById('student-modal-avatar');
+    const modalName = document.getElementById('student-modal-name');
+    const modalLoginId = document.getElementById('student-modal-login-id');
+    const modalIdVal = document.getElementById('student-modal-id-val');
+    const modalNameVal = document.getElementById('student-modal-name-val');
+    const modalClassVal = document.getElementById('student-modal-class-val');
+    const modalDeptVal = document.getElementById('student-modal-dept-val');
+    const modalCollegeVal = document.getElementById('student-modal-college-val');
+
+    if (topbarAvatar) topbarAvatar.textContent = initials;
+    if (topbarName) topbarName.textContent = profile.full_name || 'Student';
+    if (modalAvatar) modalAvatar.textContent = initials;
+    if (modalName) modalName.textContent = profile.full_name || 'Student';
+    if (modalLoginId) modalLoginId.textContent = profile.login_id || '—';
+    if (modalNameVal) modalNameVal.textContent = profile.full_name || '—';
+    if (modalIdVal) modalIdVal.textContent = profile.login_id || '—';
+
+    if (!client) return;
+
+    // Load department name
+    if (profile.department_id) {
+        try {
+            const { data: dept } = await client.from('departments').select('name').eq('id', profile.department_id).maybeSingle();
+            if (dept && dept.name && modalDeptVal) {
+                modalDeptVal.textContent = dept.name;
+            }
+        } catch (e) {
+            console.warn('Could not load department name:', e);
+        }
+    }
+
+    // Load college name
+    if (profile.college_id) {
+        try {
+            const { data: clg } = await client.from('colleges').select('name').eq('id', profile.college_id).maybeSingle();
+            if (clg && clg.name && modalCollegeVal) {
+                modalCollegeVal.textContent = clg.name;
+            }
+        } catch (e) {
+            console.warn('Could not load college name:', e);
+        }
+    }
+
+    // Load student profile & academic level
+    try {
+        const { data: sp } = await client
+            .from('student_profiles')
+            .select('roll_number, academic_levels(display_name)')
+            .eq('student_id', profile.id)
+            .maybeSingle();
+
+        if (sp) {
+            if (sp.roll_number && modalIdVal) {
+                modalIdVal.textContent = sp.roll_number;
+            }
+            if (sp.academic_levels && sp.academic_levels.display_name && modalClassVal) {
+                modalClassVal.textContent = sp.academic_levels.display_name;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load student extra profile:', e);
+    }
+
+    // Load attempts and stats
+    try {
+        const { data: attempts } = await client
+            .from('quiz_attempts')
+            .select('id, status, earned_xp, earned_stars, final_accuracy_pct')
+            .eq('student_id', profile.id)
+            .eq('status', 'COMPLETED');
+
+        let playedCount = 0;
+        let totalXp = 0;
+        let totalStars = 0;
+        let sumAccuracy = 0;
+
+        if (attempts && Array.isArray(attempts)) {
+            playedCount = attempts.length;
+            attempts.forEach(a => {
+                totalXp += Number(a.earned_xp || 0);
+                totalStars += Number(a.earned_stars || 0);
+                sumAccuracy += Number(a.final_accuracy_pct || 0);
+            });
+        }
+
+        const avgAccuracy = playedCount > 0 ? Math.round(sumAccuracy / playedCount) : null;
+
+        const statPlayedEl = document.getElementById('stat-quizzes-played');
+        const statXpEl = document.getElementById('stat-xp');
+        const statStarsEl = document.getElementById('stat-stars');
+        const statAccEl = document.getElementById('stat-accuracy');
+
+        if (statPlayedEl) statPlayedEl.textContent = playedCount;
+        if (statXpEl) statXpEl.textContent = totalXp.toLocaleString();
+        if (statStarsEl) statStarsEl.textContent = totalStars;
+        if (statAccEl) statAccEl.textContent = avgAccuracy !== null ? `${avgAccuracy}%` : '—';
+    } catch (e) {
+        console.warn('Could not load student stats:', e);
+    }
+}
+
+function renderQuizCards(quizzes) {
+    const grid = document.querySelector('.student-quest-grid');
+    if (!grid || !Array.isArray(quizzes)) return;
+
+    const noResultsEl = document.getElementById('no-quizzes-found');
+
+    quizzes.forEach(q => {
+        const subjectName = q.subjects ? q.subjects.name : 'General';
+        const teacherName = q.profiles ? q.profiles.full_name : 'Teacher';
+        const gameTypeLabel = (q.game_type || 'TILE_PUZZLE').replace('_', ' ');
+
+        // Check if card already exists
+        const existing = grid.querySelector(`[data-supabase-id="${q.id}"]`);
+        if (existing) return;
+
+        const card = document.createElement('div');
+        card.className = 'quest-card cartoon-panel';
+        card.dataset.title = q.title;
+        card.dataset.subject = subjectName;
+        card.dataset.topic = `${q.title} ${subjectName} ${gameTypeLabel}`;
+        card.dataset.supabaseId = q.id;
+
+        let themeBg = 'var(--color-green)';
+        let themeText = 'var(--border-dark)';
+        if (q.game_type === 'MATCH_FOLLOWING') { themeBg = 'var(--color-purple)'; themeText = 'white'; }
+        else if (q.game_type === 'TRUE_FALSE') { themeBg = 'var(--color-yellow)'; }
+        else if (q.game_type === 'FILL_BLANKS') { themeBg = 'var(--color-green)'; }
+
+        card.innerHTML = `
+            <div class="quiz-mgmt-card-header">
+                <div>
+                    <h4 class="quiz-mgmt-card-title">${escapeHTML(q.title)}</h4>
+                    <span class="quiz-mgmt-card-subject">${escapeHTML(subjectName)}</span>
+                </div>
+                <span class="quest-reward-badge" style="background-color: ${themeBg}; color: ${themeText};">+${q.total_possible_xp || 100} XP</span>
+            </div>
+            <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
+                <div class="quiz-mgmt-card-info-row">
+                    <span>Format</span>
+                    <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">${escapeHTML(gameTypeLabel)}</span>
+                </div>
+                <div class="quiz-mgmt-card-info-row">
+                    <span>Teacher</span>
+                    <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(teacherName)}</span>
+                </div>
+            </div>
+            <button type="button" class="play-quest-btn" style="background-color: ${themeBg}; color: ${themeText};">
+                <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <path d="M8 5v14l11-7z" fill="currentColor" />
+                </svg>
+                <span>LAUNCH QUEST</span>
+            </button>
+        `;
+
+        const btn = card.querySelector('.play-quest-btn');
+        btn.addEventListener('click', () => {
+            launchSupabaseQuiz(q, subjectName, teacherName);
+        });
+
+        if (noResultsEl) {
+            grid.insertBefore(card, noResultsEl);
+        } else {
+            grid.appendChild(card);
+        }
+    });
+}
+
 async function fetchPublishedQuizzesFromSupabase() {
-    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+    if (!window.OrixaAuth || !window.OrixaAuth.client) {
+        filterQuizzes();
+        return;
+    }
     const client = window.OrixaAuth.client;
 
     try {
-        const { data: quizzes, error } = await client
+        let { data: quizzes, error } = await client
             .from('quizzes')
             .select('*, subjects(name), profiles!quizzes_teacher_id_fkey(full_name)')
             .eq('status', 'PUBLISHED')
             .order('created_at', { ascending: false });
 
-        if (error || !quizzes || quizzes.length === 0) return;
+        if (error) {
+            const fallback = await client
+                .from('quizzes')
+                .select('*, subjects(name)')
+                .eq('status', 'PUBLISHED')
+                .order('created_at', { ascending: false });
+            quizzes = fallback.data;
+        }
 
-        const grid = document.querySelector('.student-quest-grid');
-        if (!grid) return;
-
-        quizzes.forEach(q => {
-            const subjectName = q.subjects ? q.subjects.name : 'Computer Science';
-            const teacherName = q.profiles ? q.profiles.full_name : 'Professor Riley';
-            const gameTypeLabel = (q.game_type || 'TILE_PUZZLE').replace('_', ' ');
-
-            // Check if card already exists
-            const existing = grid.querySelector(`[data-supabase-id="${q.id}"]`);
-            if (existing) return;
-
-            const card = document.createElement('div');
-            card.className = 'quest-card cartoon-panel';
-            card.dataset.title = q.title;
-            card.dataset.subject = subjectName;
-            card.dataset.topic = `${q.title} ${subjectName} ${gameTypeLabel}`;
-            card.dataset.supabaseId = q.id;
-
-            let themeBg = 'var(--color-green)';
-            let themeText = 'var(--border-dark)';
-            if (q.game_type === 'MATCH_FOLLOWING') { themeBg = 'var(--color-purple)'; themeText = 'white'; }
-            else if (q.game_type === 'TRUE_FALSE') { themeBg = 'var(--color-yellow)'; }
-            else if (q.game_type === 'FILL_BLANKS') { themeBg = 'var(--color-green)'; }
-
-            card.innerHTML = `
-                <div class="quiz-mgmt-card-header">
-                    <div>
-                        <h4 class="quiz-mgmt-card-title">${escapeHTML(q.title)}</h4>
-                        <span class="quiz-mgmt-card-subject">${escapeHTML(subjectName)}</span>
-                    </div>
-                    <span class="quest-reward-badge" style="background-color: ${themeBg}; color: ${themeText};">+${q.total_possible_xp || 100} XP</span>
-                </div>
-                <div class="quiz-mgmt-card-body" style="margin-top: 10px;">
-                    <div class="quiz-mgmt-card-info-row">
-                        <span>Format</span>
-                        <span style="font-family: var(--font-header); color: var(--border-dark); font-weight: 700;">${escapeHTML(gameTypeLabel)}</span>
-                    </div>
-                    <div class="quiz-mgmt-card-info-row">
-                        <span>Teacher</span>
-                        <span style="font-family: var(--font-header); color: var(--border-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(teacherName)}</span>
-                    </div>
-                </div>
-                <button type="button" class="play-quest-btn" style="background-color: ${themeBg}; color: ${themeText};">
-                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                        <path d="M8 5v14l11-7z" fill="currentColor" />
-                    </svg>
-                    <span>LAUNCH QUEST</span>
-                </button>
-            `;
-
-            const btn = card.querySelector('.play-quest-btn');
-            btn.addEventListener('click', () => {
-                launchSupabaseQuiz(q, subjectName, teacherName);
-            });
-
-            grid.prepend(card);
-        });
+        if (quizzes && quizzes.length > 0) {
+            renderQuizCards(quizzes);
+        }
 
         hideCompletedQuizzes();
     } catch (e) {
         console.warn('Failed to fetch published quizzes from Supabase:', e);
+        filterQuizzes();
     }
 }
 
@@ -2348,20 +2487,14 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    let profile = null;
     if (window.OrixaAuth) {
-        const profile = await window.OrixaAuth.requireRole(['STUDENT'], 'student-login.html');
+        profile = await window.OrixaAuth.requireRole(['STUDENT'], 'student-login.html');
         if (!profile) return;
-
-        if (profile.full_name) {
-            const profileNameEls = document.querySelectorAll('.profile-name, #student-modal-name');
-            profileNameEls.forEach(el => {
-                el.textContent = profile.full_name;
-            });
-        }
+        await loadStudentProfileAndStats(profile);
     }
 
     await loadCompletedQuizzesFromSupabase();
-    hideCompletedQuizzes();
     await fetchPublishedQuizzesFromSupabase();
 });
 

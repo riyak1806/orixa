@@ -175,7 +175,7 @@ BEGIN
     -- 5. Insert/Update Matching auth.identities Record
     IF NOT EXISTS (
         SELECT 1 FROM auth.identities
-        WHERE provider = 'email' AND (provider_id = v_internal_email OR user_id = v_user_id)
+        WHERE user_id = v_user_id OR (provider = 'email' AND provider_id = v_user_id::text)
     ) THEN
         INSERT INTO auth.identities (
             id,
@@ -187,11 +187,11 @@ BEGIN
             created_at,
             updated_at
         ) VALUES (
-            v_user_id::text,
+            gen_random_uuid()::text,
             v_user_id,
-            jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email),
+            jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email, 'email_verified', true),
             'email',
-            v_internal_email,
+            v_user_id::text,
             now(),
             now(),
             now()
@@ -409,7 +409,7 @@ BEGIN
     -- 5. Insert/Update Matching auth.identities Record
     IF NOT EXISTS (
         SELECT 1 FROM auth.identities
-        WHERE provider = 'email' AND (provider_id = v_internal_email OR user_id = v_user_id)
+        WHERE user_id = v_user_id OR (provider = 'email' AND provider_id = v_user_id::text)
     ) THEN
         INSERT INTO auth.identities (
             id,
@@ -421,11 +421,11 @@ BEGIN
             created_at,
             updated_at
         ) VALUES (
-            v_user_id::text,
+            gen_random_uuid()::text,
             v_user_id,
-            jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email),
+            jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email, 'email_verified', true),
             'email',
-            v_internal_email,
+            v_user_id::text,
             now(),
             now(),
             now()
@@ -647,7 +647,7 @@ BEGIN
     -- 6. Insert/Update Matching auth.identities Record
     IF NOT EXISTS (
         SELECT 1 FROM auth.identities
-        WHERE provider = 'email' AND (provider_id = v_internal_email OR user_id = v_user_id)
+        WHERE user_id = v_user_id OR (provider = 'email' AND provider_id = v_user_id::text)
     ) THEN
         INSERT INTO auth.identities (
             id,
@@ -659,11 +659,11 @@ BEGIN
             created_at,
             updated_at
         ) VALUES (
-            v_user_id::text,
+            gen_random_uuid()::text,
             v_user_id,
-            jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email),
+            jsonb_build_object('sub', v_user_id::text, 'email', v_internal_email, 'email_verified', true),
             'email',
-            v_internal_email,
+            v_user_id::text,
             now(),
             now(),
             now()

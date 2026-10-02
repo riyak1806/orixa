@@ -266,8 +266,8 @@ function initAddTeacherForm() {
             setFieldValid(yearsInput);
         }
 
-        if (password && password.length < 6) {
-            if (passwordInput) setFieldInvalid(passwordInput, 'Password must be at least 6 characters.');
+        if (password && password.length < 8) {
+            if (passwordInput) setFieldInvalid(passwordInput, 'Password must be at least 8 characters.');
             isValid = false;
         } else if (passwordInput) {
             setFieldValid(passwordInput);
@@ -429,8 +429,8 @@ function initAddStudentForm() {
             setFieldValid(teacherSelect);
         }
 
-        if (password && password.length < 6) {
-            if (passwordInput) setFieldInvalid(passwordInput, 'Password must be at least 6 characters.');
+        if (password && password.length < 8) {
+            if (passwordInput) setFieldInvalid(passwordInput, 'Password must be at least 8 characters.');
             isValid = false;
         } else if (passwordInput) {
             setFieldValid(passwordInput);
@@ -1236,7 +1236,7 @@ function parseAndValidateStudentRows(rawRows) {
         }
 
         if (!subject) errors.push('Subject is empty');
-        if (password && password.length < 6) errors.push('Password must be at least 6 characters if provided');
+        if (password && password.length < 8) errors.push('Password must be at least 8 characters if provided');
 
         parsedStudentRecords.push({
             rowNum: i + 1,
@@ -1427,12 +1427,14 @@ async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = [
             });
 
             if (error) {
-                console.warn('DB RPC provision teacher notice (persisted in local storage):', error);
+                console.error('DB RPC provision teacher error:', error);
+                return { success: false, error: `Teacher DB account creation failed: ${error.message}` };
             } else if (data?.user_id) {
                 teacherObj.id = data.user_id;
             }
         } catch (rpcErr) {
-            console.warn('RPC provision teacher error:', rpcErr);
+            console.error('RPC provision teacher exception:', rpcErr);
+            return { success: false, error: rpcErr.message || 'RPC exception' };
         }
     }
 
@@ -1510,12 +1512,14 @@ async function saveStudentToSupabase(fullName, loginId, levelCode, subject = 'â€
             });
 
             if (error) {
-                console.warn('DB RPC provision student notice (persisted in local storage):', error);
+                console.error('DB RPC provision student error:', error);
+                return { success: false, error: `Student DB account creation failed: ${error.message}` };
             } else if (data?.user_id) {
                 studentObj.id = data.user_id;
             }
         } catch (rpcErr) {
-            console.warn('RPC provision student error:', rpcErr);
+            console.error('RPC provision student exception:', rpcErr);
+            return { success: false, error: rpcErr.message || 'RPC exception' };
         }
     }
 

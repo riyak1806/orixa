@@ -368,7 +368,8 @@ async function saveDepartmentToSupabase(name, hodName, hodEmpId, hodPassword) {
         });
 
         if (hodError) {
-            console.warn('HOD RPC provisioning notice (using persistent local backup):', hodError);
+            console.error('HOD RPC provisioning error:', hodError);
+            return { success: false, error: `Department created, but HOD account creation failed in Supabase: ${hodError.message}` };
         }
     }
 
@@ -452,8 +453,8 @@ function initAddDepartmentForm() {
             if (hodEmpIdInput) setFieldValid(hodEmpIdInput);
         }
 
-        if (hodPassword && hodPassword.length < 6) {
-            if (hodPasswordInput) setFieldInvalid(hodPasswordInput, 'Password must be at least 6 characters.');
+        if (hodPassword && hodPassword.length < 8) {
+            if (hodPasswordInput) setFieldInvalid(hodPasswordInput, 'Password must be at least 8 characters.');
             isValid = false;
         } else if (hodPasswordInput) {
             setFieldValid(hodPasswordInput);

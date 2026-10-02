@@ -6,6 +6,11 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Drop existing functions if signature or parameter defaults changed
+DROP FUNCTION IF EXISTS public.fn_admin_provision_hod(TEXT, TEXT, TEXT, UUID);
+DROP FUNCTION IF EXISTS public.fn_admin_provision_teacher(TEXT, TEXT, TEXT, UUID, TEXT);
+DROP FUNCTION IF EXISTS public.fn_admin_provision_student(TEXT, TEXT, TEXT, UUID, UUID, TEXT);
+
 -- 1. Provision HOD Function
 CREATE OR REPLACE FUNCTION public.fn_admin_provision_hod(
     p_full_name TEXT,

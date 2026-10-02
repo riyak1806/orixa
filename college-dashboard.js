@@ -506,7 +506,6 @@ function initAddDepartmentForm() {
     if (hodEmpIdInput) hodEmpIdInput.addEventListener('input', () => setFieldValid(hodEmpIdInput));
     if (hodPasswordInput) hodPasswordInput.addEventListener('input', () => setFieldValid(hodPasswordInput));
 }
-}
 
 function setFieldInvalid(input, msg) {
     input.classList.add('input-invalid');

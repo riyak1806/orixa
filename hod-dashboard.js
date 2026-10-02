@@ -209,9 +209,23 @@ function initAddTeacherForm() {
     const empIdInput = document.getElementById('teacher-empid');
     const subjectsInput = document.getElementById('teacher-subjects');
     const yearsInput = document.getElementById('teacher-years');
+    const passwordInput = document.getElementById('teacher-password');
+    const toggleBtn = document.getElementById('teacher-password-toggle');
+    const eyeOpen = document.getElementById('teacher-eye-open');
+    const eyeClosed = document.getElementById('teacher-eye-closed');
     const formMsg = document.getElementById('teacher-form-msg');
 
     if (!form) return;
+
+    if (toggleBtn && passwordInput && eyeOpen && eyeClosed) {
+        toggleBtn.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            eyeOpen.classList.toggle('hidden', isPassword);
+            eyeClosed.classList.toggle('hidden', !isPassword);
+        });
+    }
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -220,6 +234,7 @@ function initAddTeacherForm() {
         const empId = empIdInput.value.trim();
         const subjectsRaw = subjectsInput.value.trim();
         const yearsRaw = yearsInput.value.trim();
+        const password = passwordInput ? passwordInput.value.trim() : '';
 
         let isValid = true;
 
@@ -251,6 +266,13 @@ function initAddTeacherForm() {
             setFieldValid(yearsInput);
         }
 
+        if (password && password.length < 6) {
+            if (passwordInput) setFieldInvalid(passwordInput, 'Password must be at least 6 characters.');
+            isValid = false;
+        } else if (passwordInput) {
+            setFieldValid(passwordInput);
+        }
+
         if (!isValid) return;
 
         const subjects = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
@@ -260,7 +282,7 @@ function initAddTeacherForm() {
         const submitBtn = form.querySelector('button[type="submit"]');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'SAVING…'; }
 
-        const result = await saveTeacherToSupabase(name, empId, subjects, years);
+        const result = await saveTeacherToSupabase(name, empId, subjects, years, password);
 
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ADD TEACHER'; }
 
@@ -284,6 +306,7 @@ function initAddTeacherForm() {
 
         form.reset();
         [nameInput, empIdInput, subjectsInput, yearsInput].forEach(setFieldValid);
+        if (passwordInput) setFieldValid(passwordInput);
 
         if (formMsg) {
             formMsg.textContent = `Teacher "${name}" added successfully!`;
@@ -309,6 +332,9 @@ function initAddTeacherForm() {
             input.addEventListener('input', () => setFieldValid(input));
         }
     });
+    if (passwordInput) {
+        passwordInput.addEventListener('input', () => setFieldValid(passwordInput));
+    }
 }
 
 function initAddStudentForm() {
@@ -318,9 +344,23 @@ function initAddStudentForm() {
     const yearSelect = document.getElementById('student-year');
     const subjectSelect = document.getElementById('student-subject');
     const teacherSelect = document.getElementById('student-teacher');
+    const passwordInput = document.getElementById('student-password');
+    const toggleBtn = document.getElementById('student-password-toggle');
+    const eyeOpen = document.getElementById('student-eye-open');
+    const eyeClosed = document.getElementById('student-eye-closed');
     const formMsg = document.getElementById('student-form-msg');
 
     if (!form) return;
+
+    if (toggleBtn && passwordInput && eyeOpen && eyeClosed) {
+        toggleBtn.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            eyeOpen.classList.toggle('hidden', isPassword);
+            eyeClosed.classList.toggle('hidden', !isPassword);
+        });
+    }
 
     if (yearSelect) {
         yearSelect.addEventListener('change', () => {
@@ -350,6 +390,7 @@ function initAddStudentForm() {
         const year = yearSelect.value;
         const subject = subjectSelect.value;
         const teacher = teacherSelect.value;
+        const password = passwordInput ? passwordInput.value.trim() : '';
 
         let isValid = true;
 
@@ -388,6 +429,13 @@ function initAddStudentForm() {
             setFieldValid(teacherSelect);
         }
 
+        if (password && password.length < 6) {
+            if (passwordInput) setFieldInvalid(passwordInput, 'Password must be at least 6 characters.');
+            isValid = false;
+        } else if (passwordInput) {
+            setFieldValid(passwordInput);
+        }
+
         if (!isValid) return;
 
         const submitBtn = form.querySelector('button[type="submit"]');
@@ -396,7 +444,7 @@ function initAddStudentForm() {
         // Map year label to academic_level code
         const yearCodeMap = { '1st Year': 'FE', '2nd Year': 'SE', '3rd Year': 'TE', '4th Year': 'BE' };
         const levelCode = yearCodeMap[year] || year;
-        const result = await saveStudentToSupabase(name, studentId, levelCode, subject, teacher, year);
+        const result = await saveStudentToSupabase(name, studentId, levelCode, subject, teacher, year, password);
 
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ADD STUDENT'; }
 
@@ -413,6 +461,7 @@ function initAddStudentForm() {
 
         form.reset();
         [nameInput, idInput, yearSelect, subjectSelect, teacherSelect].forEach(setFieldValid);
+        if (passwordInput) setFieldValid(passwordInput);
 
         if (formMsg) {
             formMsg.textContent = `Student "${name}" assigned to ${teacher} for ${subject} (${year}) successfully!`;
@@ -438,6 +487,9 @@ function initAddStudentForm() {
             input.addEventListener('input', () => setFieldValid(input));
         }
     });
+    if (passwordInput) {
+        passwordInput.addEventListener('input', () => setFieldValid(passwordInput));
+    }
 }
 
 function initDrawerToggles() {
@@ -815,9 +867,9 @@ function downloadFacultyTemplate() {
         return;
     }
     const templateData = [
-        ['Faculty Name', 'Employee ID', 'Subjects', 'Classes/Years'],
-        ['Prof. Sarah Jenkins', 'EMP-CS-01', 'Data Structures, Web Technologies', '1st Year, 3rd Year'],
-        ['Prof. Alan Turing', 'EMP-CS-02', 'Cloud Computing, Database Management', '2nd Year, 4th Year']
+        ['Faculty Name', 'Employee ID', 'Subjects', 'Classes/Years', 'Password (Optional)'],
+        ['Prof. Sarah Jenkins', 'EMP-CS-01', 'Data Structures, Web Technologies', '1st Year, 3rd Year', 'Pass@1234'],
+        ['Prof. Alan Turing', 'EMP-CS-02', 'Cloud Computing, Database Management', '2nd Year, 4th Year', '']
     ];
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
@@ -831,9 +883,9 @@ function downloadStudentTemplate() {
         return;
     }
     const templateData = [
-        ['Student Name', 'Student ID', 'Year/Class', 'Teacher', 'Subject'],
-        ['Aarav Sharma', 'STU-CS-101', '1st Year', 'Prof. Sarah Jenkins', 'Data Structures'],
-        ['Ananya Deshmukh', 'STU-CS-102', '2nd Year', 'Prof. Alan Turing', 'Database Management']
+        ['Student Name', 'Student ID', 'Year/Class', 'Teacher', 'Subject', 'Password (Optional)'],
+        ['Aarav Sharma', 'STU-CS-101', '1st Year', 'Prof. Sarah Jenkins', 'Data Structures', 'Student123!'],
+        ['Ananya Deshmukh', 'STU-CS-102', '2nd Year', 'Prof. Alan Turing', 'Database Management', '']
     ];
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
@@ -922,6 +974,7 @@ function parseAndValidateTeacherRows(rawRows) {
         const empId = String(row[1] || '').trim();
         const subjectsRaw = String(row[2] || '').trim();
         const yearsRaw = String(row[3] || '').trim();
+        const password = String(row[4] || '').trim();
 
         const errors = [];
 
@@ -941,6 +994,7 @@ function parseAndValidateTeacherRows(rawRows) {
 
         if (!subjectsRaw) errors.push('Subjects is empty');
         if (!yearsRaw) errors.push('Classes/Years is empty');
+        if (password && password.length < 6) errors.push('Password must be at least 6 characters if provided');
 
         const subjects = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
         const years = yearsRaw.split(',').map(y => y.trim()).filter(Boolean);
@@ -951,6 +1005,7 @@ function parseAndValidateTeacherRows(rawRows) {
             empId,
             subjects,
             years,
+            password,
             subjectsStr: subjectsRaw,
             yearsStr: yearsRaw,
             isValid: errors.length === 0,
@@ -1046,7 +1101,7 @@ async function confirmTeacherImport() {
 
     const results = [];
     for (const r of validRecords) {
-        const res = await saveTeacherToSupabase(r.name, r.empId, r.subjects, r.years);
+        const res = await saveTeacherToSupabase(r.name, r.empId, r.subjects, r.years, r.password);
         results.push({ record: r, result: res });
         if (res.success) {
             HOD_MOCK_DATA.teachers.push({
@@ -1131,6 +1186,7 @@ function parseAndValidateStudentRows(rawRows) {
         const year = String(row[2] || '').trim();
         const teacher = String(row[3] || '').trim();
         const subject = String(row[4] || '').trim();
+        const password = String(row[5] || '').trim();
 
         const errors = [];
 
@@ -1180,6 +1236,7 @@ function parseAndValidateStudentRows(rawRows) {
         }
 
         if (!subject) errors.push('Subject is empty');
+        if (password && password.length < 6) errors.push('Password must be at least 6 characters if provided');
 
         parsedStudentRecords.push({
             rowNum: i + 1,
@@ -1188,6 +1245,7 @@ function parseAndValidateStudentRows(rawRows) {
             year,
             teacher: matchedTeacherName,
             subject,
+            password,
             isValid: errors.length === 0,
             errors
         });
@@ -1284,7 +1342,7 @@ async function confirmStudentImport() {
     const results = [];
     for (const r of validRecords) {
         const levelCode = yearCodeMap[r.year] || r.year;
-        const res = await saveStudentToSupabase(r.name, r.studentId, levelCode, r.subject, r.teacher, r.year);
+        const res = await saveStudentToSupabase(r.name, r.studentId, levelCode, r.subject, r.teacher, r.year, r.password);
         results.push({ record: r, result: res });
         if (res.success) {
             HOD_MOCK_DATA.students.push({
@@ -1317,7 +1375,7 @@ async function confirmStudentImport() {
    SUPABASE DATA LAYER — HOD
    ========================================================================== */
 
-async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = []) {
+async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = [], password = '') {
     let deptId = null;
     let profile = null;
 
@@ -1358,12 +1416,12 @@ async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = [
     // 2. Provision in Supabase via RPC if available
     if (window.OrixaAuth && window.OrixaAuth.client && deptId) {
         const client = window.OrixaAuth.client;
-        const defaultPassword = 'Password123!';
+        const finalPassword = password && password.trim() ? password.trim() : 'Password123!';
         try {
             const { data, error } = await client.rpc('fn_admin_provision_teacher', {
                 p_full_name: fullName,
                 p_login_id: loginId,
-                p_password: defaultPassword,
+                p_password: finalPassword,
                 p_department_id: deptId,
                 p_designation: 'Faculty'
             });
@@ -1381,7 +1439,7 @@ async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = [
     return { success: true, userId: teacherObj.id };
 }
 
-async function saveStudentToSupabase(fullName, loginId, levelCode, subject = '—', teacher = '—', year = '—') {
+async function saveStudentToSupabase(fullName, loginId, levelCode, subject = '—', teacher = '—', year = '—', password = '') {
     let deptId = null;
     let collegeId = null;
     let profile = null;
@@ -1440,12 +1498,12 @@ async function saveStudentToSupabase(fullName, loginId, levelCode, subject = '�
             academicLevelId = level ? level.id : (levels && levels[0]?.id);
         } catch (e) {}
 
-        const defaultPassword = 'Password123!';
+        const finalPassword = password && password.trim() ? password.trim() : 'Password123!';
         try {
             const { data, error } = await client.rpc('fn_admin_provision_student', {
                 p_full_name: fullName,
                 p_login_id: loginId,
-                p_password: defaultPassword,
+                p_password: finalPassword,
                 p_department_id: deptId,
                 p_academic_level_id: academicLevelId,
                 p_roll_number: loginId

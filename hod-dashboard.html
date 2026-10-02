@@ -440,7 +440,7 @@
                             <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-chunky-pressed);">
                                 <p style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; color: var(--border-dark); margin: 0 0 6px 0;">Excel column order:</p>
                                 <p style="font-family: var(--font-header); font-size: 0.9rem; color: var(--color-purple); margin: 0 0 6px 0; font-weight: 700;">
-                                    Faculty Name &rarr; Employee ID &rarr; Subjects &rarr; Classes/Years
+                                    Faculty Name &rarr; Employee ID &rarr; Subjects &rarr; Classes/Years &rarr; Password (optional)
                                 </p>
                                 <p style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a; margin: 0 0 12px 0; font-weight: 600;">
                                     Please keep the columns in this order so the data can be imported correctly.
@@ -557,6 +557,28 @@
                                     <span class="field-error" id="teacher-years-error"></span>
                                 </div>
 
+                                <div class="form-field">
+                                    <label for="teacher-password" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm3 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" fill="currentColor" />
+                                        </svg>
+                                        <span>PASSWORD</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="password" id="teacher-password" name="teacher_password" class="cartoon-input"
+                                            placeholder="Enter password (default: Password123!)" autocomplete="new-password">
+                                        <button type="button" class="input-action-btn" id="teacher-password-toggle" aria-label="Show password">
+                                            <svg class="monotone-icon" id="teacher-eye-open" viewBox="0 0 24 24">
+                                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor" />
+                                            </svg>
+                                            <svg class="monotone-icon hidden" id="teacher-eye-closed" viewBox="0 0 24 24">
+                                                <path d="M12 6c3.79 0 7.17 2.13 8.82 5.5a10.1 10.1 0 0 1-2.6 3.44l1.42 1.42c1.39-1.23 2.53-2.77 3.36-4.5C21.27 7.61 17 4.5 12 4.5c-1.27 0-2.49.2-3.64.57l1.65 1.65C10.6 6.24 11.29 6 12 6zm-1.07 1.14L13 9.21c.57.25 1.03.71 1.28 1.28l2.07 2.07c.08-.34.13-.7.13-1.06 0-2.76-2.24-5-5-5-.36 0-.72.05-1.06.13zM2.01 3.87l2.68 2.68A11.738 11.738 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l3.32 3.32 1.41-1.41L3.42 2.45 2.01 3.87zm7.5 7.5 2.61 2.61c-.04.01-.08.02-.12.02-1.66 0-3-1.34-3-3 0-.05.01-.08.02-.12zm-3.9-3.9 1.55 1.55c-.29.71-.46 1.49-.46 2.31 0 1.94.94 3.65 2.38 4.72l1.45 1.45c-2.71-.51-5-2.24-6.2-4.6.51-1.01 1.2-1.9 2.02-2.63l-.74-.8z" fill="currentColor" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <span class="field-error" id="teacher-password-error"></span>
+                                </div>
+
                                 <button type="submit" class="cartoon-action-btn primary-yellow-btn teacher-submit-btn" style="padding: 10px 20px; font-size: 1rem; margin-top: 4px;">
                                     <span>ADD TEACHER</span>
                                 </button>
@@ -615,7 +637,7 @@
                             <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-chunky-pressed);">
                                 <p style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; color: var(--border-dark); margin: 0 0 6px 0;">Excel column order:</p>
                                 <p style="font-family: var(--font-header); font-size: 0.9rem; color: var(--color-purple); margin: 0 0 6px 0; font-weight: 700;">
-                                    Student Name &rarr; Student ID &rarr; Year/Class &rarr; Teacher &rarr; Subject
+                                    Student Name &rarr; Student ID &rarr; Year/Class &rarr; Teacher &rarr; Subject &rarr; Password (optional)
                                 </p>
                                 <p style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a; margin: 0 0 12px 0; font-weight: 600;">
                                     Please keep the columns in this order so the data can be imported correctly.
@@ -752,6 +774,28 @@
                                         </select>
                                     </div>
                                     <span class="field-error" id="student-teacher-error"></span>
+                                </div>
+
+                                <div class="form-field">
+                                    <label for="student-password" class="field-label">
+                                        <svg class="monotone-icon field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm3 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" fill="currentColor" />
+                                        </svg>
+                                        <span>PASSWORD</span>
+                                    </label>
+                                    <div class="input-shell">
+                                        <input type="password" id="student-password" name="student_password" class="cartoon-input"
+                                            placeholder="Enter password (default: Password123!)" autocomplete="new-password">
+                                        <button type="button" class="input-action-btn" id="student-password-toggle" aria-label="Show password">
+                                            <svg class="monotone-icon" id="student-eye-open" viewBox="0 0 24 24">
+                                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor" />
+                                            </svg>
+                                            <svg class="monotone-icon hidden" id="student-eye-closed" viewBox="0 0 24 24">
+                                                <path d="M12 6c3.79 0 7.17 2.13 8.82 5.5a10.1 10.1 0 0 1-2.6 3.44l1.42 1.42c1.39-1.23 2.53-2.77 3.36-4.5C21.27 7.61 17 4.5 12 4.5c-1.27 0-2.49.2-3.64.57l1.65 1.65C10.6 6.24 11.29 6 12 6zm-1.07 1.14L13 9.21c.57.25 1.03.71 1.28 1.28l2.07 2.07c.08-.34.13-.7.13-1.06 0-2.76-2.24-5-5-5-.36 0-.72.05-1.06.13zM2.01 3.87l2.68 2.68A11.738 11.738 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l3.32 3.32 1.41-1.41L3.42 2.45 2.01 3.87zm7.5 7.5 2.61 2.61c-.04.01-.08.02-.12.02-1.66 0-3-1.34-3-3 0-.05.01-.08.02-.12zm-3.9-3.9 1.55 1.55c-.29.71-.46 1.49-.46 2.31 0 1.94.94 3.65 2.38 4.72l1.45 1.45c-2.71-.51-5-2.24-6.2-4.6.51-1.01 1.2-1.9 2.02-2.63l-.74-.8z" fill="currentColor" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <span class="field-error" id="student-password-error"></span>
                                 </div>
 
                                 <button type="submit" class="cartoon-action-btn teacher-submit-btn" style="background: var(--color-green); padding: 10px 20px; font-size: 1rem; margin-top: 4px;">

@@ -319,7 +319,7 @@ async function loadCollegeDataFromSupabase() {
     }
 }
 
-async function saveDepartmentToSupabase(name, hodName, hodEmpId) {
+async function saveDepartmentToSupabase(name, hodName, hodEmpId, hodPassword) {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return { success: false, error: 'Not connected' };
     const client = window.OrixaAuth.client;
     const profile = await window.OrixaAuth.getCurrentProfile();
@@ -358,11 +358,12 @@ async function saveDepartmentToSupabase(name, hodName, hodEmpId) {
         window._mockHods = window._mockHods || {};
         window._mockHods[data.id] = { full_name: hodName, login_id: hodEmpId };
 
-        // Try to provision HOD via RPC
+        // Try to provision HOD via RPC with custom or default password
+        const finalPassword = hodPassword && hodPassword.trim() ? hodPassword.trim() : 'Password123!';
         const { error: hodError } = await client.rpc('fn_admin_provision_hod', {
             p_full_name: hodName,
             p_login_id: hodEmpId,
-            p_password: 'Password123!',
+            p_password: finalPassword,
             p_department_id: data.id
         });
 
@@ -402,10 +403,24 @@ function initAddDepartmentForm() {
     const nameInput = document.getElementById('dept-name');
     const hodNameInput = document.getElementById('dept-hod-name');
     const hodEmpIdInput = document.getElementById('dept-hod-empid');
+    const hodPasswordInput = document.getElementById('dept-hod-password');
+    const toggleBtn = document.getElementById('dept-hod-password-toggle');
+    const eyeOpen = document.getElementById('dept-hod-eye-open');
+    const eyeClosed = document.getElementById('dept-hod-eye-closed');
     const formMsg = document.getElementById('dept-form-msg');
     const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
 
     if (!form) return;
+
+    if (toggleBtn && hodPasswordInput && eyeOpen && eyeClosed) {
+        toggleBtn.addEventListener('click', () => {
+            const isPassword = hodPasswordInput.type === 'password';
+            hodPasswordInput.type = isPassword ? 'text' : 'password';
+            toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            eyeOpen.classList.toggle('hidden', isPassword);
+            eyeClosed.classList.toggle('hidden', !isPassword);
+        });
+    }
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -413,6 +428,7 @@ function initAddDepartmentForm() {
         const name = nameInput.value.trim();
         const hodName = hodNameInput ? hodNameInput.value.trim() : '';
         const hodEmpId = hodEmpIdInput ? hodEmpIdInput.value.trim() : '';
+        const hodPassword = hodPasswordInput ? hodPasswordInput.value.trim() : '';
         let isValid = true;
 
         if (!name) {
@@ -436,12 +452,19 @@ function initAddDepartmentForm() {
             if (hodEmpIdInput) setFieldValid(hodEmpIdInput);
         }
 
+        if (hodPassword && hodPassword.length < 6) {
+            if (hodPasswordInput) setFieldInvalid(hodPasswordInput, 'Password must be at least 6 characters.');
+            isValid = false;
+        } else if (hodPasswordInput) {
+            setFieldValid(hodPasswordInput);
+        }
+
         if (!isValid) return;
 
         // Disable button while saving
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'SAVING…'; }
 
-        const result = await saveDepartmentToSupabase(name, hodName, hodEmpId);
+        const result = await saveDepartmentToSupabase(name, hodName, hodEmpId, hodPassword);
 
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ADD DEPARTMENT'; }
 
@@ -457,6 +480,7 @@ function initAddDepartmentForm() {
         setFieldValid(nameInput);
         if (hodNameInput) setFieldValid(hodNameInput);
         if (hodEmpIdInput) setFieldValid(hodEmpIdInput);
+        if (hodPasswordInput) setFieldValid(hodPasswordInput);
 
         if (formMsg) {
             formMsg.textContent = `Department "${name}" saved successfully!`;
@@ -478,6 +502,10 @@ function initAddDepartmentForm() {
     });
 
     if (nameInput) nameInput.addEventListener('input', () => setFieldValid(nameInput));
+    if (hodNameInput) hodNameInput.addEventListener('input', () => setFieldValid(hodNameInput));
+    if (hodEmpIdInput) hodEmpIdInput.addEventListener('input', () => setFieldValid(hodEmpIdInput));
+    if (hodPasswordInput) hodPasswordInput.addEventListener('input', () => setFieldValid(hodPasswordInput));
+}
 }
 
 function setFieldInvalid(input, msg) {

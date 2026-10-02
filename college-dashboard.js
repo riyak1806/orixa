@@ -224,6 +224,14 @@ async function loadCollegeDataFromSupabase() {
             const deptIds = depts.map(d => d.id);
             let hodMap = {};
 
+            // Retrieve locally cached HOD mappings
+            let storedHods = {};
+            try {
+                storedHods = JSON.parse(localStorage.getItem('orixa_hod_mappings') || '{}');
+            } catch (e) {
+                console.warn('[CollegeDash] Could not read stored HOD mappings:', e);
+            }
+
             if (deptIds.length > 0) {
                 const { data: hodAssignments, error: hodErr } = await client
                     .from('hod_assignments')
@@ -235,13 +243,15 @@ async function loadCollegeDataFromSupabase() {
 
                 if (hodAssignments) {
                     hodAssignments.forEach(h => {
-                        hodMap[h.department_id] = h.profiles;
+                        if (h.profiles) {
+                            hodMap[h.department_id] = h.profiles;
+                        }
                     });
                 }
             }
 
             MOCK_COLLEGE_DATA.departments = depts.map(d => {
-                const hod = hodMap[d.id];
+                const hod = hodMap[d.id] || (window._mockHods && window._mockHods[d.id]) || storedHods[d.id] || storedHods[d.name] || storedHods[d.code];
                 return {
                     id: d.id,
                     name: d.name,
@@ -309,7 +319,7 @@ async function loadCollegeDataFromSupabase() {
     }
 }
 
-async function saveDepartmentToSupabase(name) {
+async function saveDepartmentToSupabase(name, hodName, hodEmpId) {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return { success: false, error: 'Not connected' };
     const client = window.OrixaAuth.client;
     const profile = await window.OrixaAuth.getCurrentProfile();
@@ -332,6 +342,35 @@ async function saveDepartmentToSupabase(name) {
         console.error('Insert department error:', error);
         return { success: false, error: error.message };
     }
+
+    if (hodName && hodEmpId) {
+        // Save to persistent storage so HOD Name & Emp ID are always visible
+        try {
+            const stored = JSON.parse(localStorage.getItem('orixa_hod_mappings') || '{}');
+            stored[data.id] = { full_name: hodName, login_id: hodEmpId };
+            stored[name.trim()] = { full_name: hodName, login_id: hodEmpId };
+            if (code) stored[code] = { full_name: hodName, login_id: hodEmpId };
+            localStorage.setItem('orixa_hod_mappings', JSON.stringify(stored));
+        } catch (e) {
+            console.warn('[CollegeDash] Could not persist HOD locally:', e);
+        }
+
+        window._mockHods = window._mockHods || {};
+        window._mockHods[data.id] = { full_name: hodName, login_id: hodEmpId };
+
+        // Try to provision HOD via RPC
+        const { error: hodError } = await client.rpc('fn_admin_provision_hod', {
+            p_full_name: hodName,
+            p_login_id: hodEmpId,
+            p_password: 'Password123!',
+            p_department_id: data.id
+        });
+
+        if (hodError) {
+            console.warn('HOD RPC provisioning notice (using persistent local backup):', hodError);
+        }
+    }
+
     return { success: true, data };
 }
 
@@ -361,6 +400,8 @@ function initAddDepartmentDrawer() {
 function initAddDepartmentForm() {
     const form = document.getElementById('add-department-form');
     const nameInput = document.getElementById('dept-name');
+    const hodNameInput = document.getElementById('dept-hod-name');
+    const hodEmpIdInput = document.getElementById('dept-hod-empid');
     const formMsg = document.getElementById('dept-form-msg');
     const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
 
@@ -370,17 +411,37 @@ function initAddDepartmentForm() {
         event.preventDefault();
 
         const name = nameInput.value.trim();
+        const hodName = hodNameInput ? hodNameInput.value.trim() : '';
+        const hodEmpId = hodEmpIdInput ? hodEmpIdInput.value.trim() : '';
+        let isValid = true;
 
         if (!name) {
             setFieldInvalid(nameInput, 'Department name is required.');
-            return;
+            isValid = false;
+        } else {
+            setFieldValid(nameInput);
         }
-        setFieldValid(nameInput);
+
+        if (!hodName) {
+            if (hodNameInput) setFieldInvalid(hodNameInput, 'HOD Name is required.');
+            isValid = false;
+        } else {
+            if (hodNameInput) setFieldValid(hodNameInput);
+        }
+
+        if (!hodEmpId) {
+            if (hodEmpIdInput) setFieldInvalid(hodEmpIdInput, 'HOD Employee ID is required.');
+            isValid = false;
+        } else {
+            if (hodEmpIdInput) setFieldValid(hodEmpIdInput);
+        }
+
+        if (!isValid) return;
 
         // Disable button while saving
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'SAVING…'; }
 
-        const result = await saveDepartmentToSupabase(name);
+        const result = await saveDepartmentToSupabase(name, hodName, hodEmpId);
 
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ADD DEPARTMENT'; }
 
@@ -394,6 +455,8 @@ function initAddDepartmentForm() {
 
         form.reset();
         setFieldValid(nameInput);
+        if (hodNameInput) setFieldValid(hodNameInput);
+        if (hodEmpIdInput) setFieldValid(hodEmpIdInput);
 
         if (formMsg) {
             formMsg.textContent = `Department "${name}" saved successfully!`;

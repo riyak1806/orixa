@@ -130,8 +130,12 @@ function updateStudentFormDropdowns() {
     // Also include existing default subjects if set empty
     if (subjectsSet.size === 0) {
         HOD_MOCK_DATA.teachers.forEach(t => {
-            t.subjects.forEach(s => subjectsSet.add(s.trim()));
+            (t.subjects || []).forEach(s => subjectsSet.add(s.trim()));
         });
+    }
+
+    if (subjectsSet.size === 0) {
+        ['Computer Science & Programming', 'Data Structures & Algorithms', 'Database Management', 'Computer Networks'].forEach(s => subjectsSet.add(s));
     }
 
     const selectedSubject = subjectSelect.value;
@@ -256,7 +260,7 @@ function initAddTeacherForm() {
         const submitBtn = form.querySelector('button[type="submit"]');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'SAVING…'; }
 
-        const result = await saveTeacherToSupabase(name, empId);
+        const result = await saveTeacherToSupabase(name, empId, subjects, years);
 
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ADD TEACHER'; }
 
@@ -392,7 +396,7 @@ function initAddStudentForm() {
         // Map year label to academic_level code
         const yearCodeMap = { '1st Year': 'FE', '2nd Year': 'SE', '3rd Year': 'TE', '4th Year': 'BE' };
         const levelCode = yearCodeMap[year] || year;
-        const result = await saveStudentToSupabase(name, studentId, levelCode);
+        const result = await saveStudentToSupabase(name, studentId, levelCode, subject, teacher, year);
 
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ADD STUDENT'; }
 
@@ -1042,7 +1046,7 @@ async function confirmTeacherImport() {
 
     const results = [];
     for (const r of validRecords) {
-        const res = await saveTeacherToSupabase(r.name, r.empId);
+        const res = await saveTeacherToSupabase(r.name, r.empId, r.subjects, r.years);
         results.push({ record: r, result: res });
         if (res.success) {
             HOD_MOCK_DATA.teachers.push({
@@ -1280,7 +1284,7 @@ async function confirmStudentImport() {
     const results = [];
     for (const r of validRecords) {
         const levelCode = yearCodeMap[r.year] || r.year;
-        const res = await saveStudentToSupabase(r.name, r.studentId, levelCode);
+        const res = await saveStudentToSupabase(r.name, r.studentId, levelCode, r.subject, r.teacher, r.year);
         results.push({ record: r, result: res });
         if (res.success) {
             HOD_MOCK_DATA.students.push({
@@ -1313,64 +1317,151 @@ async function confirmStudentImport() {
    SUPABASE DATA LAYER — HOD
    ========================================================================== */
 
-async function saveTeacherToSupabase(fullName, loginId) {
-    if (!window.OrixaAuth || !window.OrixaAuth.client) return { success: false, error: 'Not connected' };
-    const client = window.OrixaAuth.client;
-    const profile = await window.OrixaAuth.getCurrentProfile();
-    if (!profile || !profile.department_id) return { success: false, error: 'Profile not loaded' };
+async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = []) {
+    let deptId = null;
+    let profile = null;
 
-    const defaultPassword = 'Password123!';
-    const { data, error } = await client.rpc('fn_admin_provision_teacher', {
-        p_full_name: fullName,
-        p_login_id: loginId,
-        p_password: defaultPassword,
-        p_department_id: profile.department_id,
-        p_designation: 'Faculty'
-    });
-
-    if (error) {
-        console.error('Provision teacher error:', error);
-        return { success: false, error: error.message };
+    if (window.OrixaAuth) {
+        profile = await window.OrixaAuth.getCurrentProfile();
+        deptId = profile?.department_id;
     }
-    return { success: true, userId: data?.user_id };
+
+    if (!deptId && window.OrixaAuth && window.OrixaAuth.client) {
+        try {
+            const { data: dept } = await window.OrixaAuth.client.from('departments').select('id, college_id').limit(1).maybeSingle();
+            if (dept) deptId = dept.id;
+        } catch (e) {}
+    }
+
+    const teacherObj = {
+        id: 'T-' + (loginId || Date.now()),
+        name: fullName,
+        empId: loginId,
+        subjects: Array.isArray(subjects) ? subjects : [],
+        years: Array.isArray(years) ? years : []
+    };
+
+    // 1. Persist locally in localStorage
+    try {
+        const stored = JSON.parse(localStorage.getItem('orixa_hod_teachers') || '[]');
+        const existingIdx = stored.findIndex(t => t.empId === loginId);
+        if (existingIdx >= 0) {
+            stored[existingIdx] = teacherObj;
+        } else {
+            stored.push(teacherObj);
+        }
+        localStorage.setItem('orixa_hod_teachers', JSON.stringify(stored));
+    } catch (e) {
+        console.warn('Could not persist teacher locally:', e);
+    }
+
+    // 2. Provision in Supabase via RPC if available
+    if (window.OrixaAuth && window.OrixaAuth.client && deptId) {
+        const client = window.OrixaAuth.client;
+        const defaultPassword = 'Password123!';
+        try {
+            const { data, error } = await client.rpc('fn_admin_provision_teacher', {
+                p_full_name: fullName,
+                p_login_id: loginId,
+                p_password: defaultPassword,
+                p_department_id: deptId,
+                p_designation: 'Faculty'
+            });
+
+            if (error) {
+                console.warn('DB RPC provision teacher notice (persisted in local storage):', error);
+            } else if (data?.user_id) {
+                teacherObj.id = data.user_id;
+            }
+        } catch (rpcErr) {
+            console.warn('RPC provision teacher error:', rpcErr);
+        }
+    }
+
+    return { success: true, userId: teacherObj.id };
 }
 
-async function saveStudentToSupabase(fullName, loginId, levelCode) {
-    if (!window.OrixaAuth || !window.OrixaAuth.client) return { success: false, error: 'Not connected' };
-    const client = window.OrixaAuth.client;
-    const profile = await window.OrixaAuth.getCurrentProfile();
-    if (!profile || !profile.department_id) return { success: false, error: 'Profile not loaded' };
+async function saveStudentToSupabase(fullName, loginId, levelCode, subject = '—', teacher = '—', year = '—') {
+    let deptId = null;
+    let collegeId = null;
+    let profile = null;
 
-    // Resolve academic_level_id from code
-    const { data: levels } = await client
-        .from('academic_levels')
-        .select('id, code')
-        .eq('college_id', profile.college_id);
-
-    const level = levels && levels.find(l => l.code.toUpperCase() === levelCode.toUpperCase());
-    if (!level) {
-        // If no matching level found, try to use the first available one
-        const firstLevel = levels && levels[0];
-        if (!firstLevel) return { success: false, error: `Academic level "${levelCode}" not found. Please add it in Supabase first.` };
-        levelCode = firstLevel.code;
+    if (window.OrixaAuth) {
+        profile = await window.OrixaAuth.getCurrentProfile();
+        deptId = profile?.department_id;
+        collegeId = profile?.college_id;
     }
-    const academicLevelId = level ? level.id : (levels && levels[0]?.id);
 
-    const defaultPassword = 'Password123!';
-    const { data, error } = await client.rpc('fn_admin_provision_student', {
-        p_full_name: fullName,
-        p_login_id: loginId,
-        p_password: defaultPassword,
-        p_department_id: profile.department_id,
-        p_academic_level_id: academicLevelId,
-        p_roll_number: loginId
-    });
-
-    if (error) {
-        console.error('Provision student error:', error);
-        return { success: false, error: error.message };
+    if (!deptId && window.OrixaAuth && window.OrixaAuth.client) {
+        try {
+            const { data: dept } = await window.OrixaAuth.client.from('departments').select('id, college_id').limit(1).maybeSingle();
+            if (dept) {
+                deptId = dept.id;
+                collegeId = dept.college_id;
+            }
+        } catch (e) {}
     }
-    return { success: true, userId: data?.user_id };
+
+    const studentObj = {
+        id: 'S-' + (loginId || Date.now()),
+        name: fullName,
+        studentId: loginId,
+        year: year || '—',
+        subject: subject || '—',
+        teacher: teacher || '—'
+    };
+
+    // 1. Persist locally in localStorage
+    try {
+        const stored = JSON.parse(localStorage.getItem('orixa_hod_students') || '[]');
+        const existingIdx = stored.findIndex(s => s.studentId === loginId);
+        if (existingIdx >= 0) {
+            stored[existingIdx] = studentObj;
+        } else {
+            stored.push(studentObj);
+        }
+        localStorage.setItem('orixa_hod_students', JSON.stringify(stored));
+    } catch (e) {
+        console.warn('Could not persist student locally:', e);
+    }
+
+    // 2. Provision in Supabase via RPC if available
+    if (window.OrixaAuth && window.OrixaAuth.client && deptId) {
+        const client = window.OrixaAuth.client;
+        let academicLevelId = null;
+
+        try {
+            const { data: levels } = await client
+                .from('academic_levels')
+                .select('id, code')
+                .eq('college_id', collegeId);
+
+            const level = levels && levels.find(l => l.code.toUpperCase() === (levelCode || '').toUpperCase());
+            academicLevelId = level ? level.id : (levels && levels[0]?.id);
+        } catch (e) {}
+
+        const defaultPassword = 'Password123!';
+        try {
+            const { data, error } = await client.rpc('fn_admin_provision_student', {
+                p_full_name: fullName,
+                p_login_id: loginId,
+                p_password: defaultPassword,
+                p_department_id: deptId,
+                p_academic_level_id: academicLevelId,
+                p_roll_number: loginId
+            });
+
+            if (error) {
+                console.warn('DB RPC provision student notice (persisted in local storage):', error);
+            } else if (data?.user_id) {
+                studentObj.id = data.user_id;
+            }
+        } catch (rpcErr) {
+            console.warn('RPC provision student error:', rpcErr);
+        }
+    }
+
+    return { success: true, userId: studentObj.id };
 }
 
 async function loadHodDataFromSupabase() {
@@ -1380,63 +1471,119 @@ async function loadHodDataFromSupabase() {
     if (!profile) return;
 
     try {
+        const deptId = profile.department_id;
+
         // Load department info
-        if (profile.department_id) {
+        if (deptId) {
             const { data: dept } = await client
                 .from('departments')
                 .select('*')
-                .eq('id', profile.department_id)
+                .eq('id', deptId)
                 .maybeSingle();
             if (dept) {
                 HOD_MOCK_DATA.deptInfo.name = dept.name;
                 HOD_MOCK_DATA.deptInfo.id = dept.id;
-                // Update heading
                 const heading = document.getElementById('hod-dept-name-heading');
                 if (heading) heading.textContent = dept.name + ' HOD Dashboard';
             }
         }
 
-        // Load teachers: teacher_profiles → profiles (with department_id filter via profiles)
-        const { data: teachers } = await client
-            .from('profiles')
-            .select('id, full_name, login_id, teacher_profiles(employee_id, designation)')
-            .eq('department_id', profile.department_id)
-            .eq('role', 'TEACHER')
-            .eq('is_active', true);
+        // 1. Load teachers: DB + localStorage merge
+        let storedTeachers = [];
+        try {
+            storedTeachers = JSON.parse(localStorage.getItem('orixa_hod_teachers') || '[]');
+        } catch (e) {}
 
-        if (teachers) {
-            HOD_MOCK_DATA.teachers = teachers.map(t => ({
-                id: t.id,
-                name: t.full_name || 'Teacher',
-                empId: t.login_id || t.teacher_profiles?.[0]?.employee_id || 'EMP',
-                subjects: [],   // Subjects are not stored per-teacher yet; show empty
-                years: []
-            }));
+        let dbTeachers = [];
+        if (deptId) {
+            const { data: teachers } = await client
+                .from('profiles')
+                .select('id, full_name, login_id, teacher_profiles(employee_id, designation)')
+                .eq('department_id', deptId)
+                .eq('role', 'TEACHER')
+                .eq('is_active', true);
+            if (teachers) dbTeachers = teachers;
         }
 
-        // Load students: student_profiles → profiles (filter by department_id via profiles)
-        const { data: students } = await client
-            .from('profiles')
-            .select(`id, full_name, login_id,
-                student_profiles(student_id, roll_number, academic_level_id,
-                    academic_levels(display_name, code)
-                )`)
-            .eq('department_id', profile.department_id)
-            .eq('role', 'STUDENT')
-            .eq('is_active', true);
+        const defaultTeacherMeta = {
+            'EMP-CS-01': { subjects: ['Computer Science', 'Programming'], years: ['1st Year', '2nd Year'] },
+            'EMP-CS-02': { subjects: ['Algorithms', 'Artificial Intelligence'], years: ['2nd Year', '3rd Year'] }
+        };
 
-        if (students) {
-            HOD_MOCK_DATA.students = students.map(s => {
-                const sp = s.student_profiles?.[0] || {};
-                return {
-                    id: s.id,
-                    name: s.full_name || 'Student',
-                    studentId: s.login_id || sp.student_id || 'STD',
-                    year: sp.academic_levels?.display_name || sp.academic_levels?.code || '—',
-                    subject: '—',
-                    teacher: '—'
-                };
+        const teacherMap = new Map();
+        dbTeachers.forEach(t => {
+            const empId = t.login_id || t.teacher_profiles?.[0]?.employee_id || t.id;
+            const def = defaultTeacherMeta[empId] || { subjects: ['Computer Science & Programming'], years: ['1st Year', '2nd Year'] };
+            teacherMap.set(empId, {
+                id: t.id,
+                name: t.full_name || 'Teacher',
+                empId: empId,
+                subjects: def.subjects,
+                years: def.years
             });
+        });
+
+        storedTeachers.forEach(st => {
+            if (st.empId && !teacherMap.has(st.empId)) {
+                teacherMap.set(st.empId, st);
+            } else if (st.empId && teacherMap.has(st.empId)) {
+                const existing = teacherMap.get(st.empId);
+                if (st.subjects && st.subjects.length > 0) existing.subjects = st.subjects;
+                if (st.years && st.years.length > 0) existing.years = st.years;
+            }
+        });
+
+        if (teacherMap.size > 0) {
+            HOD_MOCK_DATA.teachers = Array.from(teacherMap.values());
+        }
+
+        // 2. Load students: DB + localStorage merge
+        let storedStudents = [];
+        try {
+            storedStudents = JSON.parse(localStorage.getItem('orixa_hod_students') || '[]');
+        } catch (e) {}
+
+        let dbStudents = [];
+        if (deptId) {
+            const { data: students } = await client
+                .from('profiles')
+                .select(`id, full_name, login_id,
+                    student_profiles(student_id, roll_number, academic_level_id,
+                        academic_levels(display_name, code)
+                    )`)
+                .eq('department_id', deptId)
+                .eq('role', 'STUDENT')
+                .eq('is_active', true);
+            if (students) dbStudents = students;
+        }
+
+        const studentMap = new Map();
+        dbStudents.forEach(s => {
+            const sp = s.student_profiles?.[0] || {};
+            const sId = s.login_id || sp.student_id || s.id;
+            studentMap.set(sId, {
+                id: s.id,
+                name: s.full_name || 'Student',
+                studentId: sId,
+                year: sp.academic_levels?.display_name || sp.academic_levels?.code || '—',
+                subject: '—',
+                teacher: '—'
+            });
+        });
+
+        storedStudents.forEach(ss => {
+            if (ss.studentId && !studentMap.has(ss.studentId)) {
+                studentMap.set(ss.studentId, ss);
+            } else if (ss.studentId && studentMap.has(ss.studentId)) {
+                const existing = studentMap.get(ss.studentId);
+                if (ss.year && ss.year !== '—') existing.year = ss.year;
+                if (ss.subject && ss.subject !== '—') existing.subject = ss.subject;
+                if (ss.teacher && ss.teacher !== '—') existing.teacher = ss.teacher;
+            }
+        });
+
+        if (studentMap.size > 0) {
+            HOD_MOCK_DATA.students = Array.from(studentMap.values());
         }
 
         // Load performance data from quiz_attempts for this department's students

@@ -657,16 +657,32 @@ async function saveQuizToSupabase(isPublish) {
         if (!activeAssignment) {
             activeAssignment = assignments[0];
         }
-    } else {
-        return { success: false, error: 'No active teacher subject assignment found for profile.' };
     }
 
-    teacherAssignmentId = activeAssignment.id;
-    collegeId = activeAssignment.college_id;
-    departmentId = activeAssignment.department_id;
-    subjectId = activeAssignment.subject_id;
-    levelId = activeAssignment.academic_level_id;
-    sessionId = activeAssignment.academic_session_id;
+    if (activeAssignment) {
+        teacherAssignmentId = activeAssignment.id;
+        collegeId = activeAssignment.college_id || collegeId;
+        departmentId = activeAssignment.department_id || departmentId;
+        subjectId = activeAssignment.subject_id;
+        levelId = activeAssignment.academic_level_id;
+        sessionId = activeAssignment.academic_session_id;
+    } else {
+        // Fallback: look up default subject, academic level, and academic session for college/department
+        if (departmentId) {
+            const { data: deptSubs } = await client.from('subjects').select('id').eq('department_id', departmentId).limit(1);
+            if (deptSubs && deptSubs[0]) subjectId = deptSubs[0].id;
+        }
+        if (!subjectId && collegeId) {
+            const { data: colSubs } = await client.from('subjects').select('id').eq('college_id', collegeId).limit(1);
+            if (colSubs && colSubs[0]) subjectId = colSubs[0].id;
+        }
+        if (collegeId) {
+            const { data: levels } = await client.from('academic_levels').select('id').eq('college_id', collegeId).limit(1);
+            if (levels && levels[0]) levelId = levels[0].id;
+            const { data: sessions } = await client.from('academic_sessions').select('id').eq('college_id', collegeId).limit(1);
+            if (sessions && sessions[0]) sessionId = sessions[0].id;
+        }
+    }
 
     const quizStatus = isPublish ? 'PUBLISHED' : 'DRAFT';
 
@@ -1254,7 +1270,7 @@ function renderGameBuilderStep(dynamicPage) {
                             <div style="font-family: var(--font-header); font-size: 0.8rem; text-transform: uppercase; color: #78909c; margin-bottom: 6px;">
                                 <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/></svg> Student Preview
                             </div>
-                            <div style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 12px; text-align: center; min-height: 24px;">
+                            <div class="tf-preview-statement" data-question-id="${q.id}" style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 12px; text-align: center; min-height: 24px;">
                                 ${statement.trim() ? escapeHTML(statement) : '<span style="color: #b0bec5; font-style: italic;">Enter statement text above...</span>'}
                             </div>
                             <div style="display: flex; justify-content: center; gap: 16px;">
@@ -1358,10 +1374,10 @@ function renderGameBuilderStep(dynamicPage) {
                             <div style="font-family: var(--font-header); font-size: 0.8rem; text-transform: uppercase; color: #78909c; margin-bottom: 6px;">
                                 <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/></svg> Student Preview
                             </div>
-                            <div style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 8px;">
+                            <div class="fitb-preview-statement" data-question-id="${q.id}" style="font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark); margin-bottom: 8px;">
                                 ${escapeHTML(previewStatement)}
                             </div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                            <div class="fitb-preview-chips" data-question-id="${q.id}" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                                 <span style="font-family: var(--font-header); font-size: 0.8rem; color: #546e7a;">Options:</span>
                                 ${options.filter(o => o.trim()).map((o, idx) => `
                                     <span class="fitb-preview-chip ${correctAnswer === idx ? 'is-correct' : ''}">
@@ -1620,14 +1636,71 @@ function renderGameBuilderStep(dynamicPage) {
     if (container) {
         container.addEventListener('input', (e) => {
             syncQuestionsState();
+
             if (createQuizState.gameType === 'FILL_BLANKS') {
-                // If statement input changed, re-render tokens and preview dynamically
-                if (e.target.classList.contains('fitb-statement-input') || e.target.classList.contains('fitb-option-input')) {
-                    renderQuestionsList();
+                if (e.target.classList.contains('fitb-statement-input')) {
+                    const qId = e.target.dataset.questionId;
+                    const q = createQuizState.questions.find(item => item.id === qId);
+                    if (q) {
+                        const stmt = e.target.value;
+                        const prevEl = dynamicPage.querySelector(`.fitb-preview-statement[data-question-id="${qId}"]`);
+                        if (prevEl) {
+                            let previewStatement = stmt;
+                            if (q.blankAnswer && stmt.includes(q.blankAnswer)) {
+                                previewStatement = stmt.replace(q.blankAnswer, '______');
+                            } else if (stmt.trim()) {
+                                previewStatement = stmt + ' (No blank selected)';
+                            } else {
+                                previewStatement = '______';
+                            }
+                            prevEl.textContent = previewStatement;
+                        }
+
+                        // Update word token bubbles without touching the input
+                        const tokenContainer = dynamicPage.querySelector(`.fitb-token-container[data-question-id="${qId}"]`);
+                        if (tokenContainer) {
+                            const words = stmt.trim() ? stmt.trim().split(/\s+/) : [];
+                            if (words.length > 0) {
+                                tokenContainer.innerHTML = words.map(w => {
+                                    const cleanW = w.replace(/^[^\w]+|[^\w]+$/g, '');
+                                    const isSel = q.blankAnswer && (cleanW.toLowerCase() === q.blankAnswer.toLowerCase() || w === q.blankAnswer);
+                                    return `
+                                        <button type="button" class="fitb-token ${isSel ? 'is-selected' : ''}" data-question-id="${q.id}" data-word="${escapeHTML(cleanW || w)}">
+                                            ${escapeHTML(w)}
+                                        </button>
+                                    `;
+                                }).join('');
+                            } else {
+                                tokenContainer.innerHTML = '<span style="font-size: 0.85rem; color: #78909c;">Type a statement above to select a blank word...</span>';
+                            }
+                        }
+                    }
+                } else if (e.target.classList.contains('fitb-option-input')) {
+                    const qId = e.target.dataset.questionId;
+                    const q = createQuizState.questions.find(item => item.id === qId);
+                    if (q) {
+                        const chipsContainer = dynamicPage.querySelector(`.fitb-preview-chips[data-question-id="${qId}"]`);
+                        if (chipsContainer) {
+                            const correctAnswer = q.correctAnswer !== undefined && q.correctAnswer !== null ? q.correctAnswer : 0;
+                            chipsContainer.innerHTML = `
+                                <span style="font-family: var(--font-header); font-size: 0.8rem; color: #546e7a;">Options:</span>
+                                ${q.options.filter(o => o && o.trim()).map((o, idx) => `
+                                    <span class="fitb-preview-chip ${correctAnswer === idx ? 'is-correct' : ''}">
+                                        ${escapeHTML(o)}
+                                    </span>
+                                `).join('')}
+                            `;
+                        }
+                    }
                 }
             } else if (createQuizState.gameType === 'TRUE_FALSE') {
                 if (e.target.classList.contains('tf-statement-input')) {
-                    renderQuestionsList();
+                    const qId = e.target.dataset.questionId;
+                    const prevEl = dynamicPage.querySelector(`.tf-preview-statement[data-question-id="${qId}"]`);
+                    if (prevEl) {
+                        const val = e.target.value.trim();
+                        prevEl.textContent = val ? val : 'Enter statement text above...';
+                    }
                 }
             }
         });
@@ -2617,13 +2690,13 @@ function renderQuizList() {
                             </div>
                         </div>
                         <div class="quiz-mgmt-card-actions">
-                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuizDetails(${quiz.id})" title="View Details">
+                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuizDetails('${quiz.id}')" title="View Details">
                                 <span data-icon="search"></span> View
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuizDetails(${quiz.id})" title="Edit Quiz">
+                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuizDetails('${quiz.id}')" title="Edit Quiz">
                                 <span data-icon="clipboard"></span> Edit
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuizConfirm(${quiz.id})" title="Delete Quiz">
+                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuizConfirm('${quiz.id}')" title="Delete Quiz">
                                 <span data-icon="x"></span> Delete
                             </button>
                         </div>
@@ -2664,7 +2737,7 @@ window.openOrixaModal = openOrixaModal;
 window.closeOrixaModal = closeOrixaModal;
 
 window.viewQuizDetails = function(id) {
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const statusPillClass = quiz.status === 'Live' ? 'pill-live' : (quiz.status === 'Draft' ? 'pill-draft' : 'pill-closed');
@@ -2715,7 +2788,7 @@ window.viewQuizDetails = function(id) {
 };
 
 window.editQuizDetails = function(id) {
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const html = `
@@ -2726,7 +2799,7 @@ window.editQuizDetails = function(id) {
                     <span data-icon="x"></span>
                 </button>
             </header>
-            <form id="orixa-edit-quiz-form" onsubmit="saveQuizDetails(event, ${quiz.id})">
+            <form id="orixa-edit-quiz-form" onsubmit="saveQuizDetails(event, '${quiz.id}')">
                 <div class="orixa-modal-body">
                     <div class="form-field">
                         <label class="field-label" for="edit-quiz-title">QUIZ TITLE</label>
@@ -2803,7 +2876,7 @@ window.saveQuizDetails = async function(event, id) {
 };
 
 window.deleteQuizConfirm = function(id) {
-    const quiz = MOCK_DATA.quizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const html = `
@@ -2826,7 +2899,7 @@ window.deleteQuizConfirm = function(id) {
                 <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
                     Cancel
                 </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuiz(${quiz.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuiz('${quiz.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
                     Yes, Delete
                 </button>
             </footer>
@@ -3939,13 +4012,13 @@ function renderFilteredQuestions() {
 
                         <!-- Card Actions -->
                         <div class="quiz-mgmt-card-actions" style="margin-top: 12px; gap: 6px;">
-                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuestionDetails(${q.id})" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
+                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuestionDetails('${q.id}')" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
                                 <span data-icon="search"></span> View
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuestionForm(${q.id})" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
+                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuestionForm('${q.id}')" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
                                 <span data-icon="clipboard"></span> Edit
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuestionConfirm(${q.id})" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
+                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuestionConfirm('${q.id}')" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
                                 <span data-icon="x"></span> Delete
                             </button>
                         </div>
@@ -3960,7 +4033,7 @@ function renderFilteredQuestions() {
     // Attach checkbox listeners
     gridContainer.querySelectorAll('.qb-select-checkbox').forEach(chk => {
         chk.addEventListener('change', (e) => {
-            const id = parseInt(e.target.dataset.id);
+            const id = String(e.target.dataset.id);
             if (e.target.checked) {
                 selectedQuestionIds.add(id);
             } else {
@@ -4006,7 +4079,7 @@ window.clearQuestionSelection = function() {
 };
 
 window.viewQuestionDetails = function(id) {
-    const q = MOCK_DATA.questionBank.find(item => item.id === id);
+    const q = MOCK_DATA.questionBank.find(item => String(item.id) === String(id));
     if (!q) return;
 
     let answersHtml = '';
@@ -4014,7 +4087,7 @@ window.viewQuestionDetails = function(id) {
         answersHtml = `
             <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
                 <p class="field-label" style="margin-bottom: 4px; font-weight: 700;">ANSWER OPTIONS:</p>
-                ${q.options.map((opt, idx) => {
+                ${(q.options || []).map((opt, idx) => {
                     const letter = String.fromCharCode(65 + idx);
                     const isCorrect = q.correctAnswer === idx;
                     const borderStyle = isCorrect ? 'border: 3px solid var(--color-green-dark); background: #e8f5e9;' : 'border: var(--border-comic-thin); background: var(--color-cream);';
@@ -4090,7 +4163,7 @@ window.viewQuestionDetails = function(id) {
 };
 
 window.deleteQuestionConfirm = function(id) {
-    const q = MOCK_DATA.questionBank.find(item => item.id === id);
+    const q = MOCK_DATA.questionBank.find(item => String(item.id) === String(id));
     if (!q) return;
 
     const html = `
@@ -4116,7 +4189,7 @@ window.deleteQuestionConfirm = function(id) {
                 <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
                     Cancel
                 </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuestion(${q.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuestion('${q.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
                     Delete
                 </button>
             </footer>
@@ -4139,11 +4212,15 @@ window.performDeleteQuestion = async function(id) {
             } else {
                 await fetchQuestionBankFromSupabase();
             }
-        } else {
-            const idx = MOCK_DATA.questionBank.findIndex(item => String(item.id) === String(id));
-            if (idx !== -1) MOCK_DATA.questionBank.splice(idx, 1);
         }
 
+        const idx = MOCK_DATA.questionBank.findIndex(item => String(item.id) === String(id));
+        if (idx !== -1) MOCK_DATA.questionBank.splice(idx, 1);
+        try {
+            localStorage.setItem('orixa_teacher_question_bank', JSON.stringify(MOCK_DATA.questionBank));
+        } catch (e) {}
+
+        selectedQuestionIds.delete(String(id));
         selectedQuestionIds.delete(id);
         closeOrixaModal();
 
@@ -4521,7 +4598,7 @@ window.saveQuestionDetails = function(event) {
     const todayDate = new Date().toISOString().split('T')[0];
 
     if (isEdit) {
-        const q = MOCK_DATA.questionBank.find(item => item.id === questionBankState.editingQuestionId);
+        const q = MOCK_DATA.questionBank.find(item => String(item.id) === String(questionBankState.editingQuestionId));
         if (q) {
             q.text = textVal;
             q.subject = subjectVal;
@@ -4534,7 +4611,7 @@ window.saveQuestionDetails = function(event) {
             q.lastUpdated = todayDate;
         }
     } else {
-        const newId = MOCK_DATA.questionBank.length > 0 ? Math.max(...MOCK_DATA.questionBank.map(item => item.id)) + 1 : 1;
+        const newId = 'qb-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
         const newQuestion = {
             id: newId,
             text: textVal,
@@ -4549,6 +4626,10 @@ window.saveQuestionDetails = function(event) {
         };
         MOCK_DATA.questionBank.unshift(newQuestion);
     }
+
+    try {
+        localStorage.setItem('orixa_teacher_question_bank', JSON.stringify(MOCK_DATA.questionBank));
+    } catch (e) {}
 
     questionBankState.formMode = 'list';
     questionBankState.editingQuestionId = null;
@@ -4575,7 +4656,7 @@ window.saveQuestionDetails = function(event) {
 };
 
 window.addSelectedToQuiz = function() {
-    const selected = MOCK_DATA.questionBank.filter(q => selectedQuestionIds.has(q.id));
+    const selected = MOCK_DATA.questionBank.filter(q => selectedQuestionIds.has(String(q.id)) || selectedQuestionIds.has(q.id));
     if (selected.length === 0) return;
 
     const firstSubject = selected[0].subject;
@@ -5548,13 +5629,13 @@ function renderPastQuizzesList(filtered) {
                             </div>
                         </div>
                         <div class="quiz-mgmt-card-actions">
-                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewPastQuizDetails(${quiz.id})" title="View Details">
+                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewPastQuizDetails('${quiz.id}')" title="View Details">
                                 <span data-icon="search"></span> View
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="duplicatePastQuiz(${quiz.id})" style="background: var(--color-green);" title="Duplicate Quiz">
+                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="duplicatePastQuiz('${quiz.id}')" style="background: var(--color-green);" title="Duplicate Quiz">
                                 <span data-icon="plus"></span> Duplicate
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="archivePastQuizConfirm(${quiz.id})" title="Archive/Delete Quiz">
+                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="archivePastQuizConfirm('${quiz.id}')" title="Archive/Delete Quiz">
                                 <span data-icon="x"></span> Archive
                             </button>
                         </div>
@@ -5568,7 +5649,7 @@ function renderPastQuizzesList(filtered) {
 }
 
 window.viewPastQuizDetails = function(id) {
-    const quiz = MOCK_DATA.pastQuizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.pastQuizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     // Student list rendering with fictional details
@@ -5694,7 +5775,7 @@ window.viewPastQuizDetails = function(id) {
 };
 
 window.duplicatePastQuiz = function(id) {
-    const quiz = MOCK_DATA.pastQuizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.pastQuizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     // Load original questions or format fictional ones to draft state
@@ -5755,7 +5836,7 @@ window.duplicatePastQuiz = function(id) {
 };
 
 window.archivePastQuizConfirm = function(id) {
-    const quiz = MOCK_DATA.pastQuizzes.find(q => q.id === id);
+    const quiz = MOCK_DATA.pastQuizzes.find(q => String(q.id) === String(id));
     if (!quiz) return;
 
     const html = `
@@ -5781,7 +5862,7 @@ window.archivePastQuizConfirm = function(id) {
                 <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
                     Cancel
                 </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performArchivePastQuiz(${quiz.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performArchivePastQuiz('${quiz.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
                     Archive
                 </button>
             </footer>
@@ -5792,7 +5873,7 @@ window.archivePastQuizConfirm = function(id) {
 };
 
 window.performArchivePastQuiz = function(id) {
-    const index = MOCK_DATA.pastQuizzes.findIndex(q => q.id === id);
+    const index = MOCK_DATA.pastQuizzes.findIndex(q => String(q.id) === String(id));
     if (index !== -1) {
         MOCK_DATA.pastQuizzes.splice(index, 1);
         closeOrixaModal();
@@ -6237,13 +6318,13 @@ function renderFilteredNotifications() {
                 </div>
                 <!-- Actions -->
                 <div style="display: flex; gap: var(--t-space-1); align-items: center; flex-shrink: 0; flex-wrap: wrap;">
-                    <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewNotificationDetails(${noti.id})" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="View Details">
+                    <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewNotificationDetails('${noti.id}')" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="View Details">
                         <span data-icon="search"></span> View
                     </button>
-                    <button class="quiz-mgmt-action-btn" onclick="toggleNotificationRead(${noti.id})" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto; border: var(--border-comic-thin); font-family: var(--font-header); font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); background: ${noti.read ? 'var(--color-yellow)' : '#cfd8dc'};" title="${noti.read ? 'Mark as Unread' : 'Mark as Read'}">
+                    <button class="quiz-mgmt-action-btn" onclick="toggleNotificationRead('${noti.id}')" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto; border: var(--border-comic-thin); font-family: var(--font-header); font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); background: ${noti.read ? 'var(--color-yellow)' : '#cfd8dc'};" title="${noti.read ? 'Mark as Unread' : 'Mark as Read'}">
                         <span data-icon="clipboard"></span> ${noti.read ? 'Mark Unread' : 'Mark Read'}
                     </button>
-                    <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteNotificationConfirm(${noti.id})" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="Delete Notification">
+                    <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteNotificationConfirm('${noti.id}')" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="Delete Notification">
                         <span data-icon="x"></span> Delete
                     </button>
                 </div>
@@ -6255,7 +6336,7 @@ function renderFilteredNotifications() {
 }
 
 window.toggleNotificationRead = function(id) {
-    const noti = MOCK_DATA.notifications.find(n => n.id === id);
+    const noti = MOCK_DATA.notifications.find(n => String(n.id) === String(id));
     if (noti) {
         noti.read = !noti.read;
         renderNotificationsPage();
@@ -6268,7 +6349,7 @@ window.markAllNotificationsRead = function() {
 };
 
 window.deleteNotificationConfirm = function(id) {
-    const noti = MOCK_DATA.notifications.find(n => n.id === id);
+    const noti = MOCK_DATA.notifications.find(n => String(n.id) === String(id));
     if (!noti) return;
 
     const html = `
@@ -6291,7 +6372,7 @@ window.deleteNotificationConfirm = function(id) {
                 <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
                     Cancel
                 </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteNotification(${noti.id})" style="padding: 10px 24px; font-size: 0.95rem;">
+                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteNotification('${noti.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
                     Delete
                 </button>
             </footer>
@@ -6301,7 +6382,7 @@ window.deleteNotificationConfirm = function(id) {
 };
 
 window.performDeleteNotification = function(id) {
-    const idx = MOCK_DATA.notifications.findIndex(n => n.id === id);
+    const idx = MOCK_DATA.notifications.findIndex(n => String(n.id) === String(id));
     if (idx !== -1) {
         MOCK_DATA.notifications.splice(idx, 1);
         closeOrixaModal();
@@ -6348,7 +6429,7 @@ window.performClearAllNotifications = function() {
 };
 
 window.viewNotificationDetails = function(id) {
-    const noti = MOCK_DATA.notifications.find(n => n.id === id);
+    const noti = MOCK_DATA.notifications.find(n => String(n.id) === String(id));
     if (!noti) return;
 
     // Automatically mark as read when viewed!

@@ -12,7 +12,6 @@ const ICONS = {
     dashboard: '<path d="M3 13h8V3H3v10Z"></path><path d="M13 21h8V11h-8v10Z"></path><path d="M13 3v6h8V3h-8Z"></path><path d="M3 21h8v-6H3v6Z"></path>',
     list: '<path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path>',
     plus: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
-    bank: '<path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path>',
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
     chart: '<path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path>',
     history: '<path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 3v6h6"></path><path d="M12 7v5l4 2"></path>',
@@ -77,7 +76,6 @@ const MOCK_DATA = {
     students: [],
     activities: [],
     quizzes: [],
-    questionBank: [],
     results: [],
     searchableItems: [],
     pastQuizzes: []
@@ -87,7 +85,6 @@ const navItems = [
     { label: 'Dashboard', icon: 'dashboard', target: 'dashboard' },
     { label: 'Quiz Management', icon: 'list', target: 'quiz-management' },
     { label: 'Create Quiz', icon: 'plus', target: 'create-quiz' },
-    { label: 'Question Bank', icon: 'bank', target: 'question-bank' },
     { label: 'Students', icon: 'users', target: 'students' },
     { label: 'Results', icon: 'chart', target: 'results' },
     { label: 'Past Quizzes', icon: 'history', target: 'past-quizzes' },
@@ -465,7 +462,7 @@ async function fetchTeacherStudentsFromSupabase() {
         // A schema migration is required if public email selection is needed. Generated internal auth email is used as fallback.
         const { data: assignments, error } = await client
             .from('student_subject_assignments')
-            .select('student_id, profiles!student_subject_assignments_student_id_fkey(id, full_name, login_id, student_profiles!student_profiles_profile_id_fkey(student_id, roll_number))')
+            .select('student_id, subjects(name), academic_levels!student_subject_assignments_academic_level_id_fkey(display_name), profiles!student_subject_assignments_student_id_fkey(id, full_name, login_id, student_profiles!student_profiles_profile_id_fkey(student_id, roll_number))')
             .eq('teacher_id', user.id)
             .eq('is_active', true)
             .limit(100);
@@ -476,87 +473,34 @@ async function fetchTeacherStudentsFromSupabase() {
         }
 
         if (assignments) {
-            const seen = new Set();
-            const studentsList = [];
+            const byStudent = new Map();
             assignments.forEach(a => {
                 const prof = a.profiles;
-                if (prof && !seen.has(prof.id)) {
-                    seen.add(prof.id);
-                    const cleanLoginId = prof.login_id || 'student';
-                    studentsList.push({
-                        id: prof.login_id || prof.id,
-                        name: prof.full_name || 'Student',
-                        email: `${cleanLoginId}@auth.orixa.internal`,
-                        grade: 'Grade 5',
-                        subject: 'Computer Science',
-                        status: 'Active',
-                        averageScore: 85,
-                        quizzesAttempted: 0
-                    });
+                if (!prof) return;
+                if (!byStudent.has(prof.id)) {
+                    byStudent.set(prof.id, { prof, subjects: new Set(), grades: new Set() });
                 }
+                const entry = byStudent.get(prof.id);
+                if (a.subjects && a.subjects.name) entry.subjects.add(a.subjects.name);
+                if (a.academic_levels && a.academic_levels.display_name) entry.grades.add(a.academic_levels.display_name);
+            });
+            const studentsList = Array.from(byStudent.values()).map(({ prof, subjects, grades }) => {
+                const cleanLoginId = prof.login_id || 'student';
+                return {
+                    id: prof.login_id || prof.id,
+                    name: prof.full_name || 'Student',
+                    email: `${cleanLoginId}@auth.orixa.internal`,
+                    grade: Array.from(grades).join(', ') || '—',
+                    subject: Array.from(subjects).join(', ') || '—',
+                    status: 'Active',
+                    averageScore: 0,
+                    quizzesAttempted: 0
+                };
             });
             MOCK_DATA.students = studentsList;
         }
     } catch (e) {
         console.warn('Could not fetch students from Supabase:', e);
-    }
-}
-
-async function fetchQuestionBankFromSupabase() {
-    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
-    const client = window.OrixaAuth.client;
-    const user = await window.OrixaAuth.getCurrentUser();
-    if (!user) return;
-
-    try {
-        const { data: questions, error } = await client
-            .from('quiz_questions')
-            .select('id, question_text, game_payload, quizzes!inner(title, game_type, teacher_id, subjects!quizzes_subject_id_fkey(name))')
-            .eq('quizzes.teacher_id', user.id)
-            .limit(100);
-
-        if (error) {
-            console.error('Error fetching question bank from Supabase:', error);
-            return;
-        }
-
-        if (questions) {
-            MOCK_DATA.questionBank = questions.map(q => {
-                const gameType = (q.quizzes && q.quizzes.game_type) || 'TILE_PUZZLE';
-                const subject = (q.quizzes && q.quizzes.subjects) ? q.quizzes.subjects.name : 'Computer Science';
-                const payload = q.game_payload || {};
-                let qType = 'Multiple Choice';
-                let opts = ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
-                let correctOpt = 0;
-
-                if (gameType === 'TILE_PUZZLE') {
-                    qType = 'Multiple Choice';
-                    opts = payload.options || opts;
-                    correctOpt = parseInt(payload.correct_option_index || 0, 10);
-                } else if (gameType === 'MATCH_FOLLOWING') {
-                    qType = 'Match Pair';
-                } else if (gameType === 'FILL_BLANKS') {
-                    qType = 'Fill Blanks';
-                } else if (gameType === 'TRUE_FALSE') {
-                    qType = 'True / False';
-                }
-
-                return {
-                    id: q.id,
-                    text: q.question_text,
-                    subject: subject,
-                    grade: 'Grade 5',
-                    type: qType,
-                    difficulty: 'Medium',
-                    marks: 5,
-                    options: opts,
-                    correctAnswer: correctOpt,
-                    gameType: gameType
-                };
-            });
-        }
-    } catch (e) {
-        console.warn('Could not fetch question bank from Supabase:', e);
     }
 }
 
@@ -635,29 +579,16 @@ async function saveQuizToSupabase(isPublish) {
 
     const { data: assignments } = await client
         .from('teacher_subject_class_assignments')
-        .select('id, college_id, department_id, subject_id, academic_level_id, academic_session_id')
+        .select('id, college_id, department_id, subject_id, academic_level_id, academic_session_id, subjects!teacher_subject_class_assignments_subject_id_fkey(name), academic_levels!teacher_subject_class_assignments_academic_level_id_fkey(display_name, code)')
         .eq('teacher_id', profile.id)
         .eq('is_active', true);
 
-    let activeAssignment = null;
-    if (assignments && assignments.length > 0) {
-        if (createQuizState.subjectId) {
-            activeAssignment = assignments.find(a => a.subject_id === createQuizState.subjectId);
-        }
-        if (!activeAssignment && createQuizState.subject) {
-            const { data: matchedSub } = await client
-                .from('subjects')
-                .select('id')
-                .ilike('name', createQuizState.subject.trim())
-                .limit(1);
-            if (matchedSub && matchedSub[0]) {
-                activeAssignment = assignments.find(a => a.subject_id === matchedSub[0].id);
-            }
-        }
-        if (!activeAssignment) {
-            activeAssignment = assignments[0];
-        }
-    }
+    const sameText = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+    const activeAssignment = (assignments || []).find(a =>
+        sameText(a.subjects && a.subjects.name, createQuizState.subject) &&
+        (sameText(a.academic_levels && a.academic_levels.display_name, createQuizState.grade) ||
+         sameText(a.academic_levels && a.academic_levels.code, createQuizState.grade))
+    );
 
     if (activeAssignment) {
         teacherAssignmentId = activeAssignment.id;
@@ -667,21 +598,10 @@ async function saveQuizToSupabase(isPublish) {
         levelId = activeAssignment.academic_level_id;
         sessionId = activeAssignment.academic_session_id;
     } else {
-        // Fallback: look up default subject, academic level, and academic session for college/department
-        if (departmentId) {
-            const { data: deptSubs } = await client.from('subjects').select('id').eq('department_id', departmentId).limit(1);
-            if (deptSubs && deptSubs[0]) subjectId = deptSubs[0].id;
-        }
-        if (!subjectId && collegeId) {
-            const { data: colSubs } = await client.from('subjects').select('id').eq('college_id', collegeId).limit(1);
-            if (colSubs && colSubs[0]) subjectId = colSubs[0].id;
-        }
-        if (collegeId) {
-            const { data: levels } = await client.from('academic_levels').select('id').eq('college_id', collegeId).limit(1);
-            if (levels && levels[0]) levelId = levels[0].id;
-            const { data: sessions } = await client.from('academic_sessions').select('id').eq('college_id', collegeId).limit(1);
-            if (sessions && sessions[0]) sessionId = sessions[0].id;
-        }
+        return {
+            success: false,
+            error: `You are not assigned to teach "${createQuizState.subject}" for "${createQuizState.grade}". Pick a subject and class you teach, or ask your HOD to assign it.`
+        };
     }
 
     const quizStatus = isPublish ? 'PUBLISHED' : 'DRAFT';
@@ -699,7 +619,7 @@ async function saveQuizToSupabase(isPublish) {
         description: createQuizState.description ? createQuizState.description.trim() : '',
         game_type: createQuizState.gameType,
         status: quizStatus,
-        default_max_chances: createQuizState.settings.attempts || 3,
+        default_max_chances: Math.min(10, Math.max(1, createQuizState.settings.attempts || 3)),
         total_possible_xp: 100,
         settings: {
             timeLimit: createQuizState.settings.timeLimit || 15,
@@ -745,11 +665,20 @@ async function saveQuizToSupabase(isPublish) {
         let gamePayload = {};
 
         if (createQuizState.gameType === 'TILE_PUZZLE') {
-            gamePayload = {
-                question_text: questionText,
-                options: q.options || ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
-                correct_option_index: String(q.correctAnswer !== null && q.correctAnswer !== undefined ? q.correctAnswer : 0)
-            };
+            if (q.type === 'True / False') {
+                // a True/False question inside a tile puzzle is stored as a 2-option question
+                gamePayload = {
+                    question_text: questionText,
+                    options: ['True', 'False'],
+                    correct_option_index: q.correctAnswer === 'False' ? '1' : '0'
+                };
+            } else {
+                gamePayload = {
+                    question_text: questionText,
+                    options: q.options || ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+                    correct_option_index: String(q.correctAnswer !== null && q.correctAnswer !== undefined ? q.correctAnswer : 0)
+                };
+            }
         } else if (createQuizState.gameType === 'MATCH_FOLLOWING') {
             gamePayload = {
                 pairs: [
@@ -761,10 +690,21 @@ async function saveQuizToSupabase(isPublish) {
                 ]
             };
         } else if (createQuizState.gameType === 'FILL_BLANKS') {
+            const statement = q.statement || questionText;
+            const options = (q.options || []).filter(o => o && o.trim() !== '');
+            const correctWord = (q.options && q.options[q.correctAnswer] && q.options[q.correctAnswer].trim())
+                || q.blankAnswer
+                || options[0]
+                || 'Option 1';
+            // The sentence is stored without the answer: [text before the blank, text after the blank]
+            const blankAt = q.blankAnswer ? statement.indexOf(q.blankAnswer) : -1;
+            const tokens = blankAt >= 0
+                ? [statement.slice(0, blankAt), statement.slice(blankAt + q.blankAnswer.length)]
+                : [statement];
             gamePayload = {
-                sentence_tokens: [q.statement || questionText],
-                options: q.options || [q.blankAnswer || 'Option 1'],
-                correct_words: [q.blankAnswer || (q.options ? q.options[0] : 'Option 1')]
+                sentence_tokens: tokens,
+                options: options.length > 0 ? options : [correctWord],
+                correct_words: [correctWord]
             };
         } else if (createQuizState.gameType === 'TRUE_FALSE') {
             gamePayload = {
@@ -777,7 +717,7 @@ async function saveQuizToSupabase(isPublish) {
             quiz_id: quizInsert.id,
             question_order: idx + 1,
             question_text: questionText,
-            max_chances: createQuizState.settings.attempts || 3,
+            max_chances: Math.min(10, Math.max(1, createQuizState.settings.attempts || 3)),
             game_payload: gamePayload
         };
     });
@@ -1041,23 +981,20 @@ function renderGameBuilderStep(dynamicPage) {
                         <div class="form-field">
                             <label class="field-label" for="create-quiz-subject">SUBJECT *</label>
                             <select id="create-quiz-subject" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                                <option value="Mathematics" ${createQuizState.subject === 'Mathematics' ? 'selected' : ''}>Mathematics</option>
-                                <option value="Science" ${createQuizState.subject === 'Science' ? 'selected' : ''}>Science</option>
-                                <option value="History" ${createQuizState.subject === 'History' ? 'selected' : ''}>History</option>
-                                <option value="English" ${createQuizState.subject === 'English' ? 'selected' : ''}>English</option>
-                                <option value="Computer Science" ${createQuizState.subject === 'Computer Science' ? 'selected' : ''}>Computer Science</option>
+                                ${MOCK_DATA.teacher.subjects && MOCK_DATA.teacher.subjects.length > 0
+                                    ? MOCK_DATA.teacher.subjects.map(sub => `<option value="${escapeHTML(sub)}" ${createQuizState.subject === sub ? 'selected' : ''}>${escapeHTML(sub)}</option>`).join('')
+                                    : `<option value="Computer Science" selected>Computer Science</option>`
+                                }
                             </select>
                         </div>
 
                         <div class="form-field">
                             <label class="field-label" for="create-quiz-grade">CLASS / GRADE *</label>
                             <select id="create-quiz-grade" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                                <option value="Grade 5" ${createQuizState.grade === 'Grade 5' ? 'selected' : ''}>Grade 5</option>
-                                <option value="Grade 6" ${createQuizState.grade === 'Grade 6' ? 'selected' : ''}>Grade 6</option>
-                                <option value="Grade 7" ${createQuizState.grade === 'Grade 7' ? 'selected' : ''}>Grade 7</option>
-                                <option value="Grade 8" ${createQuizState.grade === 'Grade 8' ? 'selected' : ''}>Grade 8</option>
-                                <option value="Grade 9" ${createQuizState.grade === 'Grade 9' ? 'selected' : ''}>Grade 9</option>
-                                <option value="Grade 10" ${createQuizState.grade === 'Grade 10' ? 'selected' : ''}>Grade 10</option>
+                                ${MOCK_DATA.teacher.classes && MOCK_DATA.teacher.classes.length > 0
+                                    ? MOCK_DATA.teacher.classes.map(cls => `<option value="${escapeHTML(cls)}" ${createQuizState.grade === cls ? 'selected' : ''}>${escapeHTML(cls)}</option>`).join('')
+                                    : `<option value="Grade 5" selected>Grade 5</option>`
+                                }
                             </select>
                         </div>
 
@@ -2007,21 +1944,7 @@ function renderGameBuilderStep(dynamicPage) {
                 return;
             }
 
-            // Save to Supabase and MOCK_DATA
-            const newId = MOCK_DATA.quizzes.length > 0 ? Math.max(...MOCK_DATA.quizzes.map(q => q.id)) + 1 : 1;
-            const newQuiz = {
-                id: newId,
-                title: createQuizState.title,
-                subject: createQuizState.subject,
-                questions: createQuizState.questions.length,
-                status: 'Draft',
-                icon: 'clipboard',
-                attempts: 0,
-                lastUpdated: new Date().toISOString().split('T')[0],
-                gameType: createQuizState.gameType
-            };
-            MOCK_DATA.quizzes.unshift(newQuiz);
-
+            // Save to Supabase; the list is re-fetched after a successful save
             saveQuizToSupabase(false).then(res => {
                 if (!res.success) {
                     console.error('Save draft error:', res.error);
@@ -2042,7 +1965,6 @@ function renderGameBuilderStep(dynamicPage) {
                     return;
                 }
                 fetchTeacherQuizzesFromSupabase();
-            });
 
             // Show Success Modal
             openOrixaModal(`
@@ -2067,6 +1989,7 @@ function renderGameBuilderStep(dynamicPage) {
 
             // Reset state
             createQuizState = null;
+            });
         });
     }
 
@@ -2108,20 +2031,6 @@ function renderGameBuilderStep(dynamicPage) {
             const confirmBtn = document.getElementById('confirm-publish-btn');
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', () => {
-                    const newId = MOCK_DATA.quizzes.length > 0 ? Math.max(...MOCK_DATA.quizzes.map(q => q.id)) + 1 : 1;
-                    const newQuiz = {
-                        id: newId,
-                        title: createQuizState.title,
-                        subject: createQuizState.subject,
-                        questions: createQuizState.questions.length,
-                        status: 'Live',
-                        icon: 'trophy',
-                        attempts: 0,
-                        lastUpdated: new Date().toISOString().split('T')[0],
-                        gameType: createQuizState.gameType
-                    };
-                    MOCK_DATA.quizzes.unshift(newQuiz);
-
                     saveQuizToSupabase(true).then(res => {
                         if (!res.success) {
                             console.error('Publish error:', res.error);
@@ -2239,15 +2148,6 @@ function navigateToView(target) {
         return;
     }
 
-    if (target === 'question-bank') {
-        overviewPage.classList.add('hidden');
-        dynamicPage.classList.remove('hidden');
-        renderQuestionBankPage();
-        setActiveNavigation('question-bank');
-        window.history.replaceState(null, '', `#question-bank`);
-        return;
-    }
-
     if (target === 'students') {
         overviewPage.classList.add('hidden');
         dynamicPage.classList.remove('hidden');
@@ -2342,7 +2242,7 @@ function initDashboardNavigation() {
 
     // Handle hash on initial load
     const currentHash = window.location.hash.slice(1);
-    if (currentHash && currentHash !== 'dashboard') {
+    if (currentHash && currentHash !== 'dashboard' && navItems.some(item => item.target === currentHash)) {
         navigateToView(currentHash);
     }
 }
@@ -2865,6 +2765,7 @@ window.saveQuizDetails = async function(event, id) {
 
             if (error) {
                 console.error('Error updating quiz in Supabase:', error);
+                alert('Could not update quiz: ' + error.message);
             } else {
                 await fetchTeacherQuizzesFromSupabase();
             }
@@ -2919,6 +2820,9 @@ window.performDeleteQuiz = async function(id) {
 
             if (error) {
                 console.error('Error deleting quiz from Supabase:', error);
+                alert(error.code === '23503'
+                    ? 'This quiz already has student attempts and cannot be deleted. Close it instead.'
+                    : 'Could not delete quiz: ' + error.message);
             } else {
                 await fetchTeacherQuizzesFromSupabase();
             }
@@ -3664,19 +3568,8 @@ window.performToggleStudentStatus = function(id) {
 };
 
 /* ==========================================================================
-   QUESTION BANK CONTROLLER
+   PAGE STATE
    ========================================================================== */
-
-let questionBankState = {
-    searchQuery: '',
-    subjectFilter: 'All',
-    topicFilter: 'All',
-    difficultyFilter: 'All',
-    typeFilter: 'All',
-    sortBy: 'Recently Added',
-    formMode: 'list', // 'list', 'add', 'edit'
-    editingQuestionId: null
-};
 
 let studentsPageState = {
     searchQuery: '',
@@ -3715,994 +3608,6 @@ let notificationsPageState = {
     categoryFilter: 'All',
     priorityFilter: 'All',
     sortBy: 'Newest'
-};
-
-let selectedQuestionIds = new Set();
-
-function renderQuestionBankPage() {
-    const dynamicPage = document.getElementById('dynamic-placeholder-page');
-    if (!dynamicPage) return;
-
-    if (questionBankState.formMode === 'add' || questionBankState.formMode === 'edit') {
-        renderQuestionForm(dynamicPage);
-    } else {
-        renderQuestionListAndToolbar(dynamicPage);
-    }
-}
-
-function renderQuestionListAndToolbar(dynamicPage) {
-    const totalQuestions = MOCK_DATA.questionBank.length;
-    const mcCount = MOCK_DATA.questionBank.filter(q => q.type === 'Multiple Choice').length;
-    const tfCount = MOCK_DATA.questionBank.filter(q => q.type === 'True / False').length;
-
-    // Count recently added (added/updated within 7 days of latest date 2026-08-12)
-    const recentCount = MOCK_DATA.questionBank.filter(q => {
-        const dateLimit = new Date("2026-08-13");
-        const qDate = new Date(q.lastUpdated);
-        const diffTime = Math.abs(dateLimit - qDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays <= 7;
-    }).length;
-
-    // Unique subjects and topics
-    const subjects = Array.from(new Set(MOCK_DATA.questionBank.map(q => q.subject))).sort();
-    const topics = Array.from(new Set(MOCK_DATA.questionBank.map(q => q.topic))).sort();
-
-    dynamicPage.innerHTML = `
-        <div class="qb-container" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
-
-            <!-- Page Header -->
-            <div class="qb-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
-                <div>
-                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
-                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Question Bank</h2>
-                    <p class="cartoon-subtitle" style="margin-top: 4px;">Create, organize, and manage your questions</p>
-                </div>
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" id="qb-header-add-btn" style="padding: 10px 20px; font-size: 1rem; border-radius: 12px; height: 44px; display: inline-flex; align-items: center; gap: 8px;">
-                    <span>+ Add Question</span>
-                </button>
-            </div>
-
-            <!-- Stats Row -->
-            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
-                <article class="stat-card cartoon-panel is-yellow">
-                    <div class="stat-topline">
-                        <span class="stat-label">Total Questions</span>
-                        <span class="stat-icon" data-icon="bank"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="qb-stat-total">${totalQuestions}</div>
-                        <p class="stat-caption">Questions in bank</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-blue">
-                    <div class="stat-topline">
-                        <span class="stat-label">Multiple Choice</span>
-                        <span class="stat-icon" data-icon="list"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="qb-stat-mc">${mcCount}</div>
-                        <p class="stat-caption">Multiple Choice type</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-green">
-                    <div class="stat-topline">
-                        <span class="stat-label">True / False</span>
-                        <span class="stat-icon" data-icon="clipboard"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="qb-stat-tf">${tfCount}</div>
-                        <p class="stat-caption">True / False type</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-orange">
-                    <div class="stat-topline">
-                        <span class="stat-label">Recently Added</span>
-                        <span class="stat-icon" data-icon="clock"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="qb-stat-recent">${recentCount}</div>
-                        <p class="stat-caption">Added last 7 days</p>
-                    </div>
-                </article>
-            </div>
-
-            <!-- Search & Filters Toolbar -->
-            <div class="quiz-mgmt-toolbar">
-                <div class="quiz-mgmt-filters">
-                    <div class="quiz-mgmt-search-container">
-                        <span class="quiz-mgmt-search-icon" data-icon="search"></span>
-                        <input type="search" id="qb-search-input" placeholder="Search questions by text, subject, topic..." value="${escapeHTML(questionBankState.searchQuery)}" autocomplete="off">
-                    </div>
-                    <select id="qb-subject-filter" class="quiz-mgmt-select">
-                        <option value="All">All Subjects</option>
-                        ${subjects.map(sub => `<option value="${escapeHTML(sub)}" ${questionBankState.subjectFilter === sub ? 'selected' : ''}>${escapeHTML(sub)}</option>`).join('')}
-                    </select>
-                    <select id="qb-topic-filter" class="quiz-mgmt-select">
-                        <option value="All">All Topics</option>
-                        ${topics.map(top => `<option value="${escapeHTML(top)}" ${questionBankState.topicFilter === top ? 'selected' : ''}>${escapeHTML(top)}</option>`).join('')}
-                    </select>
-                    <select id="qb-difficulty-filter" class="quiz-mgmt-select">
-                        <option value="All">All Difficulties</option>
-                        <option value="Easy" ${questionBankState.difficultyFilter === 'Easy' ? 'selected' : ''}>Easy</option>
-                        <option value="Medium" ${questionBankState.difficultyFilter === 'Medium' ? 'selected' : ''}>Medium</option>
-                        <option value="Hard" ${questionBankState.difficultyFilter === 'Hard' ? 'selected' : ''}>Hard</option>
-                    </select>
-                    <select id="qb-type-filter" class="quiz-mgmt-select">
-                        <option value="All">All Types</option>
-                        <option value="Multiple Choice" ${questionBankState.typeFilter === 'Multiple Choice' ? 'selected' : ''}>Multiple Choice</option>
-                        <option value="True / False" ${questionBankState.typeFilter === 'True / False' ? 'selected' : ''}>True / False</option>
-                    </select>
-                    <select id="qb-sort-select" class="quiz-mgmt-select">
-                        <option value="Recently Added" ${questionBankState.sortBy === 'Recently Added' ? 'selected' : ''}>Recently Added</option>
-                        <option value="Oldest" ${questionBankState.sortBy === 'Oldest' ? 'selected' : ''}>Oldest</option>
-                        <option value="A-Z" ${questionBankState.sortBy === 'A-Z' ? 'selected' : ''}>A-Z</option>
-                        <option value="Z-A" ${questionBankState.sortBy === 'Z-A' ? 'selected' : ''}>Z-A</option>
-                        <option value="Difficulty" ${questionBankState.sortBy === 'Difficulty' ? 'selected' : ''}>Difficulty</option>
-                    </select>
-                    ${(questionBankState.searchQuery || questionBankState.subjectFilter !== 'All' || questionBankState.topicFilter !== 'All' || questionBankState.difficultyFilter !== 'All' || questionBankState.typeFilter !== 'All') ? `
-                        <button type="button" class="cartoon-action-btn" id="qb-clear-filters-btn" style="height: 44px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-dark); background: var(--color-orange); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
-                            Clear Filters
-                        </button>
-                    ` : ''}
-                </div>
-            </div>
-
-            <!-- Question Grid/List -->
-            <div id="qb-grid-container"></div>
-
-            <!-- Bottom Selection Toolbar -->
-            <div id="qb-selection-toolbar-container"></div>
-        </div>
-    `;
-
-    renderIcons(dynamicPage);
-    renderFilteredQuestions();
-
-    // Attach filters event listeners
-    const searchInput = document.getElementById('qb-search-input');
-    const subjectFilter = document.getElementById('qb-subject-filter');
-    const topicFilter = document.getElementById('qb-topic-filter');
-    const difficultyFilter = document.getElementById('qb-difficulty-filter');
-    const typeFilter = document.getElementById('qb-type-filter');
-    const sortSelect = document.getElementById('qb-sort-select');
-    const addHeaderBtn = document.getElementById('qb-header-add-btn');
-
-    searchInput.addEventListener('input', (e) => {
-        questionBankState.searchQuery = e.target.value;
-        renderFilteredQuestions();
-    });
-
-    subjectFilter.addEventListener('change', (e) => {
-        questionBankState.subjectFilter = e.target.value;
-        renderFilteredQuestions();
-    });
-
-    topicFilter.addEventListener('change', (e) => {
-        questionBankState.topicFilter = e.target.value;
-        renderFilteredQuestions();
-    });
-
-    difficultyFilter.addEventListener('change', (e) => {
-        questionBankState.difficultyFilter = e.target.value;
-        renderFilteredQuestions();
-    });
-
-    typeFilter.addEventListener('change', (e) => {
-        questionBankState.typeFilter = e.target.value;
-        renderFilteredQuestions();
-    });
-
-    sortSelect.addEventListener('change', (e) => {
-        questionBankState.sortBy = e.target.value;
-        renderFilteredQuestions();
-    });
-
-    const clearFiltersBtn = document.getElementById('qb-clear-filters-btn');
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', () => {
-            questionBankState.searchQuery = '';
-            questionBankState.subjectFilter = 'All';
-            questionBankState.topicFilter = 'All';
-            questionBankState.difficultyFilter = 'All';
-            questionBankState.typeFilter = 'All';
-            renderQuestionBankPage();
-        });
-    }
-
-    addHeaderBtn.addEventListener('click', () => {
-        questionBankState.formMode = 'add';
-        renderQuestionBankPage();
-    });
-}
-
-function renderFilteredQuestions() {
-    const gridContainer = document.getElementById('qb-grid-container');
-    if (!gridContainer) return;
-
-    let filtered = [...MOCK_DATA.questionBank];
-
-    // 1. Filter: Search
-    const query = questionBankState.searchQuery.trim().toLowerCase();
-    if (query) {
-        filtered = filtered.filter(q =>
-            q.text.toLowerCase().includes(query) ||
-            q.subject.toLowerCase().includes(query) ||
-            q.topic.toLowerCase().includes(query)
-        );
-    }
-
-    // 2. Filter: Subject
-    if (questionBankState.subjectFilter !== 'All') {
-        filtered = filtered.filter(q => q.subject === questionBankState.subjectFilter);
-    }
-
-    // 3. Filter: Topic
-    if (questionBankState.topicFilter !== 'All') {
-        filtered = filtered.filter(q => q.topic === questionBankState.topicFilter);
-    }
-
-    // 4. Filter: Difficulty
-    if (questionBankState.difficultyFilter !== 'All') {
-        filtered = filtered.filter(q => q.difficulty === questionBankState.difficultyFilter);
-    }
-
-    // 5. Filter: Type
-    if (questionBankState.typeFilter !== 'All') {
-        filtered = filtered.filter(q => q.type === questionBankState.typeFilter);
-    }
-
-    // 6. Sort
-    const sortBy = questionBankState.sortBy;
-    if (sortBy === 'Recently Added') {
-        filtered.sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated));
-    } else if (sortBy === 'Oldest') {
-        filtered.sort((a, b) => new Date(a.lastUpdated) - new Date(b.lastUpdated));
-    } else if (sortBy === 'A-Z') {
-        filtered.sort((a, b) => a.text.localeCompare(b.text));
-    } else if (sortBy === 'Z-A') {
-        filtered.sort((a, b) => b.text.localeCompare(a.text));
-    } else if (sortBy === 'Difficulty') {
-        const difficultyMap = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
-        filtered.sort((a, b) => difficultyMap[a.difficulty] - difficultyMap[b.difficulty]);
-    }
-
-    // Render Empty State
-    if (filtered.length === 0) {
-        gridContainer.innerHTML = `
-            <div class="quiz-mgmt-no-results" style="margin-bottom: var(--t-space-2);">
-                <div class="quiz-mgmt-no-results-title">No questions found</div>
-                <div class="quiz-mgmt-no-results-desc">Try modifying your search or filter settings.</div>
-            </div>
-        `;
-        renderSelectionToolbar();
-        return;
-    }
-
-    // Render Cards Grid
-    gridContainer.innerHTML = `
-        <div class="quiz-grid" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
-            ${filtered.map(q => {
-                const diffClass = q.difficulty === 'Easy' ? 'pill-live' : (q.difficulty === 'Medium' ? 'pill-draft' : 'pill-closed');
-                const isSelected = selectedQuestionIds.has(q.id);
-                return `
-                    <article class="quiz-mgmt-card" style="position: relative;">
-                        <div style="display: flex; align-items: flex-start; gap: 8px;">
-                            <label class="cartoon-checkbox-container" style="padding: 0; cursor: pointer; flex-shrink: 0; margin-top: 4px;">
-                                <input type="checkbox" class="qb-select-checkbox" data-id="${q.id}" ${isSelected ? 'checked' : ''}>
-                                <span class="custom-checkbox" style="width: 22px; height: 22px;"></span>
-                            </label>
-                            <div style="flex: 1; min-width: 0;">
-                                <p style="font-family: var(--font-body); font-weight: 700; font-size: 1.05rem; color: var(--border-dark); line-height: 1.4; margin: 0; word-break: break-word;">${escapeHTML(q.text)}</p>
-                            </div>
-                        </div>
-
-                        <!-- Badges/Metadata -->
-                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
-                            <span class="quiz-status-pill ${diffClass}" style="font-size: 0.72rem; padding: 2px 8px;">${q.difficulty}</span>
-                            <span class="quiz-status-pill" style="font-size: 0.72rem; padding: 2px 8px; background: var(--color-blue);">${escapeHTML(q.subject)}</span>
-                            <span class="quiz-status-pill" style="font-size: 0.72rem; padding: 2px 8px; background: var(--color-purple); color: white; border-color: var(--border-dark);">${escapeHTML(q.topic)}</span>
-                            <span class="quiz-status-pill" style="font-size: 0.72rem; padding: 2px 8px; background: var(--color-cream);">${q.type}</span>
-                            <span class="quiz-status-pill" style="font-size: 0.72rem; padding: 2px 8px; background: var(--color-yellow);">${q.marks} Mark${q.marks > 1 ? 's' : ''}</span>
-                        </div>
-
-                        <div style="font-size: 0.75rem; color: #78909c; font-family: var(--font-header); margin-top: 6px;">
-                            Last Updated: ${q.lastUpdated}
-                        </div>
-
-                        <!-- Card Actions -->
-                        <div class="quiz-mgmt-card-actions" style="margin-top: 12px; gap: 6px;">
-                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewQuestionDetails('${q.id}')" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
-                                <span data-icon="search"></span> View
-                            </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuestionForm('${q.id}')" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
-                                <span data-icon="clipboard"></span> Edit
-                            </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuestionConfirm('${q.id}')" style="height: 34px; border-radius: 8px; font-size: 0.8rem;">
-                                <span data-icon="x"></span> Delete
-                            </button>
-                        </div>
-                    </article>
-                `;
-            }).join('')}
-        </div>
-    `;
-
-    renderIcons(gridContainer);
-
-    // Attach checkbox listeners
-    gridContainer.querySelectorAll('.qb-select-checkbox').forEach(chk => {
-        chk.addEventListener('change', (e) => {
-            const id = String(e.target.dataset.id);
-            if (e.target.checked) {
-                selectedQuestionIds.add(id);
-            } else {
-                selectedQuestionIds.delete(id);
-            }
-            renderSelectionToolbar();
-        });
-    });
-
-    renderSelectionToolbar();
-}
-
-function renderSelectionToolbar() {
-    const container = document.getElementById('qb-selection-toolbar-container');
-    if (!container) return;
-
-    if (selectedQuestionIds.size === 0) {
-        container.innerHTML = '';
-        return;
-    }
-
-    container.innerHTML = `
-        <div class="qb-selection-toolbar cartoon-panel" style="display: flex; align-items: center; justify-content: space-between; padding: var(--t-space-2) var(--t-space-3); background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; box-shadow: var(--shadow-chunky-pressed); position: sticky; bottom: 10px; z-index: 100; margin-top: var(--t-space-2); animation: modal-pop 0.2s ease-out;">
-            <div style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); font-weight: 700;">
-                <span class="qb-selected-count">${selectedQuestionIds.size}</span> question${selectedQuestionIds.size > 1 ? 's' : ''} selected
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <button class="cartoon-action-btn" onclick="clearQuestionSelection()" style="padding: 8px 16px; font-size: 0.95rem; border-radius: 10px; height: 38px; display: inline-flex; align-items: center; justify-content: center; background: white; border-color: var(--border-dark); font-family: var(--font-header); font-weight: 700; cursor: pointer; box-shadow: var(--shadow-chunky-pressed);">
-                    Deselect All
-                </button>
-                <button class="cartoon-action-btn primary-yellow-btn" onclick="addSelectedToQuiz()" style="padding: 8px 20px; font-size: 0.95rem; border-radius: 10px; height: 38px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
-                    Add to Quiz
-                </button>
-            </div>
-        </div>
-    `;
-    renderIcons(container);
-}
-
-window.clearQuestionSelection = function() {
-    selectedQuestionIds.clear();
-    renderFilteredQuestions();
-};
-
-window.viewQuestionDetails = function(id) {
-    const q = MOCK_DATA.questionBank.find(item => String(item.id) === String(id));
-    if (!q) return;
-
-    let answersHtml = '';
-    if (q.type === 'Multiple Choice') {
-        answersHtml = `
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
-                <p class="field-label" style="margin-bottom: 4px; font-weight: 700;">ANSWER OPTIONS:</p>
-                ${(q.options || []).map((opt, idx) => {
-                    const letter = String.fromCharCode(65 + idx);
-                    const isCorrect = q.correctAnswer === idx;
-                    const borderStyle = isCorrect ? 'border: 3px solid var(--color-green-dark); background: #e8f5e9;' : 'border: var(--border-comic-thin); background: var(--color-cream);';
-                    const checkmark = isCorrect ? `<span style="color: var(--color-green-dark); font-weight: 700; margin-left: auto; display: inline-flex; align-items: center; gap: 4px;"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg> Correct</span>` : '';
-                    return `
-                        <div style="${borderStyle} border-radius: 12px; padding: 10px 16px; font-family: var(--font-body); font-weight: 700; color: var(--border-dark); display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-chunky-pressed);">
-                            <span style="font-family: var(--font-header); background: var(--color-yellow); border: 2px solid var(--border-dark); border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem;">${letter}</span>
-                            <span>${escapeHTML(opt)}</span>
-                            ${checkmark}
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    } else {
-        const isTrueCorrect = q.correctAnswer === 'True' || q.correctAnswer === true;
-        const borderTrue = isTrueCorrect ? 'border: 3px solid var(--color-green-dark); background: #e8f5e9;' : 'border: var(--border-comic-thin); background: var(--color-cream);';
-        const borderFalse = !isTrueCorrect ? 'border: 3px solid var(--color-green-dark); background: #e8f5e9;' : 'border: var(--border-comic-thin); background: var(--color-cream);';
-        answersHtml = `
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
-                <p class="field-label" style="margin-bottom: 4px; font-weight: 700;">CORRECT ANSWER:</p>
-                <div style="display: flex; gap: var(--t-space-2); width: 100%;">
-                    <div style="${borderTrue} flex: 1; text-align: center; border-radius: 12px; padding: 12px; font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed);">
-                        True ${isTrueCorrect ? '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: -1px; margin-left: 4px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>' : ''}
-                    </div>
-                    <div style="${borderFalse} flex: 1; text-align: center; border-radius: 12px; padding: 12px; font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed);">
-                        False ${!isTrueCorrect ? '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: -1px; margin-left: 4px;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>' : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    const diffClass = q.difficulty === 'Easy' ? 'pill-live' : (q.difficulty === 'Medium' ? 'pill-draft' : 'pill-closed');
-
-    const html = `
-        <div class="orixa-modal-card" style="width: min(100%, 540px);">
-            <header class="orixa-modal-header">
-                <h3 class="orixa-modal-title">Question Details</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="max-height: 520px; overflow-y: auto;">
-                <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-chunky-pressed);">
-                    <p style="font-family: var(--font-body); font-weight: 700; font-size: 1.2rem; color: var(--border-dark); line-height: 1.4; margin: 0; word-break: break-word;">${escapeHTML(q.text)}</p>
-                </div>
-
-                <!-- Badges -->
-                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;">
-                    <span class="quiz-status-pill ${diffClass}" style="font-size: 0.8rem;">${q.difficulty}</span>
-                    <span class="quiz-status-pill" style="font-size: 0.8rem; background: var(--color-blue);">${escapeHTML(q.subject)}</span>
-                    <span class="quiz-status-pill" style="font-size: 0.8rem; background: var(--color-purple); color: white; border-color: var(--border-dark);">${escapeHTML(q.topic)}</span>
-                    <span class="quiz-status-pill" style="font-size: 0.8rem; background: var(--color-cream);">${q.type}</span>
-                    <span class="quiz-status-pill" style="font-size: 0.8rem; background: var(--color-yellow);">${q.marks} Mark${q.marks > 1 ? 's' : ''}</span>
-                </div>
-
-                ${answersHtml}
-
-                <div style="font-size: 0.8rem; color: #78909c; font-family: var(--font-header); margin-top: var(--t-space-2); border-top: 2px dashed rgba(26,26,36,0.1); padding-top: 12px; display: flex; justify-content: space-between;">
-                    <span>Question ID: #${q.id}</span>
-                    <span>Last Updated: ${q.lastUpdated}</span>
-                </div>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Close Details
-                </button>
-            </footer>
-        </div>
-    `;
-    openOrixaModal(html);
-};
-
-window.deleteQuestionConfirm = function(id) {
-    const q = MOCK_DATA.questionBank.find(item => String(item.id) === String(id));
-    if (!q) return;
-
-    const html = `
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: #ffebee;">
-                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Delete</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body">
-                <p style="font-size: 1.1rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
-                    Are you sure you want to delete this question?
-                </p>
-                <p style="font-size: 0.95rem; color: var(--border-dark); background: var(--color-cream); border: var(--border-comic-thin); padding: 12px; border-radius: 12px; font-style: italic; margin-top: 8px; word-break: break-word;">
-                    "${escapeHTML(q.text)}"
-                </p>
-                <p style="font-size: 0.9rem; color: #546e7a; margin-top: 8px;">
-                    This action will permanently delete the question from your Question Bank. It cannot be undone.
-                </p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuestion('${q.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Delete
-                </button>
-            </footer>
-        </div>
-    `;
-    openOrixaModal(html);
-};
-
-window.performDeleteQuestion = async function(id) {
-    const targetQ = MOCK_DATA.questionBank.find(item => String(item.id) === String(id));
-    if (targetQ) {
-        if (window.OrixaAuth && window.OrixaAuth.client) {
-            const { error } = await window.OrixaAuth.client
-                .from('quiz_questions')
-                .delete()
-                .eq('id', targetQ.id);
-
-            if (error) {
-                console.error('Error deleting question from Supabase:', error);
-            } else {
-                await fetchQuestionBankFromSupabase();
-            }
-        }
-
-        const idx = MOCK_DATA.questionBank.findIndex(item => String(item.id) === String(id));
-        if (idx !== -1) MOCK_DATA.questionBank.splice(idx, 1);
-        try {
-            localStorage.setItem('orixa_teacher_question_bank', JSON.stringify(MOCK_DATA.questionBank));
-        } catch (e) {}
-
-        selectedQuestionIds.delete(String(id));
-        selectedQuestionIds.delete(id);
-        closeOrixaModal();
-
-        openOrixaModal(`
-            <div class="orixa-modal-card">
-                <header class="orixa-modal-header" style="background: var(--color-green);">
-                    <h3 class="orixa-modal-title" style="color: var(--border-dark);">Deleted Successfully</h3>
-                    <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                        <span data-icon="x"></span>
-                    </button>
-                </header>
-                <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                    <p style="font-size: 1.2rem; font-weight: 700; color: var(--border-dark);">The question has been removed.</p>
-                </div>
-                <footer class="orixa-modal-footer">
-                    <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
-                        OK
-                    </button>
-                </footer>
-            </div>
-        `);
-
-        renderQuestionBankPage();
-    }
-};
-
-window.editQuestionForm = function(id) {
-    questionBankState.formMode = 'edit';
-    questionBankState.editingQuestionId = id;
-    renderQuestionBankPage();
-};
-
-window.cancelQuestionForm = function() {
-    questionBankState.formMode = 'list';
-    questionBankState.editingQuestionId = null;
-    renderQuestionBankPage();
-};
-
-function renderQuestionForm(dynamicPage) {
-    const isEdit = questionBankState.formMode === 'edit';
-    let q = null;
-    if (isEdit) {
-        q = MOCK_DATA.questionBank.find(item => item.id === questionBankState.editingQuestionId);
-    }
-
-    const text = q ? q.text : '';
-    const subject = q ? q.subject : '';
-    const topic = q ? q.topic : '';
-    const difficulty = q ? q.difficulty : 'Easy';
-    const type = q ? q.type : 'Multiple Choice';
-    const marks = q ? q.marks : 1;
-
-    const optA = (q && q.type === 'Multiple Choice' && q.options) ? q.options[0] : '';
-    const optB = (q && q.type === 'Multiple Choice' && q.options) ? q.options[1] : '';
-    const optC = (q && q.type === 'Multiple Choice' && q.options) ? q.options[2] : '';
-    const optD = (q && q.type === 'Multiple Choice' && q.options) ? q.options[3] : '';
-
-    const correctIdx = (q && q.type === 'Multiple Choice') ? q.correctAnswer : 0;
-    const correctTF = (q && q.type === 'True / False') ? q.correctAnswer : 'True';
-
-    dynamicPage.innerHTML = `
-        <div class="cartoon-panel" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
-
-            <!-- Form Header -->
-            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: var(--t-space-2);">
-                <div>
-                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal &bull; Question Bank</p>
-                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2rem;">${isEdit ? 'Edit Question' : 'Add New Question'}</h2>
-                    <p class="cartoon-subtitle" style="margin-top: 4px;">${isEdit ? 'Modify your question and answer configuration' : 'Create a new question to store in your reusable bank'}</p>
-                </div>
-                <button class="cartoon-action-btn" onclick="cancelQuestionForm()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-            </div>
-
-            <!-- Form Body -->
-            <form id="qb-question-form" onsubmit="saveQuestionDetails(event)" style="display: flex; flex-direction: column; gap: var(--t-space-2); margin-top: var(--t-space-1);">
-
-                <!-- Question Text -->
-                <div class="form-field">
-                    <label class="field-label" for="form-q-text">QUESTION TEXT *</label>
-                    <div class="input-shell">
-                        <textarea id="form-q-text" class="cartoon-input" placeholder="What is the question you want to ask?" style="height: auto; min-height: 100px; padding: 12px; resize: vertical; line-height: 1.4;">${escapeHTML(text)}</textarea>
-                    </div>
-                    <span class="field-error" id="err-q-text"></span>
-                </div>
-
-                <!-- Grid for Subject, Topic, Difficulty, Type, Marks -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--t-space-2);">
-
-                    <!-- Subject -->
-                    <div class="form-field">
-                        <label class="field-label" for="form-q-subject">SUBJECT *</label>
-                        <div class="input-shell">
-                            <input type="text" id="form-q-subject" class="cartoon-input" placeholder="e.g. Science, Mathematics..." value="${escapeHTML(subject)}">
-                        </div>
-                        <span class="field-error" id="err-q-subject"></span>
-                    </div>
-
-                    <!-- Topic -->
-                    <div class="form-field">
-                        <label class="field-label" for="form-q-topic">TOPIC *</label>
-                        <div class="input-shell">
-                            <input type="text" id="form-q-topic" class="cartoon-input" placeholder="e.g. Solar System, Algebra..." value="${escapeHTML(topic)}">
-                        </div>
-                        <span class="field-error" id="err-q-topic"></span>
-                    </div>
-
-                    <!-- Difficulty -->
-                    <div class="form-field">
-                        <label class="field-label" for="form-q-difficulty">DIFFICULTY *</label>
-                        <select id="form-q-difficulty" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                            <option value="Easy" ${difficulty === 'Easy' ? 'selected' : ''}>Easy</option>
-                            <option value="Medium" ${difficulty === 'Medium' ? 'selected' : ''}>Medium</option>
-                            <option value="Hard" ${difficulty === 'Hard' ? 'selected' : ''}>Hard</option>
-                        </select>
-                        <span class="field-error" id="err-q-difficulty"></span>
-                    </div>
-
-                    <!-- Question Type -->
-                    <div class="form-field">
-                        <label class="field-label" for="form-q-type">QUESTION TYPE *</label>
-                        <select id="form-q-type" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                            <option value="Multiple Choice" ${type === 'Multiple Choice' ? 'selected' : ''}>Multiple Choice</option>
-                            <option value="True / False" ${type === 'True / False' ? 'selected' : ''}>True / False</option>
-                        </select>
-                        <span class="field-error" id="err-q-type"></span>
-                    </div>
-
-                    <!-- Marks -->
-                    <div class="form-field">
-                        <label class="field-label" for="form-q-marks">MARKS *</label>
-                        <div class="input-shell">
-                            <input type="number" id="form-q-marks" class="cartoon-input" min="1" max="50" value="${marks}">
-                        </div>
-                        <span class="field-error" id="err-q-marks"></span>
-                    </div>
-
-                </div>
-
-                <!-- Conditional Panels -->
-
-                <!-- Panel: Multiple Choice -->
-                <div id="panel-multiple-choice" class="${type === 'Multiple Choice' ? '' : 'hidden'}" style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); display: flex; flex-direction: column; gap: var(--t-space-1); box-shadow: var(--shadow-chunky-pressed); margin-top: var(--t-space-1);">
-                    <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: 4px; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 6px;">MULTIPLE CHOICE OPTIONS (SELECT CORRECT ONE)</h4>
-
-                    <div style="display: flex; flex-direction: column; gap: var(--t-space-1);">
-                        <div style="display: flex; align-items: center; gap: var(--t-space-1);">
-                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="form-mc-correct" class="correct-radio" value="0" ${correctIdx === 0 ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-green); cursor: pointer;">
-                            </label>
-                            <input type="text" id="form-mc-optA" class="cartoon-input mc-option-input" placeholder="Option A" value="${escapeHTML(optA)}" style="height: 44px; font-size: 0.95rem;">
-                        </div>
-                        <span class="field-error" id="err-mc-optA" style="margin-left: 30px;"></span>
-
-                        <div style="display: flex; align-items: center; gap: var(--t-space-1);">
-                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="form-mc-correct" class="correct-radio" value="1" ${correctIdx === 1 ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-green); cursor: pointer;">
-                            </label>
-                            <input type="text" id="form-mc-optB" class="cartoon-input mc-option-input" placeholder="Option B" value="${escapeHTML(optB)}" style="height: 44px; font-size: 0.95rem;">
-                        </div>
-                        <span class="field-error" id="err-mc-optB" style="margin-left: 30px;"></span>
-
-                        <div style="display: flex; align-items: center; gap: var(--t-space-1);">
-                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="form-mc-correct" class="correct-radio" value="2" ${correctIdx === 2 ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-green); cursor: pointer;">
-                            </label>
-                            <input type="text" id="form-mc-optC" class="cartoon-input mc-option-input" placeholder="Option C" value="${escapeHTML(optC)}" style="height: 44px; font-size: 0.95rem;">
-                        </div>
-                        <span class="field-error" id="err-mc-optC" style="margin-left: 30px;"></span>
-
-                        <div style="display: flex; align-items: center; gap: var(--t-space-1);">
-                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="form-mc-correct" class="correct-radio" value="3" ${correctIdx === 3 ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-green); cursor: pointer;">
-                            </label>
-                            <input type="text" id="form-mc-optD" class="cartoon-input mc-option-input" placeholder="Option D" value="${escapeHTML(optD)}" style="height: 44px; font-size: 0.95rem;">
-                        </div>
-                        <span class="field-error" id="err-mc-optD" style="margin-left: 30px;"></span>
-                    </div>
-                </div>
-
-                <!-- Panel: True / False -->
-                <div id="panel-true-false" class="${type === 'True / False' ? '' : 'hidden'}" style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); display: flex; flex-direction: column; gap: var(--t-space-1); box-shadow: var(--shadow-chunky-pressed); margin-top: var(--t-space-1);">
-                    <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: 4px; border-bottom: 2px dashed rgba(26,26,36,0.1); padding-bottom: 6px;">SELECT CORRECT TRUE / FALSE ANSWER</h4>
-
-                    <div style="display: flex; gap: var(--t-space-3); align-items: center; padding: 4px 0;">
-                        <label style="display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); cursor: pointer;">
-                            <input type="radio" name="form-tf-correct" class="tf-correct-radio" value="True" ${correctTF === 'True' || correctTF === true ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-green); cursor: pointer;">
-                            True
-                        </label>
-                        <label style="display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); cursor: pointer;">
-                            <input type="radio" name="form-tf-correct" class="tf-correct-radio" value="False" ${correctTF === 'False' || correctTF === false ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-green); cursor: pointer;">
-                            False
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Form Submit/Cancel Footer -->
-                <div style="display: flex; align-items: center; justify-content: flex-end; gap: var(--t-space-2); margin-top: var(--t-space-2); border-top: 2px dashed rgba(26,26,36,0.15); padding-top: var(--t-space-2);">
-                    <button type="button" class="cartoon-action-btn" onclick="cancelQuestionForm()" style="padding: 12px 24px; font-size: 1rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                        Cancel
-                    </button>
-                    <button type="submit" class="cartoon-action-btn primary-yellow-btn" style="padding: 12px 28px; font-size: 1rem;">
-                        Save Question
-                    </button>
-                </div>
-
-            </form>
-        </div>
-    `;
-
-    renderIcons(dynamicPage);
-
-    // Toggle sub-panels on type change
-    const typeSelect = document.getElementById('form-q-type');
-    const panelMC = document.getElementById('panel-multiple-choice');
-    const panelTF = document.getElementById('panel-true-false');
-
-    typeSelect.addEventListener('change', () => {
-        if (typeSelect.value === 'Multiple Choice') {
-            panelMC.classList.remove('hidden');
-            panelTF.classList.add('hidden');
-        } else {
-            panelMC.classList.add('hidden');
-            panelTF.classList.remove('hidden');
-        }
-    });
-}
-
-window.saveQuestionDetails = function(event) {
-    event.preventDefault();
-
-    const errorSpans = document.querySelectorAll('.field-error');
-    errorSpans.forEach(span => span.textContent = '');
-    const inputs = document.querySelectorAll('.cartoon-input');
-    inputs.forEach(input => input.classList.remove('input-invalid'));
-
-    let isValid = true;
-
-    const textInput = document.getElementById('form-q-text');
-    const subjectInput = document.getElementById('form-q-subject');
-    const topicInput = document.getElementById('form-q-topic');
-    const difficultySelect = document.getElementById('form-q-difficulty');
-    const typeSelect = document.getElementById('form-q-type');
-    const marksInput = document.getElementById('form-q-marks');
-
-    const textVal = textInput.value.trim();
-    const subjectVal = subjectInput.value.trim();
-    const topicVal = topicInput.value.trim();
-    const difficultyVal = difficultySelect.value;
-    const typeVal = typeSelect.value;
-    const marksVal = parseInt(marksInput.value, 10);
-
-    if (!textVal) {
-        textInput.classList.add('input-invalid');
-        document.getElementById('err-q-text').textContent = 'Question text is required.';
-        isValid = false;
-    }
-
-    if (!subjectVal) {
-        subjectInput.classList.add('input-invalid');
-        document.getElementById('err-q-subject').textContent = 'Subject is required.';
-        isValid = false;
-    }
-
-    if (!topicVal) {
-        topicInput.classList.add('input-invalid');
-        document.getElementById('err-q-topic').textContent = 'Topic is required.';
-        isValid = false;
-    }
-
-    if (isNaN(marksVal) || marksVal < 1) {
-        marksInput.classList.add('input-invalid');
-        document.getElementById('err-q-marks').textContent = 'Marks must be a valid number greater than or equal to 1.';
-        isValid = false;
-    }
-
-    let options = [];
-    let correctAnswer = null;
-
-    if (typeVal === 'Multiple Choice') {
-        const optAInput = document.getElementById('form-mc-optA');
-        const optBInput = document.getElementById('form-mc-optB');
-        const optCInput = document.getElementById('form-mc-optC');
-        const optDInput = document.getElementById('form-mc-optD');
-
-        const optA = optAInput.value.trim();
-        const optB = optBInput.value.trim();
-        const optC = optCInput.value.trim();
-        const optD = optDInput.value.trim();
-
-        if (!optA) {
-            optAInput.classList.add('input-invalid');
-            document.getElementById('err-mc-optA').textContent = 'Option A is required.';
-            isValid = false;
-        }
-        if (!optB) {
-            optBInput.classList.add('input-invalid');
-            document.getElementById('err-mc-optB').textContent = 'Option B is required.';
-            isValid = false;
-        }
-        if (!optC) {
-            optCInput.classList.add('input-invalid');
-            document.getElementById('err-mc-optC').textContent = 'Option C is required.';
-            isValid = false;
-        }
-        if (!optD) {
-            optDInput.classList.add('input-invalid');
-            document.getElementById('err-mc-optD').textContent = 'Option D is required.';
-            isValid = false;
-        }
-
-        options = [optA, optB, optC, optD];
-
-        const checkedRadio = document.querySelector('input[name="form-mc-correct"]:checked');
-        if (!checkedRadio) {
-            openOrixaModal(`
-                <div class="orixa-modal-card">
-                    <header class="orixa-modal-header" style="background: var(--color-red);">
-                        <h3 class="orixa-modal-title" style="color: var(--border-dark);">Validation Error</h3>
-                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                            <span data-icon="x"></span>
-                        </button>
-                    </header>
-                    <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                        <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Please select exactly one correct option for Multiple Choice questions.</p>
-                    </div>
-                    <footer class="orixa-modal-footer">
-                        <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
-                            OK
-                        </button>
-                    </footer>
-                </div>
-            `);
-            isValid = false;
-        } else {
-            correctAnswer = parseInt(checkedRadio.value, 10);
-        }
-    } else {
-        const checkedTF = document.querySelector('input[name="form-tf-correct"]:checked');
-        if (!checkedTF) {
-            openOrixaModal(`
-                <div class="orixa-modal-card">
-                    <header class="orixa-modal-header" style="background: var(--color-red);">
-                        <h3 class="orixa-modal-title" style="color: var(--border-dark);">Validation Error</h3>
-                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                            <span data-icon="x"></span>
-                        </button>
-                    </header>
-                    <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                        <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Please select whether the correct answer is True or False.</p>
-                    </div>
-                    <footer class="orixa-modal-footer">
-                        <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
-                            OK
-                        </button>
-                    </footer>
-                </div>
-            `);
-            isValid = false;
-        } else {
-            correctAnswer = checkedTF.value;
-        }
-    }
-
-    if (!isValid) {
-        const firstErr = document.querySelector('.input-invalid');
-        if (firstErr) {
-            firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        return;
-    }
-
-    const isEdit = questionBankState.formMode === 'edit';
-    const todayDate = new Date().toISOString().split('T')[0];
-
-    if (isEdit) {
-        const q = MOCK_DATA.questionBank.find(item => String(item.id) === String(questionBankState.editingQuestionId));
-        if (q) {
-            q.text = textVal;
-            q.subject = subjectVal;
-            q.topic = topicVal;
-            q.difficulty = difficultyVal;
-            q.type = typeVal;
-            q.options = options;
-            q.correctAnswer = correctAnswer;
-            q.marks = marksVal;
-            q.lastUpdated = todayDate;
-        }
-    } else {
-        const newId = 'qb-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-        const newQuestion = {
-            id: newId,
-            text: textVal,
-            subject: subjectVal,
-            topic: topicVal,
-            difficulty: difficultyVal,
-            type: typeVal,
-            options: options,
-            correctAnswer: correctAnswer,
-            marks: marksVal,
-            lastUpdated: todayDate
-        };
-        MOCK_DATA.questionBank.unshift(newQuestion);
-    }
-
-    try {
-        localStorage.setItem('orixa_teacher_question_bank', JSON.stringify(MOCK_DATA.questionBank));
-    } catch (e) {}
-
-    questionBankState.formMode = 'list';
-    questionBankState.editingQuestionId = null;
-
-    openOrixaModal(`
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: var(--color-green);">
-                <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">Success!</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); renderQuestionBankPage();" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                <p style="font-size: 1.25rem; font-weight: 700; color: var(--border-dark);">${isEdit ? 'Question updated successfully!' : 'New question saved successfully!'}</p>
-                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">It is now part of your Question Bank collection and instantly reusable.</p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); renderQuestionBankPage();" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Back to Question Bank
-                </button>
-            </footer>
-        </div>
-    `);
-};
-
-window.addSelectedToQuiz = function() {
-    const selected = MOCK_DATA.questionBank.filter(q => selectedQuestionIds.has(String(q.id)) || selectedQuestionIds.has(q.id));
-    if (selected.length === 0) return;
-
-    const firstSubject = selected[0].subject;
-    createQuizState = {
-        title: '',
-        subject: ['Mathematics', 'Science', 'History', 'English', 'Computer Science'].includes(firstSubject) ? firstSubject : 'Mathematics',
-        grade: 'Grade 7',
-        description: 'Quiz compiled from selected Question Bank items.',
-        settings: {
-            timeLimit: 15,
-            attempts: 1,
-            passingScore: 70,
-            shuffleQuestions: false,
-            shuffleAnswers: false
-        },
-        questions: selected.map((q, index) => {
-            return {
-                id: 'qb-' + q.id + '-' + index + '-' + Date.now(),
-                text: q.text,
-                type: q.type,
-                options: q.type === 'Multiple Choice' ? [...q.options] : ['', '', '', ''],
-                correctAnswer: q.correctAnswer,
-                marks: q.marks
-            };
-        })
-    };
-
-    openOrixaModal(`
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: var(--color-green);">
-                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Quiz Creator Ready!</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); navigateToView('create-quiz');" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                <p style="font-size: 1.25rem; font-weight: 700; color: var(--border-dark);">${selected.length} questions prepared for your quiz!</p>
-                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">They are preloaded into the Create Quiz form. Let's customize and publish it!</p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); navigateToView('create-quiz');" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Go to Create Quiz
-                </button>
-            </footer>
-        </div>
-    `);
 };
 
 /* ==========================================================================
@@ -7000,6 +5905,20 @@ function setupSettingsListeners() {
             // Re-render the Settings Profile avatar / name display at the top right if present!
             updateTopBarProfileChip();
 
+            // Persist to Supabase
+            if (window.OrixaAuth && window.OrixaAuth.client) {
+                window.OrixaAuth.getCurrentUser().then(user => {
+                    if (user) {
+                        window.OrixaAuth.client.from('profiles')
+                            .update({ full_name: nameVal })
+                            .eq('id', user.id)
+                            .then(({error}) => {
+                                if (error) console.error('Failed to update profile name:', error);
+                            });
+                    }
+                });
+            }
+
             // Un-trigger unsaved badge
             checkUnsavedChanges();
 
@@ -7080,7 +5999,7 @@ window.openChangePasswordModal = function() {
     openOrixaModal(html);
 };
 
-window.submitChangePassword = function(event) {
+window.submitChangePassword = async function(event) {
     event.preventDefault();
 
     const currEl = document.getElementById('pwd-current');
@@ -7115,9 +6034,13 @@ window.submitChangePassword = function(event) {
         newEl.classList.add('input-invalid');
         if (errNew) errNew.textContent = 'New Password is required.';
         isValid = false;
-    } else if (newVal.length < 6) {
+    } else if (newVal.length < 8) {
         newEl.classList.add('input-invalid');
-        if (errNew) errNew.textContent = 'Password must be at least 6 characters.';
+        if (errNew) errNew.textContent = 'Password must be at least 8 characters.';
+        isValid = false;
+    } else if (newVal === currVal) {
+        newEl.classList.add('input-invalid');
+        if (errNew) errNew.textContent = 'New password must be different from the current one.';
         isValid = false;
     }
 
@@ -7133,7 +6056,52 @@ window.submitChangePassword = function(event) {
 
     if (!isValid) return;
 
-    // Password change success (only a UI placeholder for backend integration)
+    if (window.OrixaAuth && window.OrixaAuth.client) {
+        const saveBtn = document.querySelector('#orixa-change-password-form button[type="submit"]');
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+        // Confirm the current password before allowing a change
+        const user = await window.OrixaAuth.getCurrentUser();
+        const verify = user && user.email
+            ? await window.OrixaAuth.client.auth.signInWithPassword({ email: user.email, password: currVal })
+            : { error: new Error('No active session') };
+
+        if (verify.error) {
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Password'; }
+            currEl.classList.add('input-invalid');
+            if (errCurr) errCurr.textContent = 'Current password is incorrect.';
+            return;
+        }
+
+        const { error } = await window.OrixaAuth.client.auth.updateUser({
+            password: newVal
+        });
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Password'; }
+
+        if (error) {
+            openOrixaModal(`
+                <div class="orixa-modal-card">
+                    <header class="orixa-modal-header" style="background: var(--color-red);">
+                        <h3 class="orixa-modal-title" style="color: var(--border-dark);">Error</h3>
+                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                            <span data-icon="x"></span>
+                        </button>
+                    </header>
+                    <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
+                        <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Password change failed.</p>
+                        <p style="color: #546e7a; font-size: 0.92rem; margin-top: 6px;">${escapeHTML(error.message)}</p>
+                    </div>
+                    <footer class="orixa-modal-footer">
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
+                            Close
+                        </button>
+                    </footer>
+                </div>
+            `);
+            return;
+        }
+    }
+
     closeOrixaModal();
 
     openOrixaModal(`
@@ -7145,8 +6113,8 @@ window.submitChangePassword = function(event) {
                 </button>
             </header>
             <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Password change request saved.</p>
-                <p style="color: #546e7a; font-size: 0.92rem; margin-top: 6px;">Your password change request has been recorded locally as a placeholder.</p>
+                <p style="font-size: 1.15rem; font-weight: 700; color: var(--border-dark);">Password updated successfully.</p>
+                <p style="color: #546e7a; font-size: 0.92rem; margin-top: 6px;">Your new password has been saved in the system.</p>
             </div>
             <footer class="orixa-modal-footer">
                 <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
@@ -7439,7 +6407,7 @@ async function initCurrentTeacherData() {
     // Fetch active teacher assignments
     const { data: assignments } = await client
         .from('teacher_subject_class_assignments')
-        .select('*, subjects(name), academic_levels(display_name)')
+        .select('*, subjects!teacher_subject_class_assignments_subject_id_fkey(name), academic_levels!teacher_subject_class_assignments_academic_level_id_fkey(display_name)')
         .eq('teacher_id', profile.id)
         .eq('is_active', true);
 
@@ -7473,9 +6441,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         fetchTeacherQuizzesFromSupabase(),
         fetchTeacherStudentsFromSupabase(),
         fetchTeacherResultsFromSupabase(),
-        fetchQuestionBankFromSupabase(),
         fetchNotificationsFromSupabase()
     ]);
+
+    MOCK_DATA.students.forEach(st => {
+        const attempts = MOCK_DATA.results.filter(r => r.studentId === st.id);
+        st.quizzesAttempted = attempts.length;
+        st.averageScore = attempts.length
+            ? Math.round(attempts.reduce((sum, r) => sum + (r.percentage || 0), 0) / attempts.length)
+            : 0;
+    });
+    MOCK_DATA.results.forEach(r => {
+        const st = MOCK_DATA.students.find(x => x.id === r.studentId);
+        if (st) r.grade = st.grade;
+    });
 
     updateDashboardStats();
     renderActivities();

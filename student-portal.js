@@ -7,6 +7,7 @@
    ========================================================================== */
 
 let completedQuizzes = new Set();
+let activeQuizId = null;
 let activeGameTimeouts = [];
 
 function setGameTimeout(fn, delay) {
@@ -31,17 +32,15 @@ async function loadCompletedQuizzesFromSupabase() {
     if (!profile) return;
 
     try {
-        const { data: attempts } = await client
+        const { data: attempts, error } = await client
             .from('quiz_attempts')
             .select('quiz_id, quizzes(title)')
             .eq('student_id', profile.id)
             .eq('status', 'COMPLETED');
+        if (error) console.error('Error fetching completed quizzes from Supabase:', error);
 
         if (attempts && Array.isArray(attempts)) {
             attempts.forEach(a => {
-                if (a.quizzes && a.quizzes.title) {
-                    completedQuizzes.add(a.quizzes.title);
-                }
                 if (a.quiz_id) {
                     completedQuizzes.add(a.quiz_id);
                 }
@@ -536,6 +535,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 p_question_id: dbQ.dbQuestionId,
                 p_answer_json: { selected_option_index: String(optIndex) }
             }).then(res => {
+                if (res && res.error) console.error('fn_submit_question_answer error:', res.error);
                 const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
                 processOptionResult(evalIsCorrect);
             }).catch(e => {
@@ -557,13 +557,7 @@ function renderVictoryScreen() {
     const totalMaxXP = getQuestMaxXP(currentGameState.questName);
     const results = calculateQuizResults(currentGameState.questionStats, totalMaxXP);
 
-    if (currentGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
-        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
-            p_attempt_id: currentGameState.dbAttemptId
-        }).then(res => {
-            if (res.error) console.warn('Complete tile quiz RPC error:', res.error);
-        });
-    }
+    completeAttemptInSupabase(currentGameState.dbAttemptId);
 
     addCompletedQuiz(currentGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
@@ -621,14 +615,44 @@ function addXPPoints(amount) {
     xpValueElement.textContent = currentXP.toLocaleString();
 }
 
-function hideCompletedQuizzes() {
+// Marks the attempt COMPLETED in Supabase and tells the student if that did not work
+async function completeAttemptInSupabase(attemptId) {
+    if (!attemptId || !window.OrixaAuth || !window.OrixaAuth.client) return;
+
+    const { error } = await window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
+        p_attempt_id: attemptId
+    });
+    if (!error) return;
+
+    console.error('fn_complete_quiz_attempt error:', error);
+    const screen = document.querySelector('#tile-game-window .tile-victory-screen');
+    if (screen) {
+        const note = document.createElement('p');
+        note.setAttribute('role', 'alert');
+        note.style.cssText = 'font-family: var(--font-body); font-weight: 700; color: var(--color-red-dark); margin: 0;';
+        note.textContent = `Your result could not be saved: ${error.message}`;
+        screen.prepend(note);
+    }
+}
+
+// Finished quizzes stay in the list, marked COMPLETED and not playable again
+function markCompletedQuizzes() {
     const questCards = document.querySelectorAll('.student-quest-grid .quest-card');
     questCards.forEach(card => {
-        const title = (card.getAttribute('data-title') || card.querySelector('.quiz-mgmt-card-title')?.textContent || '').trim();
         const id = card.getAttribute('data-supabase-id');
-        if ((title && completedQuizzes.has(title)) || (id && completedQuizzes.has(id))) {
-            card.classList.add('completed-hidden');
-            card.style.display = 'none';
+        if (!id || !completedQuizzes.has(id)) return;
+        if (card.classList.contains('quest-completed')) return;
+
+        card.classList.add('quest-completed');
+        const btn = card.querySelector('.play-quest-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.style.cursor = 'default';
+            btn.style.opacity = '0.75';
+            const label = btn.querySelector('span');
+            if (label) label.textContent = 'COMPLETED';
+            const icon = btn.querySelector('path');
+            if (icon) icon.setAttribute('d', 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z');
         }
     });
 
@@ -636,8 +660,8 @@ function hideCompletedQuizzes() {
 }
 
 function addCompletedQuiz(questName, earnedXP = 0, accuracy = 100, stars = 3) {
-    if (questName) {
-        completedQuizzes.add(questName);
+    if (activeQuizId) {
+        completedQuizzes.add(activeQuizId);
     }
 
     const playedValueElement = document.getElementById('stat-quizzes-played');
@@ -663,7 +687,7 @@ function addCompletedQuiz(questName, earnedXP = 0, accuracy = 100, stars = 3) {
         accuracyValueElement.textContent = accuracy + '%';
     }
 
-    hideCompletedQuizzes();
+    markCompletedQuizzes();
 }
 
 function filterQuizzes() {
@@ -676,11 +700,6 @@ function filterQuizzes() {
     let totalAvailable = 0;
 
     questCards.forEach(card => {
-        if (card.classList.contains('completed-hidden')) {
-            card.style.display = 'none';
-            return;
-        }
-
         totalAvailable++;
 
         const title = (card.getAttribute('data-title') || card.querySelector('.quiz-mgmt-card-title')?.textContent || '').toLowerCase();
@@ -1159,17 +1178,19 @@ function attemptMatch(qId, aId) {
     };
 
     if (matchGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
-        const matchingDbQ = matchGameState.dbQuestions ? matchGameState.dbQuestions.find(q => q.dbQuestionId === qId) : null;
-        const targetQId = matchingDbQ ? matchingDbQ.dbQuestionId : (matchGameState.dbQuestions && matchGameState.dbQuestions[0] ? matchGameState.dbQuestions[0].dbQuestionId : qId);
-
-        const pairsPayload = Array.from(matchGameState.matches.entries()).map(([q, a]) => ({ id: q, choice: a }));
-        pairsPayload.push({ id: qId, choice: aId });
+        const promptPair = matchGameState.dbQuestions.find(q => q.dbQuestionId === qId);
+        const chosenPair = matchGameState.dbQuestions.find(q => q.dbQuestionId === aId);
+        const pairsPayload = [{
+            id: promptPair ? promptPair.payloadId : qId,
+            choice: chosenPair ? chosenPair.payloadId : aId
+        }];
 
         window.OrixaAuth.client.rpc('fn_submit_question_answer', {
             p_attempt_id: matchGameState.dbAttemptId,
-            p_question_id: targetQId,
+            p_question_id: qId,
             p_answer_json: { pairs: pairsPayload }
         }).then(res => {
+            if (res && res.error) console.error('fn_submit_question_answer error:', res.error);
             const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
             processMatchResult(evalIsCorrect);
         }).catch(e => {
@@ -1255,13 +1276,7 @@ function renderMatchVictoryScreen() {
     const totalMaxXP = getQuestMaxXP(matchGameState.questName);
     const results = calculateQuizResults(matchGameState.pairStats, totalMaxXP);
 
-    if (matchGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
-        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
-            p_attempt_id: matchGameState.dbAttemptId
-        }).then(res => {
-            if (res.error) console.warn('Complete match quiz RPC error:', res.error);
-        });
-    }
+    completeAttemptInSupabase(matchGameState.dbAttemptId);
 
     addCompletedQuiz(matchGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
@@ -1352,6 +1367,7 @@ function openFillBlanksGame(questName, category, customQuestions = null, chances
         }
 
         return {
+            dbQuestionId: q.dbQuestionId,
             statement: stmt,
             blankAnswer: blank,
             options: shuffledOpts,
@@ -1717,6 +1733,7 @@ function attemptFitbAnswer(optionText, card) {
                 p_question_id: dbQ.dbQuestionId,
                 p_answer_json: { submitted_words: [optionText] }
             }).then(res => {
+                if (res && res.error) console.error('fn_submit_question_answer error:', res.error);
                 const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
                 processFitbResult(evalIsCorrect);
             }).catch(e => {
@@ -1737,13 +1754,7 @@ function renderFitbVictoryScreen() {
     const totalMaxXP = getQuestMaxXP(fillBlanksGameState.questName);
     const results = calculateQuizResults(fillBlanksGameState.questionStats, totalMaxXP);
 
-    if (fillBlanksGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
-        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
-            p_attempt_id: fillBlanksGameState.dbAttemptId
-        }).then(res => {
-            if (res.error) console.warn('Complete fill blanks quiz RPC error:', res.error);
-        });
-    }
+    completeAttemptInSupabase(fillBlanksGameState.dbAttemptId);
 
     addCompletedQuiz(fillBlanksGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
@@ -1822,6 +1833,7 @@ function openTrueFalseGame(questName, category, customQuestions = null, teacherN
             boolAnswer = q.correctAnswer.toUpperCase() === 'TRUE';
         }
         return {
+            dbQuestionId: q.dbQuestionId,
             statement: stmt,
             correctAnswer: boolAnswer
         };
@@ -2049,6 +2061,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                 p_question_id: dbQ.dbQuestionId,
                 p_answer_json: { submitted_boolean: String(selectedBool).toUpperCase() }
             }).then(res => {
+                if (res && res.error) console.error('fn_submit_question_answer error:', res.error);
                 const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
                 processTrueFalseResult(evalIsCorrect);
             }).catch(e => {
@@ -2069,13 +2082,7 @@ function renderTrueFalseVictoryScreen() {
     const totalMaxXP = getQuestMaxXP(trueFalseGameState.questName);
     const results = calculateQuizResults(trueFalseGameState.questionStats, totalMaxXP);
 
-    if (trueFalseGameState.dbAttemptId && window.OrixaAuth && window.OrixaAuth.client) {
-        window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
-            p_attempt_id: trueFalseGameState.dbAttemptId
-        }).then(res => {
-            if (res.error) console.warn('Complete true/false quiz RPC error:', res.error);
-        });
-    }
+    completeAttemptInSupabase(trueFalseGameState.dbAttemptId);
 
     addCompletedQuiz(trueFalseGameState.questName, results.earnedXP, results.accuracy, results.stars);
 
@@ -2220,9 +2227,7 @@ async function loadStudentProfileAndStats(profile) {
     if (topbarName) topbarName.textContent = profile.full_name || 'Student';
     if (modalAvatar) modalAvatar.textContent = initials;
     if (modalName) modalName.textContent = profile.full_name || 'Student';
-    if (modalLoginId) modalLoginId.textContent = profile.login_id || '—';
     if (modalNameVal) modalNameVal.textContent = profile.full_name || '—';
-    if (modalIdVal) modalIdVal.textContent = profile.login_id || '—';
 
     if (!client) return;
 
@@ -2254,14 +2259,13 @@ async function loadStudentProfileAndStats(profile) {
     try {
         const { data: sp } = await client
             .from('student_profiles')
-            .select('roll_number, academic_levels(display_name)')
-            .eq('student_id', profile.id)
+            .select('student_id, roll_number, academic_levels(display_name)')
+            .eq('profile_id', profile.id)
             .maybeSingle();
 
         if (sp) {
-            if (sp.roll_number && modalIdVal) {
-                modalIdVal.textContent = sp.roll_number;
-            }
+            if (modalLoginId) modalLoginId.textContent = sp.student_id || '—';
+            if (modalIdVal) modalIdVal.textContent = sp.roll_number || sp.student_id || '—';
             if (sp.academic_levels && sp.academic_levels.display_name && modalClassVal) {
                 modalClassVal.textContent = sp.academic_levels.display_name;
             }
@@ -2274,7 +2278,7 @@ async function loadStudentProfileAndStats(profile) {
     try {
         const { data: attempts } = await client
             .from('quiz_attempts')
-            .select('id, status, earned_xp, earned_stars, final_accuracy_pct')
+            .select('id, status, final_earned_xp, final_stars, final_accuracy_pct')
             .eq('student_id', profile.id)
             .eq('status', 'COMPLETED');
 
@@ -2286,8 +2290,8 @@ async function loadStudentProfileAndStats(profile) {
         if (attempts && Array.isArray(attempts)) {
             playedCount = attempts.length;
             attempts.forEach(a => {
-                totalXp += Number(a.earned_xp || 0);
-                totalStars += Number(a.earned_stars || 0);
+                totalXp += Number(a.final_earned_xp || 0);
+                totalStars += Number(a.final_stars || 0);
                 sumAccuracy += Number(a.final_accuracy_pct || 0);
             });
         }
@@ -2385,14 +2389,14 @@ async function fetchPublishedQuizzesFromSupabase() {
     try {
         let { data: quizzes, error } = await client
             .from('quizzes')
-            .select('*, subjects(name), profiles!quizzes_teacher_id_fkey(full_name)')
+            .select('*, subjects!quizzes_subject_id_fkey(name), profiles!quizzes_teacher_id_fkey(full_name)')
             .eq('status', 'PUBLISHED')
             .order('created_at', { ascending: false });
 
         if (error) {
             const fallback = await client
                 .from('quizzes')
-                .select('*, subjects(name)')
+                .select('*, subjects!quizzes_subject_id_fkey(name)')
                 .eq('status', 'PUBLISHED')
                 .order('created_at', { ascending: false });
             quizzes = fallback.data;
@@ -2402,7 +2406,7 @@ async function fetchPublishedQuizzesFromSupabase() {
             renderQuizCards(quizzes);
         }
 
-        hideCompletedQuizzes();
+        markCompletedQuizzes();
     } catch (e) {
         console.warn('Failed to fetch published quizzes from Supabase:', e);
         filterQuizzes();
@@ -2412,6 +2416,7 @@ async function fetchPublishedQuizzesFromSupabase() {
 async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
+    activeQuizId = quiz.id;
 
     try {
         const { data: attemptId, error: startErr } = await client.rpc('fn_start_quiz_attempt', {
@@ -2445,18 +2450,20 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
             });
             openQuestGame(quiz.title, mappedQ.length, subjectName, quiz.default_max_chances || 3, teacherName, attemptId, mappedQ);
         } else if (quiz.game_type === 'MATCH_FOLLOWING') {
-            const firstQ = questions[0] || {};
-            const payload = firstQ.game_payload || {};
-            const prompts = payload.prompts || (payload.pairs ? payload.pairs.map(p => ({ id: p.id, prompt: p.prompt })) : []);
-            const choices = payload.choices || (payload.pairs ? payload.pairs.map(p => ({ id: p.id, choice: p.correct_match })) : []);
-            const mappedPairs = prompts.map((p, idx) => {
-                const c = choices.find(ch => ch.id === p.id) || choices[idx] || {};
-                return {
-                    dbQuestionId: firstQ.id,
-                    id: p.id || `p${idx + 1}`,
-                    text: p.prompt || `Prompt ${idx + 1}`,
-                    answer: c.choice || `Choice ${idx + 1}`
-                };
+            const mappedPairs = [];
+            questions.forEach(q => {
+                const payload = q.game_payload || {};
+                const prompts = payload.prompts || [];
+                const choices = payload.choices || [];
+                prompts.forEach((p, idx) => {
+                    const c = choices.find(ch => ch.id === p.id) || choices[idx] || {};
+                    mappedPairs.push({
+                        dbQuestionId: q.id,
+                        payloadId: p.id,
+                        text: p.prompt || q.question_text || `Prompt ${mappedPairs.length + 1}`,
+                        answer: c.choice || `Choice ${mappedPairs.length + 1}`
+                    });
+                });
             });
             openMatchGame(quiz.title, subjectName, teacherName, quiz.default_max_chances || 3, attemptId, mappedPairs);
         } else if (quiz.game_type === 'FILL_BLANKS') {
@@ -2464,9 +2471,11 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
                 const payload = q.game_payload || {};
                 const tokens = payload.sentence_tokens || [q.question_text];
                 const options = payload.options || ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
+                const hasBlank = Array.isArray(tokens) && tokens.length === 2;
                 return {
                     dbQuestionId: q.id,
-                    statement: Array.isArray(tokens) ? tokens.join(' ') : q.question_text,
+                    statement: hasBlank ? tokens.join('______') : (Array.isArray(tokens) ? tokens.join(' ') : q.question_text),
+                    blankAnswer: hasBlank ? '______' : '',
                     options: options
                 };
             });

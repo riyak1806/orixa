@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HOD Dashboard | Computer Department | ORIXA</title>
+    <title>HOD Dashboard | ORIXA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -192,6 +192,17 @@
             font-weight: 700;
         }
 
+        .year-checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+        }
+
+        .year-checkbox-group .cartoon-checkbox-container {
+            position: relative;
+            padding: 6px 4px;
+        }
+
         .cartoon-select {
             width: 100%;
             height: var(--t-input-height);
@@ -278,7 +289,7 @@
                 <div class="hod-title-group">
                     <h1>
                         <span class="hod-academic-year">Academic Year 2024–2025</span>
-                        <span>Computer Engineering Department HOD Dashboard</span>
+                        <span id="hod-dashboard-title">Department HOD Dashboard</span>
                     </h1>
                 </div>
             </div>
@@ -319,7 +330,7 @@
                         </svg>
                     </div>
                 </div>
-                <div class="stat-caption">Enrolled Computer Dept Students</div>
+                <div class="stat-caption" id="hod-students-caption">Enrolled Department Students</div>
             </div>
 
             <div class="stat-card is-green cartoon-panel">
@@ -358,12 +369,12 @@
             <div class="panel-header">
                 <div>
                     <p class="panel-kicker">Department Analytics</p>
-                    <h3 id="hod-perf-heading">Computer Department Performance Analytics</h3>
+                    <h3 id="hod-perf-heading">Department Performance Analytics</h3>
                 </div>
                 <span id="hod-performance-count" style="font-family: var(--font-header); font-size: 0.85rem; color: #78909c;"></span>
             </div>
 
-            <!-- Multi-parameter Filter Toolbar for Computer Department -->
+            <!-- Multi-parameter Filter Toolbar for Department -->
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--t-space-1); padding: var(--t-space-2); background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; margin-bottom: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
                 <select id="hod-filter-teacher" class="cartoon-select" style="flex: 1; min-width: 140px; height: 42px; font-family: var(--font-header); font-size: 0.85rem;" aria-label="Filter by teacher">
                     <option value="ALL">All Department Teachers</option>
@@ -550,10 +561,13 @@
                                         </svg>
                                         <span>CLASSES / YEARS TAUGHT</span>
                                     </label>
-                                    <div class="input-shell">
-                                        <input type="text" id="teacher-years" name="teacher_years" class="cartoon-input"
-                                            placeholder="e.g. 2nd Year, 3rd Year" autocomplete="off">
+                                    <div class="year-checkbox-group" role="group" aria-label="Classes / years taught">
+                                        <label class="cartoon-checkbox-container"><input type="checkbox" name="teacher_year_option" value="1st Year"><span class="custom-checkbox"></span><span class="checkbox-text">1st Year</span></label>
+                                        <label class="cartoon-checkbox-container"><input type="checkbox" name="teacher_year_option" value="2nd Year"><span class="custom-checkbox"></span><span class="checkbox-text">2nd Year</span></label>
+                                        <label class="cartoon-checkbox-container"><input type="checkbox" name="teacher_year_option" value="3rd Year"><span class="custom-checkbox"></span><span class="checkbox-text">3rd Year</span></label>
+                                        <label class="cartoon-checkbox-container"><input type="checkbox" name="teacher_year_option" value="4th Year"><span class="custom-checkbox"></span><span class="checkbox-text">4th Year</span></label>
                                     </div>
+                                    <input type="hidden" id="teacher-years" name="teacher_years">
                                     <span class="field-error" id="teacher-years-error"></span>
                                 </div>
 

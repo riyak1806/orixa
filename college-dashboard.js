@@ -224,18 +224,10 @@ async function loadCollegeDataFromSupabase() {
             const deptIds = depts.map(d => d.id);
             let hodMap = {};
 
-            // Retrieve locally cached HOD mappings
-            let storedHods = {};
-            try {
-                storedHods = JSON.parse(localStorage.getItem('orixa_hod_mappings') || '{}');
-            } catch (e) {
-                console.warn('[CollegeDash] Could not read stored HOD mappings:', e);
-            }
-
             if (deptIds.length > 0) {
                 const { data: hodAssignments, error: hodErr } = await client
                     .from('hod_assignments')
-                    .select('department_id, profile_id, is_active, profiles(full_name, login_id)')
+                    .select('department_id, profile_id, is_active, profiles!hod_assignments_profile_id_fkey(full_name, login_id)')
                     .in('department_id', deptIds)
                     .eq('is_active', true);
 
@@ -251,7 +243,7 @@ async function loadCollegeDataFromSupabase() {
             }
 
             MOCK_COLLEGE_DATA.departments = depts.map(d => {
-                const hod = hodMap[d.id] || (window._mockHods && window._mockHods[d.id]) || storedHods[d.id] || storedHods[d.name] || storedHods[d.code];
+                const hod = hodMap[d.id];
                 return {
                     id: d.id,
                     name: d.name,
@@ -271,11 +263,11 @@ async function loadCollegeDataFromSupabase() {
             .select(`
                 id, status, final_accuracy_pct, final_earned_xp,
                 profiles!quiz_attempts_student_id_fkey(full_name, login_id, department_id,
-                    departments(name),
-                    student_profiles(academic_level_id, academic_levels(display_name))
+                    departments!profiles_department_id_fkey(name),
+                    student_profiles!student_profiles_profile_id_fkey(academic_level_id, academic_levels(display_name))
                 ),
                 quizzes(title, subject_id, teacher_id,
-                    subjects(name),
+                    subjects!quizzes_subject_id_fkey(name),
                     profiles!quizzes_teacher_id_fkey(full_name)
                 )
             `)
@@ -344,21 +336,7 @@ async function saveDepartmentToSupabase(name, hodName, hodEmpId, hodPassword) {
     }
 
     if (hodName && hodEmpId) {
-        // Save to persistent storage so HOD Name & Emp ID are always visible
-        try {
-            const stored = JSON.parse(localStorage.getItem('orixa_hod_mappings') || '{}');
-            stored[data.id] = { full_name: hodName, login_id: hodEmpId };
-            stored[name.trim()] = { full_name: hodName, login_id: hodEmpId };
-            if (code) stored[code] = { full_name: hodName, login_id: hodEmpId };
-            localStorage.setItem('orixa_hod_mappings', JSON.stringify(stored));
-        } catch (e) {
-            console.warn('[CollegeDash] Could not persist HOD locally:', e);
-        }
-
-        window._mockHods = window._mockHods || {};
-        window._mockHods[data.id] = { full_name: hodName, login_id: hodEmpId };
-
-        // Try to provision HOD via RPC with custom or default password
+        // Provision the HOD; the department and HOD are created together or not at all
         const finalPassword = hodPassword && hodPassword.trim() ? hodPassword.trim() : 'Password123!';
         const { error: hodError } = await client.rpc('fn_admin_provision_hod', {
             p_full_name: hodName,
@@ -369,7 +347,9 @@ async function saveDepartmentToSupabase(name, hodName, hodEmpId, hodPassword) {
 
         if (hodError) {
             console.error('HOD RPC provisioning error:', hodError);
-            return { success: false, error: `Department created, but HOD account creation failed in Supabase: ${hodError.message}` };
+            const { error: rollbackErr } = await client.from('departments').delete().eq('id', data.id);
+            if (rollbackErr) console.error('Could not roll back department:', rollbackErr);
+            return { success: false, error: `HOD account could not be created, so the department was not saved: ${hodError.message}` };
         }
     }
 

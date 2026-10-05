@@ -496,7 +496,7 @@ function initHodLoginForm() {
                 return;
             }
 
-            setFormMessage('Opening Computer Department HOD Dashboard...', 'success');
+            setFormMessage('Opening HOD Dashboard...', 'success');
             window.setTimeout(() => {
                 window.location.href = 'hod-dashboard.html';
             }, 400);

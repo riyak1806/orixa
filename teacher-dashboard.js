@@ -277,8 +277,8 @@ function renderTeacherProfile() {
                         <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: var(--t-space-1);">Account Info</h4>
                         <div style="display: flex; flex-direction: column; gap: var(--t-space-1); font-family: var(--font-body); font-size: 0.95rem;">
                             <div>
-                                <span style="font-weight: 700; color: #78909c;">Email:</span>
-                                <span style="color: var(--border-dark);">${escapeHTML(teacher.email)}</span>
+                                <span style="font-weight: 700; color: #78909c;">Employee ID:</span>
+                                <span style="color: var(--border-dark);">${escapeHTML(teacher.employeeId || '—')}</span>
                             </div>
                             <div>
                                 <span style="font-weight: 700; color: #78909c;">Department:</span>
@@ -300,6 +300,7 @@ function renderTeacherProfile() {
                     <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
                         <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: var(--t-space-1);">Subjects Taught</h4>
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${teacher.subjects.length === 0 ? '<span style="font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">No subjects assigned yet. Your HOD assigns them.</span>' : ''}
                             ${teacher.subjects.map(subject => `
                                 <span style="font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; background: var(--color-yellow); border: 2px solid var(--border-dark); border-radius: 9999px; padding: 4px 12px; color: var(--border-dark); display: inline-flex; align-items: center; justify-content: center;">
                                     ${escapeHTML(subject)}
@@ -311,6 +312,7 @@ function renderTeacherProfile() {
                     <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
                         <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: var(--t-space-1);">Classes Taught</h4>
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${teacher.classes.length === 0 ? '<span style="font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">No classes assigned yet. Your HOD assigns them.</span>' : ''}
                             ${teacher.classes.map(cl => `
                                 <span style="font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; background: var(--color-blue); border: 2px solid var(--border-dark); border-radius: 9999px; padding: 4px 12px; color: var(--border-dark); display: inline-flex; align-items: center; justify-content: center;">
                                     ${escapeHTML(cl)}
@@ -2708,20 +2710,6 @@ window.editQuizDetails = function(id) {
                         </div>
                     </div>
                     <div class="form-field" style="display: flex; flex-direction: column; gap: var(--t-space-1);">
-                        <label class="field-label" for="edit-quiz-subject">SUBJECT</label>
-                        <select id="edit-quiz-subject" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                            <option value="Science" ${quiz.subject === 'Science' ? 'selected' : ''}>Science</option>
-                            <option value="Maths" ${quiz.subject === 'Maths' ? 'selected' : ''}>Maths</option>
-                            <option value="History" ${quiz.subject === 'History' ? 'selected' : ''}>History</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label class="field-label" for="edit-quiz-questions">QUESTIONS COUNT</label>
-                        <div class="input-shell">
-                            <input type="number" id="edit-quiz-questions" class="cartoon-input" value="${quiz.questions}" min="1" max="100" required>
-                        </div>
-                    </div>
-                    <div class="form-field" style="display: flex; flex-direction: column; gap: var(--t-space-1);">
                         <label class="field-label" for="edit-quiz-status">STATUS</label>
                         <select id="edit-quiz-status" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
                             <option value="Live" ${quiz.status === 'Live' ? 'selected' : ''}>Live</option>
@@ -2813,16 +2801,12 @@ window.performDeleteQuiz = async function(id) {
     const targetQuiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
     if (targetQuiz) {
         if (window.OrixaAuth && window.OrixaAuth.client) {
-            const { error } = await window.OrixaAuth.client
-                .from('quizzes')
-                .delete()
-                .eq('id', targetQuiz.id);
+            // Removes the quiz together with its student attempts and answers
+            const { error } = await window.OrixaAuth.client.rpc('fn_delete_quiz', { p_quiz_id: targetQuiz.id });
 
             if (error) {
                 console.error('Error deleting quiz from Supabase:', error);
-                alert(error.code === '23503'
-                    ? 'This quiz already has student attempts and cannot be deleted. Close it instead.'
-                    : 'Could not delete quiz: ' + error.message);
+                alert('Could not delete quiz: ' + error.message);
             } else {
                 await fetchTeacherQuizzesFromSupabase();
             }
@@ -5459,11 +5443,11 @@ function renderSettingsPage() {
                         </div>
 
                         <div class="form-field">
-                            <label class="field-label" for="settings-profile-subjects">SUBJECTS TAUGHT * (COMMA SEPARATED)</label>
+                            <label class="field-label" for="settings-profile-subjects">SUBJECTS TAUGHT</label>
                             <div class="input-shell">
-                                <input type="text" id="settings-profile-subjects" class="cartoon-input" value="${escapeHTML(subjectsStr)}" required>
+                                <input type="text" id="settings-profile-subjects" class="cartoon-input" value="${escapeHTML(subjectsStr)}" placeholder="No subjects assigned yet" readonly aria-describedby="settings-subjects-hint" style="cursor: default;">
                             </div>
-                            <span class="field-error" id="err-settings-subjects"></span>
+                            <span id="settings-subjects-hint" style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a;">Assigned by your HOD when your faculty account was created.</span>
                         </div>
                     </div>
 
@@ -5802,12 +5786,11 @@ function setupSettingsListeners() {
             const errName = document.getElementById('err-settings-name');
             const errEmail = document.getElementById('err-settings-email');
             const errDept = document.getElementById('err-settings-dept');
-            const errSubjects = document.getElementById('err-settings-subjects');
             const errDuration = document.getElementById('err-settings-duration');
             const errQuestions = document.getElementById('err-settings-questions');
 
             // Reset errors
-            [errName, errEmail, errDept, errSubjects, errDuration, errQuestions].forEach(el => {
+            [errName, errEmail, errDept, errDuration, errQuestions].forEach(el => {
                 if (el) el.textContent = '';
             });
             dynamicPage.querySelectorAll('.cartoon-input').forEach(el => el.classList.remove('input-invalid'));
@@ -5817,7 +5800,6 @@ function setupSettingsListeners() {
             const nameVal = document.getElementById('settings-profile-name').value.trim();
             const emailVal = document.getElementById('settings-profile-email').value.trim();
             const deptVal = document.getElementById('settings-profile-dept').value.trim();
-            const subjectsVal = document.getElementById('settings-profile-subjects').value.trim();
 
             const themeVal = document.getElementById('settings-appearance-theme').value;
             const animVal = document.getElementById('settings-appearance-animation').value;
@@ -5857,12 +5839,6 @@ function setupSettingsListeners() {
                 isValid = false;
             }
 
-            if (!subjectsVal) {
-                document.getElementById('settings-profile-subjects').classList.add('input-invalid');
-                if (errSubjects) errSubjects.textContent = 'Subjects Taught is required.';
-                isValid = false;
-            }
-
             if (isNaN(quizDurationVal) || quizDurationVal < 1) {
                 document.getElementById('settings-quiz-duration').classList.add('input-invalid');
                 if (errDuration) errDuration.textContent = 'Please enter a valid duration greater than 0.';
@@ -5887,7 +5863,6 @@ function setupSettingsListeners() {
             MOCK_DATA.teacher.name = nameVal;
             MOCK_DATA.teacher.email = emailVal;
             MOCK_DATA.teacher.department = deptVal;
-            MOCK_DATA.teacher.subjects = subjectsVal.split(',').map(s => s.trim()).filter(Boolean);
 
             MOCK_DATA.settings.appearance.theme = themeVal;
             MOCK_DATA.settings.appearance.animation = animVal;
@@ -6405,11 +6380,13 @@ async function initCurrentTeacherData() {
     }
 
     // Fetch active teacher assignments
-    const { data: assignments } = await client
+    const { data: assignments, error: assignmentsError } = await client
         .from('teacher_subject_class_assignments')
         .select('*, subjects!teacher_subject_class_assignments_subject_id_fkey(name), academic_levels!teacher_subject_class_assignments_academic_level_id_fkey(display_name)')
         .eq('teacher_id', profile.id)
         .eq('is_active', true);
+
+    if (assignmentsError) console.error('Error fetching teacher assignments:', assignmentsError);
 
     if (assignments && assignments.length > 0) {
         MOCK_DATA.teacher.subjects = Array.from(new Set(assignments.map(a => a.subjects ? a.subjects.name : null).filter(Boolean)));

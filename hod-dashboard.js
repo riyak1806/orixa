@@ -8,7 +8,7 @@ const HOD_MOCK_DATA = {
         name: '',
         hodName: '',
         hodEmpId: '',
-        academicYear: '2024–2025'
+        academicYear: ''
     },
     teachers: [],
     students: [],
@@ -467,8 +467,7 @@ function initAddStudentForm() {
             return;
         }
 
-        const newStudent = { id: studentId, name, studentId, year, subject, teacher };
-        HOD_MOCK_DATA.students.push(newStudent);
+        recordStudentAssignment({ id: result.userId, name, studentId, year, subject, teacher });
 
         form.reset();
         [nameInput, idInput, yearSelect, subjectSelect, teacherSelect].forEach(setFieldValid);
@@ -1190,8 +1189,8 @@ function parseAndValidateStudentRows(rawRows) {
         startIndex = 1;
     }
 
-    const existingStudentIds = new Set(HOD_MOCK_DATA.students.map(s => String(s.studentId).trim().toLowerCase()));
-    const fileStudentIds = new Set();
+    // Rows already seen in this file, by student ID: { name, year, subjects }
+    const fileStudents = new Map();
 
     parsedStudentRecords = [];
 
@@ -1214,13 +1213,28 @@ function parseAndValidateStudentRows(rawRows) {
         if (!studentId) {
             errors.push('Student ID is empty');
         } else {
+            // A student may appear on several rows (one per subject), as long as the rows agree
             const idLower = studentId.toLowerCase();
-            if (existingStudentIds.has(idLower)) {
-                errors.push(`Student ID "${studentId}" already exists`);
-            } else if (fileStudentIds.has(idLower)) {
-                errors.push(`Duplicate Student ID "${studentId}" in file`);
+            const subjectLower = subject.toLowerCase();
+            const registered = findHodStudent(studentId);
+            const earlierRow = fileStudents.get(idLower);
+
+            if (registered && year && registered.year.toLowerCase() !== year.toLowerCase()) {
+                errors.push(`Student ID "${studentId}" is already registered in ${registered.year}`);
+            }
+            if (registered && subject && splitCommaList(registered.subject).some(x => x.toLowerCase() === subjectLower)) {
+                errors.push(`Student ID "${studentId}" already takes "${subject}"`);
+            }
+            if (earlierRow) {
+                if (earlierRow.name.toLowerCase() !== name.toLowerCase() || earlierRow.year.toLowerCase() !== year.toLowerCase()) {
+                    errors.push(`Student ID "${studentId}" has a different name or year on another row`);
+                }
+                if (subject && earlierRow.subjects.has(subjectLower)) {
+                    errors.push(`Student ID "${studentId}" lists "${subject}" more than once`);
+                }
+                if (subject) earlierRow.subjects.add(subjectLower);
             } else {
-                fileStudentIds.add(idLower);
+                fileStudents.set(idLower, { name, year, subjects: new Set(subject ? [subjectLower] : []) });
             }
         }
 
@@ -1362,23 +1376,31 @@ async function confirmStudentImport() {
     const results = [];
     const BATCH_SIZE = 5;
     
-    for (let i = 0; i < validRecords.length; i += BATCH_SIZE) {
-        const batch = validRecords.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(batch.map(async r => {
-            const levelCode = yearCodeMap[r.year] || r.year;
-            const res = await saveStudentToSupabase(r.name, r.studentId, levelCode, r.subject, r.teacher, r.year, r.password);
-            return { record: r, result: res };
-        }));
-        
-        for (const { record: r, result: res } of batchResults) {
-            results.push({ record: r, result: res });
-            if (res.success) {
-                HOD_MOCK_DATA.students.push({
-                    id: res.userId, name: r.name, studentId: r.studentId,
-                    year: r.year, subject: r.subject, teacher: r.teacher
-                });
+    // One student can have several rows (one per subject): keep a student's rows in order so the
+    // account is created by the first row and the later rows only add subjects.
+    const rowsByStudent = new Map();
+    validRecords.forEach(r => {
+        const key = r.studentId.trim().toLowerCase();
+        if (!rowsByStudent.has(key)) rowsByStudent.set(key, []);
+        rowsByStudent.get(key).push(r);
+    });
+    const studentGroups = Array.from(rowsByStudent.values());
+
+    for (let i = 0; i < studentGroups.length; i += BATCH_SIZE) {
+        const batch = studentGroups.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async group => {
+            for (const r of group) {
+                const levelCode = yearCodeMap[r.year] || r.year;
+                const res = await saveStudentToSupabase(r.name, r.studentId, levelCode, r.subject, r.teacher, r.year, r.password);
+                results.push({ record: r, result: res });
+                if (res.success) {
+                    recordStudentAssignment({
+                        id: res.userId, name: r.name, studentId: r.studentId,
+                        year: r.year, subject: r.subject, teacher: r.teacher
+                    });
+                }
             }
-        }
+        }));
     }
 
     if (confirmBtn) { confirmBtn.disabled = false; }
@@ -1435,6 +1457,35 @@ function getHodReferenceData(deptId, collegeId) {
     return hodReferenceDataPromise;
 }
 
+// PostgREST returns a one-to-one embed (e.g. a student's profile) as an object and a one-to-many embed as an array
+function firstRelated(value) {
+    return Array.isArray(value) ? value[0] : value;
+}
+
+function findHodStudent(studentId) {
+    const key = String(studentId || '').trim().toLowerCase();
+    return HOD_MOCK_DATA.students.find(s => String(s.studentId).trim().toLowerCase() === key) || null;
+}
+
+function splitCommaList(value) {
+    return String(value || '').split(',').map(v => v.trim()).filter(v => v && v !== '—');
+}
+
+// A student can take many subjects, each with its own teacher: add to the existing row or create it.
+function recordStudentAssignment({ id, name, studentId, year, subject, teacher }) {
+    const existing = findHodStudent(studentId);
+    if (!existing) {
+        HOD_MOCK_DATA.students.push({ id, name, studentId, year, subject, teacher });
+        return;
+    }
+    const subjects = splitCommaList(existing.subject);
+    const teachers = splitCommaList(existing.teacher);
+    if (!subjects.some(x => x.toLowerCase() === String(subject).toLowerCase())) subjects.push(subject);
+    if (!teachers.some(x => x.toLowerCase() === String(teacher).toLowerCase())) teachers.push(teacher);
+    existing.subject = subjects.join(', ');
+    existing.teacher = teachers.join(', ');
+}
+
 // Matches "Second Year", "SE", "2" or "2nd year" to an academic level.
 function findAcademicLevel(levels, text) {
     const t = String(text || '').trim().toLowerCase();
@@ -1445,20 +1496,49 @@ function findAcademicLevel(levels, text) {
     return Number.isNaN(n) ? null : (levels.find(l => l.rank_order === n) || null);
 }
 
-// HODs own their department's subjects, so a subject that does not exist yet is created.
-async function ensureDepartmentSubject(ref, deptId, name) {
-    const existing = ref.subjects.find(s => s.name?.toLowerCase() === name.toLowerCase());
-    if (existing) return existing;
+// Subjects belong to the department and are shared by every teacher who teaches them.
+// A subject that does not exist yet is created once, even when several teachers
+// in the same upload batch ask for it at the same time.
+const pendingSubjectCreations = new Map();
 
-    const code = name.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'SUBJECT';
-    const { data, error } = await window.OrixaAuth.client
-        .from('subjects')
-        .insert({ department_id: deptId, code, name })
-        .select('id, name')
-        .single();
-    if (error) throw new Error(`Could not create subject "${name}": ${error.message}`);
-    ref.subjects.push(data);
-    return data;
+async function ensureDepartmentSubject(ref, deptId, name) {
+    const key = name.trim().toLowerCase();
+    const existing = ref.subjects.find(s => s.name?.toLowerCase() === key);
+    if (existing) return existing;
+    if (pendingSubjectCreations.has(key)) return pendingSubjectCreations.get(key);
+
+    const creation = (async () => {
+        const client = window.OrixaAuth.client;
+        const code = name.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'SUBJECT';
+
+        const { data, error } = await client
+            .from('subjects')
+            .insert({ department_id: deptId, code, name: name.trim() })
+            .select('id, name')
+            .single();
+
+        let subject = data;
+        if (error) {
+            // already created (earlier upload or another tab): use that row
+            const { data: found } = await client
+                .from('subjects')
+                .select('id, name')
+                .eq('department_id', deptId)
+                .eq('code', code)
+                .maybeSingle();
+            if (!found) throw new Error(`Could not create subject "${name}": ${error.message}`);
+            subject = found;
+        }
+        if (!ref.subjects.some(s => s.id === subject.id)) ref.subjects.push(subject);
+        return subject;
+    })();
+
+    pendingSubjectCreations.set(key, creation);
+    try {
+        return await creation;
+    } finally {
+        pendingSubjectCreations.delete(key);
+    }
 }
 
 async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = [], password = '') {
@@ -1553,8 +1633,18 @@ async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = [
                                         });
                                     }
                                 }
-                                if (inserts.length > 0) {
-                                    const { error: insErr } = await client.from('teacher_subject_class_assignments').insert(inserts);
+                                // skip assignments the teacher already has (re-running an upload)
+                                const { data: existingAssignments } = await client
+                                    .from('teacher_subject_class_assignments')
+                                    .select('subject_id, academic_level_id')
+                                    .eq('teacher_id', teacherObj.id)
+                                    .eq('academic_session_id', sessionId)
+                                    .eq('is_active', true);
+                                const have = new Set((existingAssignments || []).map(a => `${a.subject_id}|${a.academic_level_id}`));
+                                const newInserts = inserts.filter(i => !have.has(`${i.subject_id}|${i.academic_level_id}`));
+
+                                if (newInserts.length > 0) {
+                                    const { error: insErr } = await client.from('teacher_subject_class_assignments').insert(newInserts);
                                     if (insErr) {
                                         console.error('Failed to save teacher assignments to DB:', insErr);
                                         return { success: false, error: `Teacher account saved, but the subject/year assignment failed: ${insErr.message}` };
@@ -1605,6 +1695,16 @@ async function saveStudentToSupabase(fullName, loginId, levelCode, subject = '�
         } catch (e) {}
     }
 
+    const existingStudent = findHodStudent(loginId);
+    if (existingStudent) {
+        if (existingStudent.year && existingStudent.year !== '—' && String(year).toLowerCase() !== existingStudent.year.toLowerCase()) {
+            return { success: false, error: `Student ${loginId} is already registered in ${existingStudent.year}.` };
+        }
+        if (splitCommaList(existingStudent.subject).some(x => x.toLowerCase() === String(subject).toLowerCase())) {
+            return { success: false, error: `Student ${loginId} already takes "${subject}".` };
+        }
+    }
+
     const studentObj = {
         id: 'S-' + (loginId || Date.now()),
         name: fullName,
@@ -1632,14 +1732,17 @@ async function saveStudentToSupabase(fullName, loginId, levelCode, subject = '�
 
         const finalPassword = password && password.trim() ? password.trim() : 'Password123!';
         try {
-            const { data, error } = await client.rpc('fn_admin_provision_student', {
-                p_full_name: fullName,
-                p_login_id: loginId,
-                p_password: finalPassword,
-                p_department_id: deptId,
-                p_academic_level_id: academicLevelId,
-                p_roll_number: loginId
-            });
+            // An existing student only gets another subject; the account and password stay as they are
+            const { data, error } = existingStudent
+                ? { data: { user_id: existingStudent.id }, error: null }
+                : await client.rpc('fn_admin_provision_student', {
+                    p_full_name: fullName,
+                    p_login_id: loginId,
+                    p_password: finalPassword,
+                    p_department_id: deptId,
+                    p_academic_level_id: academicLevelId,
+                    p_roll_number: loginId
+                });
 
             if (error) {
                 console.error('DB RPC provision student error:', error);
@@ -1768,7 +1871,7 @@ async function loadHodDataFromSupabase() {
                 
             if (teachers) {
                 HOD_MOCK_DATA.teachers = teachers.map(t => {
-                    const empId = t.login_id || t.teacher_profiles?.[0]?.employee_id || t.id;
+                    const empId = t.login_id || firstRelated(t.teacher_profiles)?.employee_id || t.id;
                     const activeAssignments = (t.teacher_subject_class_assignments || []).filter(a => a.is_active);
                     const subjects = Array.from(new Set(activeAssignments.map(a => a.subjects?.name).filter(Boolean)));
                     const years = Array.from(new Set(activeAssignments.map(a => a.academic_levels?.display_name).filter(Boolean)));
@@ -1824,7 +1927,7 @@ async function loadHodDataFromSupabase() {
                 
             if (students) {
                 HOD_MOCK_DATA.students = students.map(s => {
-                    const sp = s.student_profiles?.[0] || {};
+                    const sp = firstRelated(s.student_profiles) || {};
                     const sId = s.login_id || sp.student_id || s.id;
                     const activeAssignments = (s.student_subject_assignments || []).filter(a => a.is_active);
                     const subjects = Array.from(new Set(activeAssignments.map(a => a.subjects?.name).filter(Boolean))).join(', ') || '—';
@@ -1924,6 +2027,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await loadHodDataFromSupabase();
+
+    const academicYear = await window.OrixaAuth.getCurrentAcademicYear();
+    const yearBadge = document.getElementById('hod-academic-year');
+    if (yearBadge && academicYear) {
+        yearBadge.textContent = `Academic Year ${window.OrixaAuth.formatAcademicYear(academicYear.code)}`;
+    }
 
     renderHodStats();
     renderTeacherList();

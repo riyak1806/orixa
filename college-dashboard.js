@@ -4,7 +4,7 @@
    ========================================================================== */
 
 const MOCK_COLLEGE_DATA = {
-    collegeInfo: { id: '', name: '', adminName: '', academicYear: '2024–2025' },
+    collegeInfo: { id: '', name: '', adminName: '', academicYear: '' },
     departments: [],
     studentPerformance: []
 };
@@ -287,7 +287,7 @@ async function loadCollegeDataFromSupabase() {
                         id: sid,
                         department: a.profiles?.departments?.name || '—',
                         teacher: a.quizzes?.profiles?.full_name || '—',
-                        year: a.profiles?.student_profiles?.[0]?.academic_levels?.display_name || '—',
+                        year: (Array.isArray(a.profiles?.student_profiles) ? a.profiles.student_profiles[0] : a.profiles?.student_profiles)?.academic_levels?.display_name || '—',
                         subject: a.quizzes?.subjects?.name || '—',
                         quizzesCompleted: 0,
                         totalAccuracy: 0
@@ -354,6 +354,86 @@ async function saveDepartmentToSupabase(name, hodName, hodEmpId, hodPassword) {
     }
 
     return { success: true, data };
+}
+
+/* ==========================================================================
+   ACADEMIC YEAR
+   ========================================================================== */
+
+function showAcademicYear(code) {
+    const badge = document.getElementById('academic-year-badge');
+    if (!badge) return;
+    badge.textContent = code ? `Academic Year ${window.OrixaAuth.formatAcademicYear(code)}` : 'Set Academic Year';
+}
+
+function initAcademicYearModal() {
+    const badge = document.getElementById('academic-year-badge');
+    const modal = document.getElementById('academic-year-modal');
+    const form = document.getElementById('academic-year-form');
+    const select = document.getElementById('academic-year-select');
+    const closeBtn = document.getElementById('close-academic-year-btn');
+    const saveBtn = document.getElementById('academic-year-save-btn');
+    const errorEl = document.getElementById('academic-year-error');
+    const msgEl = document.getElementById('academic-year-msg');
+    if (!badge || !modal || !form || !select) return;
+
+    // Academic years start in June: from today's date, offer last year, this year and next year
+    const today = new Date();
+    const currentStart = today.getMonth() >= 5 ? today.getFullYear() : today.getFullYear() - 1;
+    const options = [currentStart - 1, currentStart, currentStart + 1].map(y => `${y}-${y + 1}`);
+
+    const open = () => {
+        const current = MOCK_COLLEGE_DATA.collegeInfo.academicYear;
+        const list = current && !options.includes(current) ? [current, ...options] : options;
+        select.innerHTML = list.map(code =>
+            `<option value="${code}">${window.OrixaAuth.formatAcademicYear(code)}</option>`).join('');
+        select.value = current || `${currentStart}-${currentStart + 1}`;
+        errorEl.textContent = '';
+        msgEl.textContent = '';
+        msgEl.className = 'teacher-form-msg';
+        modal.style.display = 'flex';
+        select.focus();
+    };
+    const close = () => { modal.style.display = 'none'; badge.focus(); };
+
+    badge.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.style.display !== 'none') close(); });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const code = select.value;
+        const startYear = parseInt(code, 10);
+        if (!code || Number.isNaN(startYear)) {
+            errorEl.textContent = 'Please choose an academic year.';
+            return;
+        }
+        errorEl.textContent = '';
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING…';
+        const { error } = await window.OrixaAuth.client.rpc('fn_set_current_academic_year', {
+            p_code: code,
+            p_start_date: `${startYear}-06-01`,
+            p_end_date: `${startYear + 1}-05-31`
+        });
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'SAVE ACADEMIC YEAR';
+
+        if (error) {
+            console.error('Academic year error:', error);
+            msgEl.textContent = `Error: ${error.message}`;
+            msgEl.className = 'teacher-form-msg error';
+            return;
+        }
+
+        MOCK_COLLEGE_DATA.collegeInfo.academicYear = code;
+        showAcademicYear(code);
+        msgEl.textContent = 'Academic year updated.';
+        msgEl.className = 'teacher-form-msg success';
+        setTimeout(close, 900);
+    });
 }
 
 /* ==========================================================================
@@ -592,6 +672,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await loadCollegeDataFromSupabase();
+
+    const academicYear = await window.OrixaAuth.getCurrentAcademicYear();
+    MOCK_COLLEGE_DATA.collegeInfo.academicYear = academicYear ? academicYear.code : '';
+    showAcademicYear(MOCK_COLLEGE_DATA.collegeInfo.academicYear);
+    initAcademicYearModal();
 
     renderCollegeStats();
     renderDepartmentList();

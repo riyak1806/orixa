@@ -158,6 +158,30 @@
             }
         }
 
+        // "2026-2027" -> "2026–2027" for display
+        formatAcademicYear(code) {
+            return String(code || '').replace(/\s*-\s*/, '\u2013');
+        }
+
+        // The college's current academic session (code such as "2026-2027"), or null
+        async getCurrentAcademicYear() {
+            const client = this.client;
+            const profile = await this.getCurrentProfile();
+            if (!client || !profile || !profile.college_id) return null;
+
+            const { data, error } = await client
+                .from('academic_sessions')
+                .select('id, code, start_date, end_date')
+                .eq('college_id', profile.college_id)
+                .eq('is_current', true)
+                .maybeSingle();
+            if (error) {
+                console.error('Error fetching current academic year:', error);
+                return null;
+            }
+            return data;
+        }
+
         async getCurrentProfile() {
             if (this._cachedProfile) {
                 return this._cachedProfile;

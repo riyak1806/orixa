@@ -510,7 +510,7 @@
 
             <div class="topbar-actions">
                 <button class="profile-chip" type="button" aria-label="Student profile" onclick="openStudentProfileModal()">
-                    <span class="profile-avatar" id="student-topbar-avatar" style="background-color: var(--color-green);">--</span>
+                    <span class="profile-avatar" id="student-topbar-avatar" data-user-avatar style="background-color: var(--color-green);">--</span>
                     <span class="profile-name" id="student-topbar-name">Loading...</span>
                 </button>
                 <button class="icon-button" style="background-color: var(--color-red);" title="Log Out" aria-label="Log out" onclick="confirmStudentLogout(event)">
@@ -640,7 +640,7 @@
             </header>
             <div class="orixa-modal-body">
                 <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 2px dashed rgba(26,26,36,0.15);">
-                    <div class="profile-avatar" id="student-modal-avatar" style="width: 54px; height: 54px; font-size: 1.2rem; background-color: var(--color-green);">--</div>
+                    <div class="profile-avatar" id="student-modal-avatar" data-user-avatar style="width: 54px; height: 54px; font-size: 1.2rem; background-color: var(--color-green);">--</div>
                     <div>
                         <h4 id="student-modal-name" style="margin: 0; font-family: var(--font-header); font-size: 1.3rem; color: var(--border-dark);">Loading...</h4>
                         <p id="student-modal-login-id" style="margin: 2px 0 0 0; font-family: var(--font-header); font-size: 0.85rem; color: var(--color-purple-dark);">--</p>

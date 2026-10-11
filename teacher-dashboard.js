@@ -207,6 +207,7 @@ function updateTopBarProfileChip() {
             profileAvatarText.textContent = getInitials(name);
         }
     }
+    if (window.OrixaAuth) window.OrixaAuth.paintAvatars();
 }
 
 function renderTeacherProfile() {
@@ -223,7 +224,7 @@ function renderTeacherProfile() {
             <!-- Header section of the profile -->
             <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: var(--t-space-2);">
                 <div style="display: flex; align-items: center; gap: var(--t-space-2);">
-                    <div class="profile-avatar" style="width: 64px; height: 64px; font-size: 1.5rem; border-width: 3px; font-family: var(--font-header); display: inline-flex; align-items: center; justify-content: center; background: var(--color-blue); border: 2px solid var(--border-dark); border-radius: 50%;">
+                    <div class="profile-avatar" data-user-avatar style="width: 64px; height: 64px; font-size: 1.5rem; border-width: 3px; font-family: var(--font-header); display: inline-flex; align-items: center; justify-content: center; background: var(--color-blue); border: 2px solid var(--border-dark); border-radius: 50%;">
                         ${getInitials(teacher.name)}
                     </div>
                     <div>
@@ -273,6 +274,11 @@ function renderTeacherProfile() {
 
         </div>
     `;
+
+    if (window.OrixaAuth) {
+        window.OrixaAuth.paintAvatars();
+        window.OrixaAuth.mountAvatarEditor(dynamicPage.querySelector('[data-user-avatar]'));
+    }
 }
 
 let createQuizState = null;

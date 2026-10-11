@@ -1229,6 +1229,8 @@ function initHodProfile() {
         document.getElementById('hod-profile-name').textContent = name;
         document.getElementById('hod-profile-avatar').textContent =
             name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '--';
+        window.OrixaAuth.paintAvatars();
+        window.OrixaAuth.mountAvatarEditor(document.getElementById('hod-profile-avatar'));
         document.getElementById('hod-profile-empid').textContent = profile.login_id || '\u2014';
         document.getElementById('hod-profile-dept').textContent = HOD_MOCK_DATA.deptInfo.name || '\u2014';
         const yearBadge = document.getElementById('hod-academic-year');

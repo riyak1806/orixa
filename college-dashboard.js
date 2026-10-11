@@ -707,6 +707,8 @@ function initCollegeProfile() {
         document.getElementById('college-profile-name').textContent = name;
         document.getElementById('college-profile-avatar').textContent =
             name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '--';
+        window.OrixaAuth.paintAvatars();
+        window.OrixaAuth.mountAvatarEditor(document.getElementById('college-profile-avatar'));
         document.getElementById('college-profile-login').textContent = profile.login_id || '\u2014';
         document.getElementById('college-profile-college').textContent = MOCK_COLLEGE_DATA.collegeInfo.name || '\u2014';
         const year = MOCK_COLLEGE_DATA.collegeInfo.academicYear;

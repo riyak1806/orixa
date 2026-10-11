@@ -2723,9 +2723,6 @@ function renderQuizList() {
                             <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editQuizDetails('${quiz.id}')" title="Edit Quiz">
                                 <span data-icon="clipboard"></span> Edit
                             </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteQuizConfirm('${quiz.id}')" title="Delete Quiz">
-                                <span data-icon="x"></span> Delete
-                            </button>
                         </div>
                     </article>
                 `;
@@ -2884,61 +2881,6 @@ window.saveQuizDetails = async function(event, id) {
             }
         }
 
-        closeOrixaModal();
-        renderQuizManagementPage();
-    }
-};
-
-window.deleteQuizConfirm = function(id) {
-    const quiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
-    if (!quiz) return;
-
-    const html = `
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: #ffebee;">
-                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Delete</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body">
-                <p style="font-size: 1.1rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
-                    Are you sure you want to delete <span style="color: var(--color-red-dark); font-family: var(--font-header);">${escapeHTML(quiz.title)}</span>?
-                </p>
-                <p style="font-size: 0.9rem; color: #546e7a;">
-                    This action will permanently delete the quiz and remove all student history. This action cannot be undone.
-                </p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteQuiz('${quiz.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Yes, Delete
-                </button>
-            </footer>
-        </div>
-    `;
-    openOrixaModal(html);
-};
-
-window.performDeleteQuiz = async function(id) {
-    const targetQuiz = MOCK_DATA.quizzes.find(q => String(q.id) === String(id));
-    if (targetQuiz) {
-        if (window.OrixaAuth && window.OrixaAuth.client) {
-            // Removes the quiz together with its student attempts and answers
-            const { error } = await window.OrixaAuth.client.rpc('fn_delete_quiz', { p_quiz_id: targetQuiz.id });
-
-            if (error) {
-                console.error('Error deleting quiz from Supabase:', error);
-                alert('Could not delete quiz: ' + error.message);
-            } else {
-                await fetchTeacherQuizzesFromSupabase();
-            }
-        } else {
-            const index = MOCK_DATA.quizzes.findIndex(q => String(q.id) === String(id));
-            if (index !== -1) MOCK_DATA.quizzes.splice(index, 1);
-        }
         closeOrixaModal();
         renderQuizManagementPage();
     }

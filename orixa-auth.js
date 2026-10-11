@@ -259,6 +259,139 @@
             return { isCopied: () => copiedValue !== null && copiedValue === newInput.value, reset };
         }
 
+        /* ----- profile pictures ----- */
+
+        // Paints every [data-user-avatar] element with the signed-in user's picture.
+        // Without a picture the element keeps (or gets back) its initials.
+        async paintAvatars() {
+            const profile = await this.getCurrentProfile();
+            const url = profile && profile.avatar_url ? profile.avatar_url : '';
+            document.querySelectorAll('[data-user-avatar]').forEach(el => {
+                if (url) {
+                    if (el.dataset.initialsBackup === undefined) el.dataset.initialsBackup = el.textContent;
+                    el.textContent = '';
+                    el.style.backgroundImage = `url("${url}")`;
+                    el.style.backgroundSize = 'cover';
+                    el.style.backgroundPosition = 'center';
+                    el.style.backgroundRepeat = 'no-repeat';
+                    el.setAttribute('role', 'img');
+                    el.setAttribute('aria-label', 'Your profile picture');
+                } else {
+                    if (el.dataset.initialsBackup !== undefined) {
+                        el.textContent = el.dataset.initialsBackup;
+                        delete el.dataset.initialsBackup;
+                    }
+                    el.style.backgroundImage = '';
+                    el.removeAttribute('role');
+                    el.removeAttribute('aria-label');
+                }
+            });
+        }
+
+        // Centre-crops the chosen image to a square and shrinks it to 256x256 (a small JPEG)
+        _prepareAvatar(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const objectUrl = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    const side = Math.min(img.naturalWidth, img.naturalHeight);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = canvas.height = 256;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('The image could not be processed.')), 'image/jpeg', 0.88);
+                };
+                img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('That file is not a readable image.')); };
+                img.src = objectUrl;
+            });
+        }
+
+        async _saveAvatarUrl(url) {
+            const { error } = await this.client.rpc('fn_set_my_avatar', { p_url: url });
+            if (error) throw new Error(error.message);
+            if (this._cachedProfile) this._cachedProfile.avatar_url = url || null;
+        }
+
+        async uploadAvatar(file) {
+            const user = await this.getCurrentUser();
+            if (!this.client || !user) throw new Error('You are not signed in. Please log in again.');
+            if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Please choose a JPEG, PNG or WebP image.');
+            if (file.size > 10 * 1024 * 1024) throw new Error('That image is too large. Please choose one under 10 MB.');
+
+            const blob = await this._prepareAvatar(file);
+            const path = `${user.id}/avatar.jpg`;
+            const { error } = await this.client.storage.from('avatars').upload(path, blob, {
+                contentType: 'image/jpeg', upsert: true, cacheControl: '3600'
+            });
+            if (error) throw new Error(`Upload failed: ${error.message}`);
+
+            // the version in the address makes browsers fetch the new picture instead of the cached one
+            const { data } = this.client.storage.from('avatars').getPublicUrl(path);
+            await this._saveAvatarUrl(`${data.publicUrl}?v=${Date.now()}`);
+            await this.paintAvatars();
+        }
+
+        async removeAvatar() {
+            const user = await this.getCurrentUser();
+            if (!this.client || !user) throw new Error('You are not signed in. Please log in again.');
+            await this._saveAvatarUrl(null);
+            await this.client.storage.from('avatars').remove([`${user.id}/avatar.jpg`]);
+            await this.paintAvatars();
+        }
+
+        // Puts "Change photo" / "Remove" buttons under an avatar element (which must carry data-user-avatar)
+        mountAvatarEditor(avatarEl) {
+            if (!avatarEl || avatarEl.dataset.avatarEditor) return;
+            avatarEl.dataset.avatarEditor = 'true';
+
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0;';
+            avatarEl.parentNode.insertBefore(wrap, avatarEl);
+            wrap.appendChild(avatarEl);
+
+            const btnStyle = 'padding: 4px 10px; font-size: 0.72rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);';
+            const controls = document.createElement('div');
+            controls.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 4px;';
+            controls.innerHTML =
+                `<div style="display: flex; gap: 6px;">` +
+                `<button type="button" class="cartoon-action-btn avatar-change-btn" style="${btnStyle}">CHANGE PHOTO</button>` +
+                `<button type="button" class="cartoon-action-btn avatar-remove-btn" style="${btnStyle}">REMOVE</button></div>` +
+                `<span class="avatar-status" role="status" aria-live="polite" style="font-family: var(--font-body); font-size: 0.75rem; font-weight: 700; text-align: center; max-width: 180px;"></span>` +
+                `<input type="file" class="avatar-file" accept="image/jpeg,image/png,image/webp" hidden>`;
+            wrap.appendChild(controls);
+
+            const changeBtn = controls.querySelector('.avatar-change-btn');
+            const removeBtn = controls.querySelector('.avatar-remove-btn');
+            const status = controls.querySelector('.avatar-status');
+            const fileInput = controls.querySelector('.avatar-file');
+
+            const say = (text, ok) => { status.textContent = text; status.style.color = ok ? 'var(--color-green-dark)' : 'var(--color-red-dark)'; };
+            const busy = (isBusy) => { changeBtn.disabled = isBusy; removeBtn.disabled = isBusy; };
+            const refreshRemove = async () => {
+                const profile = await this.getCurrentProfile();
+                removeBtn.style.display = profile && profile.avatar_url ? '' : 'none';
+            };
+
+            changeBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async () => {
+                const file = fileInput.files && fileInput.files[0];
+                fileInput.value = '';
+                if (!file) return;
+                busy(true); say('Uploading...', true);
+                try { await this.uploadAvatar(file); say('Photo updated.', true); }
+                catch (e) { say(e.message, false); }
+                busy(false); refreshRemove();
+            });
+            removeBtn.addEventListener('click', async () => {
+                busy(true); say('Removing...', true);
+                try { await this.removeAvatar(); say('Photo removed.', true); }
+                catch (e) { say(e.message, false); }
+                busy(false); refreshRemove();
+            });
+            refreshRemove();
+        }
+
         // Changes the signed-in user's password after confirming the current one.
         // Returns {} on success, or { field: 'current' | undefined, error } on failure.
         async changePassword(currentPassword, newPassword) {

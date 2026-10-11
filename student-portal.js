@@ -2371,6 +2371,10 @@ async function loadStudentProfileAndStats(profile) {
     if (modalAvatar) modalAvatar.textContent = initials;
     if (modalName) modalName.textContent = profile.full_name || 'Student';
     if (modalNameVal) modalNameVal.textContent = profile.full_name || '—';
+    if (window.OrixaAuth) {
+        window.OrixaAuth.paintAvatars();
+        window.OrixaAuth.mountAvatarEditor(modalAvatar);
+    }
 
     if (!client) return;
 

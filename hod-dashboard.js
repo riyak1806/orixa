@@ -961,12 +961,34 @@ function initUserManagement() {
     });
 }
 
-function initHodPasswordForm() {
-    const drawer = document.getElementById('hod-password-drawer');
-    const openBtn = document.getElementById('open-hod-password-btn');
-    const closeBtn = document.getElementById('close-hod-password-btn');
+function initHodProfile() {
+    const drawer = document.getElementById('hod-profile-drawer');
+    const openBtn = document.getElementById('open-hod-profile-btn');
+    const closeBtn = document.getElementById('close-hod-profile-btn');
     const form = document.getElementById('hod-password-form');
-    if (!drawer || !openBtn || !form) return;
+    const toggleBtn = document.getElementById('hod-password-toggle-btn');
+    if (!drawer || !openBtn || !form || !toggleBtn) return;
+
+    let collegeName = null;
+    const fillProfile = async () => {
+        const profile = await window.OrixaAuth.getCurrentProfile();
+        if (!profile) return;
+        const name = profile.full_name || 'HOD';
+        document.getElementById('hod-profile-name').textContent = name;
+        document.getElementById('hod-profile-avatar').textContent =
+            name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '--';
+        document.getElementById('hod-profile-empid').textContent = profile.login_id || '\u2014';
+        document.getElementById('hod-profile-dept').textContent = HOD_MOCK_DATA.deptInfo.name || '\u2014';
+        const yearBadge = document.getElementById('hod-academic-year');
+        document.getElementById('hod-profile-year').textContent =
+            yearBadge ? yearBadge.textContent.replace(/^Academic Year\s*/, '') || '\u2014' : '\u2014';
+
+        if (collegeName === null && profile.college_id) {
+            const { data } = await window.OrixaAuth.client.from('colleges').select('name').eq('id', profile.college_id).maybeSingle();
+            collegeName = data && data.name ? data.name : '\u2014';
+        }
+        document.getElementById('hod-profile-college').textContent = collegeName || '\u2014';
+    };
 
     const fields = {
         current: document.getElementById('hod-pwd-current'),
@@ -991,9 +1013,18 @@ function initHodPasswordForm() {
         fields[key].classList.add('input-invalid');
         errors[key].textContent = text;
     };
-    const open = () => { drawer.style.display = 'flex'; fields.current.focus(); };
-    const close = () => { drawer.style.display = 'none'; form.reset(); clearErrors(); openBtn.focus(); };
+    const setFormOpen = isOpen => {
+        form.classList.toggle('hidden', !isOpen);
+        toggleBtn.setAttribute('aria-expanded', String(isOpen));
+    };
+    const open = () => { drawer.style.display = 'flex'; closeBtn.focus(); fillProfile(); };
+    const close = () => { drawer.style.display = 'none'; form.reset(); clearErrors(); setFormOpen(false); openBtn.focus(); };
 
+    toggleBtn.addEventListener('click', () => {
+        const opening = form.classList.contains('hidden');
+        setFormOpen(opening);
+        if (opening) fields.current.focus();
+    });
     openBtn.addEventListener('click', open);
     closeBtn.addEventListener('click', close);
     drawer.addEventListener('click', e => { if (e.target === drawer) close(); });
@@ -2532,7 +2563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAddTeacherForm();
     initAddStudentForm();
     initDrawerToggles();
-    initHodPasswordForm();
+    initHodProfile();
     initUserManagement();
     initHodPerformanceFilters();
     initUploadTogglesAndEvents();

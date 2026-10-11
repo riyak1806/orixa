@@ -659,6 +659,12 @@ async function saveQuizToSupabase(isPublish) {
 
     if (quizError || !quizInsert) {
         console.error('Failed to save quiz in Supabase:', quizError);
+        if (quizError && quizError.code === '42501') {
+            return {
+                success: false,
+                error: 'You do not have permission to save this quiz. Make sure you are logged in as this teacher: another tab in this browser may have signed in as a different user. Log out, log in again, and try once more.'
+            };
+        }
         return { success: false, error: quizError ? quizError.message : 'Save failed' };
     }
 

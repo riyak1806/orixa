@@ -1598,9 +1598,9 @@ function downloadStudentTemplate() {
         return;
     }
     const templateData = [
-        ['Student Name', 'Student ID', 'Year/Class', 'Teacher', 'Subject', 'Password (Optional)'],
-        ['Aarav Sharma', 'STU-CS-101', '1st Year', 'Prof. Sarah Jenkins', 'Data Structures', 'Student123!'],
-        ['Ananya Deshmukh', 'STU-CS-102', '2nd Year', 'Prof. Alan Turing, Prof. Sarah Jenkins', 'Database Management, Data Structures', '']
+        ['Student Name', 'Student ID', 'Year/Class', 'Password (Optional)', 'Subject 1', 'Teacher 1', 'Subject 2', 'Teacher 2', 'Subject 3', 'Teacher 3'],
+        ['Aarav Sharma', 'STU-CS-101', '1st Year', 'Student123!', 'Data Structures', 'Prof. Sarah Jenkins', 'Database Management', 'Prof. Alan Turing', '', ''],
+        ['Ananya Deshmukh', 'STU-CS-102', '2nd Year', '', 'Database Management', 'Prof. Alan Turing', '', '', '', '']
     ];
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
@@ -1902,6 +1902,32 @@ function pairSubjectsAndTeachers(subjectCell, teacherCell) {
     };
 }
 
+// Column-per-pair layout: Student Name | Student ID | Year/Class | Password (optional) | Subject 1 | Teacher 1 | Subject 2 | Teacher 2 | ...
+// Headers are read by name ("Sub1", "Subject 1", "Tec1", "Teacher 1" all work), so the columns may be in any order.
+// Returns null for the older layout (Name, ID, Year, Teacher, Subject, Password), which is read by position.
+function detectStudentColumns(headerRow) {
+    const layout = { name: -1, id: -1, year: -1, password: -1 };
+    const subjectCols = new Map();
+    const teacherCols = new Map();
+
+    (headerRow || []).forEach((cell, col) => {
+        const h = String(cell || '').trim().toLowerCase();
+        let m;
+        if ((m = h.match(/^sub(?:ject)?\s*[-_]?\s*(\d+)$/))) subjectCols.set(parseInt(m[1], 10), col);
+        else if ((m = h.match(/^(?:teacher|teach|tec|tch)\s*[-_]?\s*(\d+)$/))) teacherCols.set(parseInt(m[1], 10), col);
+        else if (/password/.test(h)) layout.password = col;
+        else if (/year|class/.test(h)) layout.year = col;
+        else if (/^(student\s*)?name$/.test(h)) layout.name = col;
+        else if (/(student|roll).*id|^id$|^roll/.test(h)) layout.id = col;
+    });
+
+    if (subjectCols.size === 0 || layout.name < 0 || layout.id < 0 || layout.year < 0) return null;
+
+    const numbers = [...new Set([...subjectCols.keys(), ...teacherCols.keys()])].sort((a, b) => a - b);
+    layout.pairs = numbers.map(n => ({ n, subjectCol: subjectCols.has(n) ? subjectCols.get(n) : -1, teacherCol: teacherCols.has(n) ? teacherCols.get(n) : -1 }));
+    return layout;
+}
+
 function parseAndValidateStudentRows(rawRows) {
     if (!rawRows || rawRows.length === 0) {
         alert('Uploaded Excel file is empty.');
@@ -1916,6 +1942,8 @@ function parseAndValidateStudentRows(rawRows) {
         startIndex = 1;
     }
 
+    const columns = detectStudentColumns(rawRows[0]);
+
     // Rows already seen in this file, by student ID: { name, year, subjects }
     const fileStudents = new Map();
 
@@ -1927,15 +1955,38 @@ function parseAndValidateStudentRows(rawRows) {
             continue; // Skip empty rows
         }
 
-        const name = String(row[0] || '').trim();
-        const studentId = String(row[1] || '').trim();
-        const year = String(row[2] || '').trim();
-        const teacherCell = String(row[3] || '').trim();
-        const subjectCell = String(row[4] || '').trim();
-        const password = String(row[5] || '').trim();
+        const cell = col => (col >= 0 ? String(row[col] === undefined || row[col] === null ? '' : row[col]).trim() : '');
+        const name = cell(columns ? columns.name : 0);
+        const studentId = cell(columns ? columns.id : 1);
+        const year = cell(columns ? columns.year : 2);
+        const password = cell(columns ? columns.password : 5);
 
+        let pairs;
+        let pairingError = null;
+        let teacherCell = '';
+        let subjectCell = '';
 
-        const { pairs, error: pairingError } = pairSubjectsAndTeachers(subjectCell, teacherCell);
+        if (columns) {
+            // one Subject n + Teacher n pair per column pair; an unused pair is left empty
+            pairs = [];
+            const problems = [];
+            columns.pairs.forEach(({ n, subjectCol, teacherCol }) => {
+                const subject = cell(subjectCol);
+                const teacher = cell(teacherCol);
+                subjectCell += (subjectCell && subject ? ', ' : '') + subject;
+                teacherCell += (teacherCell && teacher ? ', ' : '') + teacher;
+                if (!subject && !teacher) return;
+                if (!subject || !teacher) problems.push(`Subject ${n} and Teacher ${n} must both be filled in`);
+                else pairs.push({ subject, teacher });
+            });
+            if (problems.length > 0) pairingError = problems.join('; ');
+            else if (pairs.length === 0) pairs = [{ subject: '', teacher: '' }];   // the usual "is empty" messages apply
+        } else {
+            teacherCell = cell(3);
+            subjectCell = cell(4);
+            ({ pairs, error: pairingError } = pairSubjectsAndTeachers(subjectCell, teacherCell));
+        }
+
         if (pairingError) {
             parsedStudentRecords.push({
                 rowNum: i + 1, name, studentId, year, teacher: teacherCell, subject: subjectCell, password,

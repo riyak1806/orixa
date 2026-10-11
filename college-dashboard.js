@@ -54,7 +54,7 @@ function renderDepartmentList() {
     if (MOCK_COLLEGE_DATA.departments.length === 0) {
         listBody.innerHTML = `
             <tr>
-                <td colspan="6" class="college-no-results">
+                <td colspan="7" class="college-no-results">
                     No departments created yet. Use the form above to add a department.
                 </td>
             </tr>
@@ -69,6 +69,12 @@ function renderDepartmentList() {
                 <td><strong>${dept.activeTeachers || 0}</strong></td>
                 <td>
                     <span class="quiz-status-pill pill-live">${dept.avgAccuracy != null ? dept.avgAccuracy : '—'}% Avg</span>
+                </td>
+                <td>
+                    <div class="college-row-actions">
+                        <button type="button" class="quiz-mgmt-action-btn quiz-btn-edit" data-dept-action="edit" data-dept-id="${escapeHtml(dept.id)}" aria-label="Edit ${escapeHtml(dept.name)}">Edit</button>
+                        <button type="button" class="quiz-mgmt-action-btn quiz-btn-delete" data-dept-action="delete" data-dept-id="${escapeHtml(dept.id)}" aria-label="Delete ${escapeHtml(dept.name)}">Delete</button>
+                    </div>
                 </td>
             </tr>
         `).join('');
@@ -276,7 +282,7 @@ async function loadCollegeDataFromSupabase() {
                 if (hodAssignments) {
                     hodAssignments.forEach(h => {
                         if (h.profiles) {
-                            hodMap[h.department_id] = h.profiles;
+                            hodMap[h.department_id] = { ...h.profiles, id: h.profile_id };
                         }
                     });
                 }
@@ -290,6 +296,7 @@ async function loadCollegeDataFromSupabase() {
                 return {
                     id: d.id,
                     name: d.name,
+                    hodId: hod ? hod.id : null,
                     hodName: hod?.full_name || 'Unassigned',
                     hodEmpId: hod?.login_id || '—',
                     totalStudents: stats ? stats.students : 0,
@@ -771,6 +778,216 @@ function initCollegeProfile() {
     });
 }
 
+/* ==========================================================================
+   EDIT / DELETE DEPARTMENTS AND HODS
+   ========================================================================== */
+
+async function refreshCollegeData() {
+    await loadCollegeDataFromSupabase();
+    renderCollegeStats();
+    renderDepartmentList();
+    renderTeacherAndSubjectFilterOptions();
+    renderStudentPerformanceTable();
+}
+
+// A small confirmation dialog; onConfirm may throw an Error whose message is shown inside the dialog
+function showCollegeConfirm({ title, message, confirmLabel, onConfirm }) {
+    const existing = document.getElementById('college-confirm-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'college-confirm-modal';
+    modal.className = 'orixa-modal-overlay';
+    modal.style.zIndex = '1200';
+    modal.innerHTML = `
+        <div class="orixa-modal-card" role="alertdialog" aria-modal="true" aria-labelledby="college-confirm-title" aria-describedby="college-confirm-msg">
+            <div class="orixa-modal-header"><h3 class="orixa-modal-title" id="college-confirm-title">${escapeHtml(title)}</h3></div>
+            <div class="orixa-modal-body">
+                <p id="college-confirm-msg" style="margin: 0;">${escapeHtml(message)}</p>
+                <p id="college-confirm-error" role="alert" style="margin: 8px 0 0; font-weight: 700; color: var(--color-red-dark);"></p>
+            </div>
+            <div class="orixa-modal-footer">
+                <button type="button" class="quiz-mgmt-action-btn" id="college-confirm-cancel" style="background: var(--color-cream);">Cancel</button>
+                <button type="button" class="quiz-mgmt-action-btn" id="college-confirm-ok" style="background: var(--color-red);">${escapeHtml(confirmLabel)}</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    const okBtn = modal.querySelector('#college-confirm-ok');
+    const cancelBtn = modal.querySelector('#college-confirm-cancel');
+    const close = () => modal.remove();
+    cancelBtn.addEventListener('click', close);
+    modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    okBtn.addEventListener('click', async () => {
+        okBtn.disabled = true;
+        cancelBtn.disabled = true;
+        try {
+            await onConfirm();
+            close();
+        } catch (err) {
+            modal.querySelector('#college-confirm-error').textContent = err.message || 'Something went wrong.';
+            okBtn.disabled = false;
+            cancelBtn.disabled = false;
+        }
+    });
+    cancelBtn.focus();
+}
+
+function initDepartmentManagement() {
+    const modal = document.getElementById('college-dept-edit-modal');
+    const form = document.getElementById('college-dept-edit-form');
+    const tableBody = document.getElementById('department-table-body');
+    if (!modal || !form || !tableBody) return;
+
+    const f = {
+        dept: document.getElementById('college-edit-dept-name'),
+        hodName: document.getElementById('college-edit-hod-name'),
+        hodId: document.getElementById('college-edit-hod-id'),
+        password: document.getElementById('college-edit-hod-password')
+    };
+    const err = {
+        dept: document.getElementById('college-edit-dept-name-error'),
+        hodName: document.getElementById('college-edit-hod-name-error'),
+        hodId: document.getElementById('college-edit-hod-id-error'),
+        password: document.getElementById('college-edit-hod-password-error')
+    };
+    const msg = document.getElementById('college-dept-edit-msg');
+    const saveBtn = document.getElementById('college-dept-edit-save-btn');
+    const deleteHodBtn = document.getElementById('college-hod-delete-btn');
+    const closeBtn = document.getElementById('close-college-dept-edit-btn');
+    const note = document.getElementById('college-edit-hod-note');
+    const pwdLabel = document.getElementById('college-edit-hod-password-label');
+    let editing = null;
+    let opener = null;
+
+    const clearErrors = () => {
+        Object.values(f).forEach(el => el.classList.remove('input-invalid'));
+        Object.values(err).forEach(el => { el.textContent = ''; });
+        msg.textContent = '';
+        msg.className = 'teacher-form-msg';
+    };
+    const fail = (key, text) => { f[key].classList.add('input-invalid'); err[key].textContent = text; };
+    const close = () => { modal.style.display = 'none'; editing = null; if (opener && opener.focus) opener.focus(); };
+
+    const open = (dept, trigger) => {
+        editing = dept;
+        opener = trigger;
+        clearErrors();
+        f.dept.value = dept.name;
+        f.hodName.value = dept.hodId ? dept.hodName : '';
+        f.hodId.value = dept.hodId ? dept.hodEmpId : '';
+        f.password.value = '';
+        deleteHodBtn.style.display = dept.hodId ? '' : 'none';
+        note.textContent = dept.hodId
+            ? 'Change the HOD\u2019s name or login ID. A new password is only needed if you want to reset it.'
+            : 'This department has no HOD yet. Fill in the details below to add one.';
+        pwdLabel.textContent = dept.hodId ? 'NEW PASSWORD (OPTIONAL, MIN. 8 CHARACTERS)' : 'PASSWORD (MIN. 8 CHARACTERS)';
+        modal.style.display = 'flex';
+        f.dept.focus();
+    };
+
+    tableBody.addEventListener('click', event => {
+        const btn = event.target.closest('[data-dept-action]');
+        if (!btn) return;
+        const dept = MOCK_COLLEGE_DATA.departments.find(d => String(d.id) === btn.dataset.deptId);
+        if (!dept) return;
+
+        if (btn.dataset.deptAction === 'edit') {
+            open(dept, btn);
+            return;
+        }
+        showCollegeConfirm({
+            title: 'Delete Department',
+            message: `Delete "${dept.name}"? This permanently removes the department with its HOD, its ${dept.activeTeachers || 0} teacher(s), its ${dept.totalStudents || 0} student(s), and all of their quizzes and results. This cannot be undone.`,
+            confirmLabel: 'Delete Department',
+            onConfirm: async () => {
+                const { error } = await window.OrixaAuth.client.rpc('fn_admin_delete_department', { p_department_id: dept.id });
+                if (error) throw new Error(error.message);
+                await refreshCollegeData();
+            }
+        });
+    });
+
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+    deleteHodBtn.addEventListener('click', () => {
+        if (!editing || !editing.hodId) return;
+        const dept = editing;
+        showCollegeConfirm({
+            title: 'Delete HOD Account',
+            message: `Delete the HOD account of ${dept.hodName} (${dept.hodEmpId})? The department stays and can get a new HOD. This cannot be undone.`,
+            confirmLabel: 'Delete HOD',
+            onConfirm: async () => {
+                const { error } = await window.OrixaAuth.client.rpc('fn_admin_delete_user', { p_user_id: dept.hodId });
+                if (error) throw new Error(error.message);
+                await refreshCollegeData();
+                close();
+            }
+        });
+    });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!editing) return;
+        clearErrors();
+
+        const deptName = f.dept.value.trim();
+        const hodName = f.hodName.value.trim();
+        const hodId = f.hodId.value.trim();
+        const password = f.password.value;
+        const hasHod = !!editing.hodId;
+        const wantsNewHod = !hasHod && (hodName || hodId || password);
+
+        let valid = true;
+        if (!deptName) { fail('dept', 'Department name is required.'); valid = false; }
+        if (hasHod || wantsNewHod) {
+            if (!hodName) { fail('hodName', 'HOD name is required.'); valid = false; }
+            if (!hodId) { fail('hodId', 'HOD login ID is required.'); valid = false; }
+            else if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(hodId)) { fail('hodId', 'Use letters, numbers, dots, dashes or underscores (no spaces).'); valid = false; }
+        }
+        if (wantsNewHod && !password) { fail('password', 'A password is required for a new HOD.'); valid = false; }
+        else if (password && password.length < 8) { fail('password', 'Password must be at least 8 characters.'); valid = false; }
+        if (!valid) return;
+
+        saveBtn.disabled = true;
+        const client = window.OrixaAuth.client;
+        try {
+            if (deptName !== editing.name) {
+                const { error } = await client.from('departments').update({ name: deptName }).eq('id', editing.id);
+                if (error) throw new Error(`Department could not be renamed: ${error.message}`);
+            }
+            if (hasHod && (hodName !== editing.hodName || hodId.toLowerCase() !== String(editing.hodEmpId).toLowerCase() || password)) {
+                const { error } = await client.rpc('fn_admin_update_user', {
+                    p_user_id: editing.hodId,
+                    p_full_name: hodName,
+                    p_login_id: hodId,
+                    p_password: password || null
+                });
+                if (error) throw new Error(`HOD could not be updated: ${error.message}`);
+            } else if (wantsNewHod) {
+                const { error } = await client.rpc('fn_admin_provision_hod', {
+                    p_full_name: hodName,
+                    p_login_id: hodId,
+                    p_password: password,
+                    p_department_id: editing.id
+                });
+                if (error) throw new Error(`HOD could not be created: ${error.message}`);
+            }
+            await refreshCollegeData();
+            msg.textContent = 'Saved.';
+            msg.className = 'teacher-form-msg success';
+            setTimeout(close, 700);
+        } catch (e) {
+            msg.textContent = e.message;
+            msg.className = 'teacher-form-msg error';
+        } finally {
+            saveBtn.disabled = false;
+        }
+    });
+}
+
 function confirmCollegeLogout(event) {
     if (event) event.preventDefault();
 
@@ -829,5 +1046,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initAddDepartmentDrawer();
     initAddDepartmentForm();
+    initDepartmentManagement();
     initPerformanceFilters();
 });

@@ -215,17 +215,6 @@
         panel.querySelector('.ach-open-btn').addEventListener('click', openCollection);
     }
 
-    function renderProfileSummary() {
-        const el = document.getElementById('student-achievements-summary');
-        if (!el) return;
-        if (status !== 'ready') {
-            el.textContent = status === 'error' ? 'Could not load your badges and trophies.' : 'Loading...';
-            return;
-        }
-        const n = summaryNumbers();
-        el.textContent = `${n.unlockedCount} of ${n.total} achievements unlocked, ${n.trophyCount} of ${n.trophyTotal} trophies, ${fmt(state.lifetime_xp)} lifetime XP`;
-    }
-
     /* ----- collection modal ----- */
 
     function ensureCollection() {
@@ -445,17 +434,8 @@
 
     function renderAll() {
         renderPanel();
-        renderProfileSummary();
         renderCollection();
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('[data-open-achievements]').forEach(btn => btn.addEventListener('click', () => {
-            // opened from the profile dialog: leave that dialog first
-            if (typeof closeStudentProfileModal === 'function') closeStudentProfileModal();
-            openCollection();
-        }));
-    });
 
     window.OrixaAchievements = { init, onQuizCompleted, openCollection, celebrate, reload: loadAll };
 })();

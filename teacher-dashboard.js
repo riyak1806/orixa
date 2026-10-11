@@ -39,11 +39,9 @@ const ICONS = {
 const MOCK_DATA = {
     teacher: {
         name: "",
-        email: "",
         department: "",
         subjects: [],
         classes: [],
-        bio: "",
         employeeId: ""
     },
     settings: {
@@ -238,60 +236,39 @@ function renderTeacherProfile() {
                 </button>
             </div>
 
-            <!-- Profile Content Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--t-space-3); margin-top: var(--t-space-1);">
-
-                <!-- Account Info -->
-                <div style="display: flex; flex-direction: column; gap: var(--t-space-2);">
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
-                        <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: var(--t-space-1);">Account Info</h4>
-                        <div style="display: flex; flex-direction: column; gap: var(--t-space-1); font-family: var(--font-body); font-size: 0.95rem;">
-                            <div>
-                                <span style="font-weight: 700; color: #78909c;">Employee ID:</span>
-                                <span style="color: var(--border-dark);">${escapeHTML(teacher.employeeId || '—')}</span>
-                            </div>
-                            <div>
-                                <span style="font-weight: 700; color: #78909c;">Department:</span>
-                                <span style="color: var(--border-dark);">${escapeHTML(teacher.department)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
-                        <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: var(--t-space-1);">About Me</h4>
-                        <p style="font-family: var(--font-body); font-size: 0.92rem; color: var(--border-dark); line-height: 1.4;">
-                            ${escapeHTML(teacher.bio)}
-                        </p>
+            <!-- Account Info -->
+            <div style="display: flex; flex-direction: column; gap: var(--t-space-2); margin-top: var(--t-space-1); font-family: var(--font-body); font-size: 0.95rem;">
+                <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin: 0;">Account Info</h4>
+                <div>
+                    <span style="font-weight: 700; color: #78909c;">Employee ID:</span>
+                    <span style="color: var(--border-dark);">${escapeHTML(teacher.employeeId || '—')}</span>
+                </div>
+                <div>
+                    <span style="font-weight: 700; color: #78909c;">Department:</span>
+                    <span style="color: var(--border-dark);">${escapeHTML(teacher.department)}</span>
+                </div>
+                <div>
+                    <span style="font-weight: 700; color: #78909c;">Subjects Taught:</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;">
+                        ${teacher.subjects.length === 0 ? '<span style="font-size: 0.9rem; color: #546e7a;">No subjects assigned yet. Your HOD assigns them.</span>' : ''}
+                        ${teacher.subjects.map(subject => `
+                            <span style="font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; background: var(--color-yellow); border: 2px solid var(--border-dark); border-radius: 9999px; padding: 4px 12px; color: var(--border-dark); display: inline-flex; align-items: center; justify-content: center;">
+                                ${escapeHTML(subject)}
+                            </span>
+                        `).join('')}
                     </div>
                 </div>
-
-                <!-- Academic Info -->
-                <div style="display: flex; flex-direction: column; gap: var(--t-space-2);">
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
-                        <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: var(--t-space-1);">Subjects Taught</h4>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            ${teacher.subjects.length === 0 ? '<span style="font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">No subjects assigned yet. Your HOD assigns them.</span>' : ''}
-                            ${teacher.subjects.map(subject => `
-                                <span style="font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; background: var(--color-yellow); border: 2px solid var(--border-dark); border-radius: 9999px; padding: 4px 12px; color: var(--border-dark); display: inline-flex; align-items: center; justify-content: center;">
-                                    ${escapeHTML(subject)}
-                                </span>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: var(--t-space-2); box-shadow: var(--shadow-chunky-pressed);">
-                        <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin-bottom: var(--t-space-1);">Classes Taught</h4>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            ${teacher.classes.length === 0 ? '<span style="font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">No classes assigned yet. Your HOD assigns them.</span>' : ''}
-                            ${teacher.classes.map(cl => `
-                                <span style="font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; background: var(--color-blue); border: 2px solid var(--border-dark); border-radius: 9999px; padding: 4px 12px; color: var(--border-dark); display: inline-flex; align-items: center; justify-content: center;">
-                                    ${escapeHTML(cl)}
-                                </span>
-                            `).join('')}
-                        </div>
+                <div>
+                    <span style="font-weight: 700; color: #78909c;">Classes Taught:</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;">
+                        ${teacher.classes.length === 0 ? '<span style="font-size: 0.9rem; color: #546e7a;">No classes assigned yet. Your HOD assigns them.</span>' : ''}
+                        ${teacher.classes.map(cl => `
+                            <span style="font-family: var(--font-header); font-size: 0.8rem; font-weight: 700; background: var(--color-blue); border: 2px solid var(--border-dark); border-radius: 9999px; padding: 4px 12px; color: var(--border-dark); display: inline-flex; align-items: center; justify-content: center;">
+                                ${escapeHTML(cl)}
+                            </span>
+                        `).join('')}
                     </div>
                 </div>
-
             </div>
 
         </div>
@@ -2975,11 +2952,6 @@ function renderStudentsPage() {
     const dynamicPage = document.getElementById('dynamic-placeholder-page');
     if (!dynamicPage) return;
 
-    if (studentsPageState.formMode === 'add' || studentsPageState.formMode === 'edit') {
-        renderStudentForm(dynamicPage);
-        return;
-    }
-
     // 1. Calculate dynamic statistics
     const totalStudents = MOCK_DATA.students.length;
     const activeStudents = MOCK_DATA.students.filter(s => s.status === 'Active').length;
@@ -3103,7 +3075,6 @@ function renderStudentsPage() {
     const gradeFilter = document.getElementById('student-grade-filter');
     const subjectFilter = document.getElementById('student-subject-filter');
     const sortSelect = document.getElementById('student-sort-select');
-    const addBtn = document.getElementById('students-add-btn');
 
     searchInput.addEventListener('input', (e) => {
         studentsPageState.searchQuery = e.target.value;
@@ -3137,13 +3108,6 @@ function renderStudentsPage() {
             studentsPageState.statusFilter = 'All';
             studentsPageState.gradeFilter = 'All';
             studentsPageState.subjectFilter = 'All';
-            renderStudentsPage();
-        });
-    }
-
-    if (addBtn) {
-        addBtn.addEventListener('click', () => {
-            studentsPageState.formMode = 'add';
             renderStudentsPage();
         });
     }
@@ -3238,12 +3202,6 @@ function renderStudentsList() {
                                     <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
                                         <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewStudentDetails('${s.id}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 10px; width: auto; flex: none;" title="View Details">
                                             <span data-icon="search"></span> View
-                                        </button>
-                                        <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="editStudentForm('${s.id}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 10px; width: auto; flex: none;" title="Edit Student">
-                                            <span data-icon="clipboard"></span> Edit
-                                        </button>
-                                        <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="toggleStudentStatusConfirm('${s.id}')" style="height: 32px; border-radius: 8px; font-size: 0.78rem; padding: 0 10px; width: auto; flex: none;" title="${s.status === 'Active' ? 'Deactivate' : 'Activate'}">
-                                            <span data-icon="x"></span> ${s.status === 'Active' ? 'Deactivate' : 'Activate'}
                                         </button>
                                     </div>
                                 </td>
@@ -3365,307 +3323,6 @@ window.viewStudentDetails = function(id) {
     openOrixaModal(html);
 };
 
-window.editStudentForm = function(id) {
-    studentsPageState.formMode = 'edit';
-    studentsPageState.editingStudentId = id;
-    renderStudentsPage();
-};
-
-window.cancelStudentForm = function() {
-    studentsPageState.formMode = 'list';
-    studentsPageState.editingStudentId = null;
-    renderStudentsPage();
-};
-
-function renderStudentForm(dynamicPage) {
-    const isEdit = studentsPageState.formMode === 'edit';
-    let s = null;
-    if (isEdit) {
-        s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
-    }
-
-    const name = s ? s.name : '';
-    const id = s ? s.id : '';
-    const grade = s ? s.grade : 'Grade 8';
-    const subject = s ? s.subject : 'Science';
-    const status = s ? s.status : 'Active';
-
-    dynamicPage.innerHTML = `
-        <div class="cartoon-panel" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
-
-            <!-- Form Header -->
-            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: var(--t-space-2);">
-                <div>
-                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal &bull; Students</p>
-                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2rem;">${isEdit ? 'Edit Student' : 'Add New Student'}</h2>
-                    <p class="cartoon-subtitle" style="margin-top: 4px;">${isEdit ? 'Modify student details and academic profile' : 'Register a new student with valid academic configuration'}</p>
-                </div>
-                <button class="cartoon-action-btn" onclick="cancelStudentForm()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-            </div>
-
-            <!-- Form -->
-            <form id="student-profile-form" onsubmit="saveStudentProfile(event)" style="display: flex; flex-direction: column; gap: var(--t-space-2); margin-top: var(--t-space-1);">
-
-                <!-- Student Name -->
-                <div class="form-field">
-                    <label class="field-label" for="form-s-name">STUDENT NAME *</label>
-                    <div class="input-shell">
-                        <input type="text" id="form-s-name" class="cartoon-input" placeholder="Enter student full name" value="${escapeHTML(name)}">
-                    </div>
-                    <span class="field-error" id="err-s-name" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
-                </div>
-
-                <!-- Student ID Row -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--t-space-2);">
-                    <div class="form-field">
-                        <label class="field-label" for="form-s-id">STUDENT ID *</label>
-                        <div class="input-shell">
-                            <input type="text" id="form-s-id" class="cartoon-input" placeholder="e.g. STU-007" value="${escapeHTML(id)}" ${isEdit ? 'disabled style="background: #e0e0e0; cursor: not-allowed;"' : ''}>
-                        </div>
-                        <span class="field-error" id="err-s-id" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
-                    </div>
-                    </div>
-                </div>
-
-                <!-- Grade, Subject, & Status Row -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--t-space-2);">
-                    <div class="form-field">
-                        <label class="field-label" for="form-s-grade">CLASS / GRADE *</label>
-                        <select id="form-s-grade" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                            <option value="Grade 5" ${grade === 'Grade 5' ? 'selected' : ''}>Grade 5</option>
-                            <option value="Grade 6" ${grade === 'Grade 6' ? 'selected' : ''}>Grade 6</option>
-                            <option value="Grade 7" ${grade === 'Grade 7' ? 'selected' : ''}>Grade 7</option>
-                            <option value="Grade 8" ${grade === 'Grade 8' ? 'selected' : ''}>Grade 8</option>
-                            <option value="Grade 9" ${grade === 'Grade 9' ? 'selected' : ''}>Grade 9</option>
-                            <option value="Grade 10" ${grade === 'Grade 10' ? 'selected' : ''}>Grade 10</option>
-                        </select>
-                        <span class="field-error" id="err-s-grade" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
-                    </div>
-
-                    <div class="form-field">
-                        <label class="field-label" for="form-s-subject">SUBJECT *</label>
-                        <select id="form-s-subject" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                            <option value="Science" ${subject === 'Science' ? 'selected' : ''}>Science</option>
-                            <option value="Mathematics" ${subject === 'Mathematics' ? 'selected' : ''}>Mathematics</option>
-                            <option value="History" ${subject === 'History' ? 'selected' : ''}>History</option>
-                            <option value="English" ${subject === 'English' ? 'selected' : ''}>English</option>
-                            <option value="Computer Science" ${subject === 'Computer Science' ? 'selected' : ''}>Computer Science</option>
-                        </select>
-                        <span class="field-error" id="err-s-subject" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
-                    </div>
-
-                    <div class="form-field">
-                        <label class="field-label" for="form-s-status">STATUS *</label>
-                        <select id="form-s-status" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);">
-                            <option value="Active" ${status === 'Active' ? 'selected' : ''}>Active</option>
-                            <option value="Inactive" ${status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-                        </select>
-                        <span class="field-error" id="err-s-status" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
-                    </div>
-                </div>
-
-                <!-- Footer CTA buttons -->
-                <div style="display: flex; align-items: center; justify-content: flex-end; gap: var(--t-space-2); margin-top: var(--t-space-2); border-top: 2px dashed rgba(26,26,36,0.15); padding-top: var(--t-space-2);">
-                    <button type="button" class="cartoon-action-btn" onclick="cancelStudentForm()" style="padding: 12px 24px; font-size: 1rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                        Cancel
-                    </button>
-                    <button type="submit" class="cartoon-action-btn primary-yellow-btn" style="padding: 12px 28px; font-size: 1rem;">
-                        Save Student
-                    </button>
-                </div>
-            </form>
-        </div>
-    `;
-
-    renderIcons(dynamicPage);
-}
-
-window.saveStudentProfile = function(event) {
-    event.preventDefault();
-
-    // Clear previous errors
-    const errorSpans = document.querySelectorAll('.field-error');
-    errorSpans.forEach(span => span.textContent = '');
-    const inputs = document.querySelectorAll('.cartoon-input');
-    inputs.forEach(input => input.classList.remove('input-invalid'));
-
-    let isValid = true;
-
-    const nameInput = document.getElementById('form-s-name');
-    const idInput = document.getElementById('form-s-id');
-    const gradeSelect = document.getElementById('form-s-grade');
-    const subjectSelect = document.getElementById('form-s-subject');
-    const statusSelect = document.getElementById('form-s-status');
-
-    const nameVal = nameInput.value.trim();
-    const idVal = idInput.value.trim().toUpperCase();
-    const gradeVal = gradeSelect.value;
-    const subjectVal = subjectSelect.value;
-    const statusVal = statusSelect.value;
-
-    // 1. Validation: Required fields
-    if (!nameVal) {
-        nameInput.classList.add('input-invalid');
-        document.getElementById('err-s-name').textContent = 'Student name is required.';
-        isValid = false;
-    }
-
-    const isEdit = studentsPageState.formMode === 'edit';
-
-    if (!isEdit) {
-        if (!idVal) {
-            idInput.classList.add('input-invalid');
-            document.getElementById('err-s-id').textContent = 'Student ID is required.';
-            isValid = false;
-        } else {
-            // Check for duplicate Student ID
-            const duplicate = MOCK_DATA.students.some(student => student.id.toUpperCase() === idVal);
-            if (duplicate) {
-                idInput.classList.add('input-invalid');
-                document.getElementById('err-s-id').textContent = 'This Student ID is already assigned to another student.';
-                isValid = false;
-            }
-        }
-    }
-
-    if (!gradeVal) {
-        gradeSelect.classList.add('input-invalid');
-        document.getElementById('err-s-grade').textContent = 'Please select a grade.';
-        isValid = false;
-    }
-
-    if (!subjectVal) {
-        subjectSelect.classList.add('input-invalid');
-        document.getElementById('err-s-subject').textContent = 'Please select a subject.';
-        isValid = false;
-    }
-
-    if (!statusVal) {
-        statusSelect.classList.add('input-invalid');
-        document.getElementById('err-s-status').textContent = 'Please select a status.';
-        isValid = false;
-    }
-
-    if (!isValid) {
-        const firstErr = document.querySelector('.input-invalid');
-        if (firstErr) {
-            firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        return;
-    }
-
-    const todayDate = new Date().toISOString().split('T')[0];
-
-    if (isEdit) {
-        const s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
-        if (s) {
-            s.name = nameVal;
-            s.grade = gradeVal;
-            s.subject = subjectVal;
-            s.status = statusVal;
-            s.lastActivity = todayDate;
-        }
-    } else {
-        const newStudent = {
-            id: idVal,
-            name: nameVal,
-            grade: gradeVal,
-            quizzesAttempted: 0,
-            averageScore: 0,
-            status: statusVal,
-            lastActivity: todayDate,
-            subject: subjectVal,
-            bestScore: 0,
-            recentQuizzes: []
-        };
-        MOCK_DATA.students.unshift(newStudent);
-
-        // Add to search list
-        MOCK_DATA.searchableItems.push({
-            title: nameVal,
-            type: "Student",
-            category: "students",
-            target: "students"
-        });
-    }
-
-    studentsPageState.formMode = 'list';
-    studentsPageState.editingStudentId = null;
-
-    openOrixaModal(`
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: var(--color-green);">
-                <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">Success!</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); renderStudentsPage();" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                <p style="font-size: 1.25rem; font-weight: 700; color: var(--border-dark);">${isEdit ? 'Student profile updated successfully!' : 'New student profile saved successfully!'}</p>
-                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">The dashboard calculations and active roster have been updated.</p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); renderStudentsPage();" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Got it!
-                </button>
-            </footer>
-        </div>
-    `);
-};
-
-window.toggleStudentStatusConfirm = function(id) {
-    const s = MOCK_DATA.students.find(student => student.id === id);
-    if (!s) return;
-
-    const isActive = s.status === 'Active';
-    const actionWord = isActive ? 'deactivate' : 'activate';
-    const highlightColor = isActive ? 'var(--color-red-dark)' : 'var(--color-green-dark)';
-    const headerBg = isActive ? '#ffebee' : '#e8f5e9';
-
-    const html = `
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: ${headerBg};">
-                <h3 class="orixa-modal-title" style="color: ${highlightColor};">Confirm ${actionWord.charAt(0).toUpperCase() + actionWord.slice(1)}</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body">
-                <p style="font-size: 1.15rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
-                    Are you sure you want to ${actionWord} student <span style="color: ${highlightColor}; font-family: var(--font-header);">${escapeHTML(s.name)}</span>?
-                </p>
-                <p style="font-size: 0.92rem; color: #546e7a;">
-                    ${isActive
-                        ? 'This will set their status to Inactive and suspend classroom activities.'
-                        : 'This will restore their status to Active and enable classroom activities.'}
-                </p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-                <button type="button" class="cartoon-action-btn" onclick="performToggleStudentStatus('${s.id}')" style="padding: 10px 24px; font-size: 0.95rem; border: var(--border-comic-thin); border-radius: 12px; font-family: var(--font-header); font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); background: ${isActive ? 'var(--color-red)' : 'var(--color-green)'};">
-                    Yes, ${actionWord.charAt(0).toUpperCase() + actionWord.slice(1)}
-                </button>
-            </footer>
-        </div>
-    `;
-
-    openOrixaModal(html);
-};
-
-window.performToggleStudentStatus = function(id) {
-    const s = MOCK_DATA.students.find(student => student.id === id);
-    if (s) {
-        s.status = s.status === 'Active' ? 'Inactive' : 'Active';
-        s.lastActivity = new Date().toISOString().split('T')[0];
-        closeOrixaModal();
-        renderStudentsPage();
-    }
-};
-
 /* ==========================================================================
    PAGE STATE
    ========================================================================== */
@@ -3675,9 +3332,7 @@ let studentsPageState = {
     statusFilter: 'All',
     gradeFilter: 'All',
     subjectFilter: 'All',
-    sortBy: 'name-asc',
-    formMode: 'list', // 'list', 'add', 'edit'
-    editingStudentId: null
+    sortBy: 'name-asc'
 };
 
 let resultsPageState = {
@@ -4533,14 +4188,6 @@ function renderSettingsPage() {
                         </div>
 
                         <div class="form-field">
-                            <label class="field-label" for="settings-profile-email">EMAIL ADDRESS *</label>
-                            <div class="input-shell">
-                                <input type="email" id="settings-profile-email" class="cartoon-input" value="${escapeHTML(teacher.email)}" required>
-                            </div>
-                            <span class="field-error" id="err-settings-email"></span>
-                        </div>
-
-                        <div class="form-field">
                             <label class="field-label" for="settings-profile-dept">DEPARTMENT *</label>
                             <div class="input-shell">
                                 <input type="text" id="settings-profile-dept" class="cartoon-input" value="${escapeHTML(teacher.department)}" required>
@@ -4791,7 +4438,6 @@ function setupSettingsListeners() {
         const settings = MOCK_DATA.settings;
 
         const nameVal = document.getElementById('settings-profile-name').value.trim();
-        const emailVal = document.getElementById('settings-profile-email').value.trim();
         const deptVal = document.getElementById('settings-profile-dept').value.trim();
         const subjectsVal = document.getElementById('settings-profile-subjects').value.trim();
 
@@ -4809,9 +4455,8 @@ function setupSettingsListeners() {
         const quizCorrectVal = document.getElementById('settings-quiz-correct').checked;
         const quizLateVal = document.getElementById('settings-quiz-late').checked;
 
-        // Compare Name, Email, Department
+        // Compare Name, Department
         if (nameVal !== teacher.name) return true;
-        if (emailVal !== teacher.email) return true;
         if (deptVal !== teacher.department) return true;
 
         // Compare subjects list (case insensitive split/join comparison)
@@ -4845,7 +4490,7 @@ function setupSettingsListeners() {
 
     // Attach general input listeners to trigger the unsaved indicator
     const inputIds = [
-        'settings-profile-name', 'settings-profile-email', 'settings-profile-dept',
+        'settings-profile-name', 'settings-profile-dept',
         'settings-profile-subjects', 'settings-appearance-theme', 'settings-appearance-animation',
         'settings-quiz-duration', 'settings-quiz-questions'
     ];
@@ -4890,13 +4535,12 @@ function setupSettingsListeners() {
         saveBtn.addEventListener('click', () => {
             // Validate form fields first
             const errName = document.getElementById('err-settings-name');
-            const errEmail = document.getElementById('err-settings-email');
             const errDept = document.getElementById('err-settings-dept');
             const errDuration = document.getElementById('err-settings-duration');
             const errQuestions = document.getElementById('err-settings-questions');
 
             // Reset errors
-            [errName, errEmail, errDept, errDuration, errQuestions].forEach(el => {
+            [errName, errDept, errDuration, errQuestions].forEach(el => {
                 if (el) el.textContent = '';
             });
             dynamicPage.querySelectorAll('.cartoon-input').forEach(el => el.classList.remove('input-invalid'));
@@ -4904,7 +4548,6 @@ function setupSettingsListeners() {
             let isValid = true;
 
             const nameVal = document.getElementById('settings-profile-name').value.trim();
-            const emailVal = document.getElementById('settings-profile-email').value.trim();
             const deptVal = document.getElementById('settings-profile-dept').value.trim();
 
             const themeVal = document.getElementById('settings-appearance-theme').value;
@@ -4925,17 +4568,6 @@ function setupSettingsListeners() {
             if (!nameVal) {
                 document.getElementById('settings-profile-name').classList.add('input-invalid');
                 if (errName) errName.textContent = 'Name is required.';
-                isValid = false;
-            }
-
-            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailVal) {
-                document.getElementById('settings-profile-email').classList.add('input-invalid');
-                if (errEmail) errEmail.textContent = 'Email address is required.';
-                isValid = false;
-            } else if (!emailPattern.test(emailVal)) {
-                document.getElementById('settings-profile-email').classList.add('input-invalid');
-                if (errEmail) errEmail.textContent = 'Please enter a valid email address.';
                 isValid = false;
             }
 
@@ -4967,7 +4599,6 @@ function setupSettingsListeners() {
 
             // Save values to MOCK_DATA
             MOCK_DATA.teacher.name = nameVal;
-            MOCK_DATA.teacher.email = emailVal;
             MOCK_DATA.teacher.department = deptVal;
 
             MOCK_DATA.settings.appearance.theme = themeVal;
@@ -5224,7 +4855,7 @@ const HELP_TOPICS = [
     {
         id: 'faq-3',
         title: "I can't find a student",
-        solution: "Navigate to the Students section and clear active search queries or dropdown filters. If the student is new, click '+ Add Student' to register their account with their unique Student ID and Grade."
+        solution: "Navigate to the Students section and clear active search queries or dropdown filters. If a student is missing, ask your HOD to add them."
     },
     {
         id: 'faq-4',
@@ -5378,7 +5009,6 @@ async function initCurrentTeacherData() {
     if (!profile) return;
 
     MOCK_DATA.teacher.name = profile.full_name || '';
-    MOCK_DATA.teacher.email = profile.email || '';
     MOCK_DATA.teacher.employeeId = profile.login_id || '';
 
     // Fetch department name if department_id exists

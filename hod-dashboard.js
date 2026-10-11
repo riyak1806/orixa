@@ -810,7 +810,7 @@ async function openEditStudentDialog(studentId) {
 
     const profile = await window.OrixaAuth.getCurrentProfile();
     const ref = await getHodReferenceData(profile.department_id, profile.college_id);
-    const currentLevel = findAcademicLevel(ref.levels, student.year);
+    let currentLevel = findAcademicLevel(ref.levels, student.year);
 
     const dialog = openHodDialog('Edit Student', `
         <form id="edit-student-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
@@ -833,15 +833,77 @@ async function openEditStudentDialog(studentId) {
             <h4 id="edit-student-assign-title" style="margin: 0; font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark);">Subjects &amp; Teachers</h4>
             <div id="edit-student-assignments" role="list" style="display: flex; flex-direction: column; gap: 8px;"></div>
             <p class="teacher-form-msg" id="edit-student-assign-msg" role="status" aria-live="polite"></p>
-            <p style="margin: 0; font-family: var(--font-body); font-size: 0.82rem; color: #546e7a;">To add another subject, use the Add Student form with this student's ID.</p>
+            <div class="form-field">
+                <label for="edit-student-new-subject" class="field-label"><span>ADD A SUBJECT</span></label>
+                <div class="input-shell"><select id="edit-student-new-subject" class="cartoon-select"></select></div>
+            </div>
+            <div class="form-field">
+                <label for="edit-student-new-teacher" class="field-label"><span>TEACHER</span></label>
+                <div class="input-shell"><select id="edit-student-new-teacher" class="cartoon-select"></select></div>
+            </div>
+            <p id="edit-student-add-hint" style="margin: 0; font-family: var(--font-body); font-size: 0.82rem; color: #546e7a;"></p>
+            <button type="button" class="cartoon-action-btn" id="edit-student-add-assignment" style="padding: 10px 24px; font-size: 0.95rem;">ADD SUBJECT &amp; TEACHER</button>
         </section>`);
+
+    // Subjects this student's year can take: the department's teachers who teach that year
+    let teacherOptions = [];
+    let assignedSubjectIds = new Set();
+
+    const loadTeacherOptions = async () => {
+        if (!currentLevel) { teacherOptions = []; return; }
+        const { data, error } = await window.OrixaAuth.client
+            .from('teacher_subject_class_assignments')
+            .select('id, teacher_id, subject_id, academic_session_id, subjects!teacher_subject_class_assignments_subject_id_fkey(name), profiles!teacher_subject_class_assignments_teacher_id_fkey(full_name)')
+            .eq('department_id', profile.department_id)
+            .eq('academic_level_id', currentLevel.id)
+            .eq('is_active', true);
+        if (error) console.error('Error loading teachers for the student:', error);
+        teacherOptions = (data || []).map(a => ({
+            assignmentId: a.id,
+            teacherId: a.teacher_id,
+            teacherName: a.profiles ? a.profiles.full_name : '-',
+            subjectId: a.subject_id,
+            subjectName: a.subjects ? a.subjects.name : '-',
+            sessionId: a.academic_session_id
+        }));
+    };
+
+    const subjectSelect = dialog.querySelector('#edit-student-new-subject');
+    const teacherSelect = dialog.querySelector('#edit-student-new-teacher');
+    const addBtn = dialog.querySelector('#edit-student-add-assignment');
+    const addHint = dialog.querySelector('#edit-student-add-hint');
+
+    const renderTeacherChoices = () => {
+        const choices = teacherOptions.filter(o => o.subjectId === subjectSelect.value);
+        teacherSelect.innerHTML = choices.map(o =>
+            `<option value="${escapeHtml(o.assignmentId)}">${escapeHtml(o.teacherName)}</option>`).join('');
+    };
+
+    const renderAssignOptions = () => {
+        const seen = new Set();
+        const available = teacherOptions.filter(o => {
+            if (assignedSubjectIds.has(o.subjectId) || seen.has(o.subjectId)) return false;
+            seen.add(o.subjectId);
+            return true;
+        });
+        subjectSelect.innerHTML = available.map(o =>
+            `<option value="${escapeHtml(o.subjectId)}">${escapeHtml(o.subjectName)}</option>`).join('');
+        renderTeacherChoices();
+
+        const none = available.length === 0;
+        subjectSelect.disabled = teacherSelect.disabled = addBtn.disabled = none;
+        addHint.textContent = !currentLevel
+            ? 'This student has no year set, so subjects cannot be added.'
+            : none ? 'No more subjects to add. Subjects appear here once a teacher is assigned to teach them for this year.' : '';
+    };
+    subjectSelect.addEventListener('change', renderTeacherChoices);
 
     const renderAssignments = async () => {
         const holder = document.getElementById('edit-student-assignments');
         if (!holder) return;
         const { data, error } = await window.OrixaAuth.client
             .from('student_subject_assignments')
-            .select('id, subjects(name), profiles!student_subject_assignments_teacher_id_fkey(full_name)')
+            .select('id, subject_id, subjects(name), profiles!student_subject_assignments_teacher_id_fkey(full_name)')
             .eq('student_id', studentId)
             .eq('is_active', true);
         if (error) {
@@ -855,8 +917,38 @@ async function openEditStudentDialog(studentId) {
                     <button type="button" class="hod-icon-btn is-danger" data-remove-assignment="${escapeHtml(a.id)}" aria-label="Remove ${escapeHtml(a.subjects ? a.subjects.name : 'subject')}" title="Remove">${TRASH_ICON}</button>
                 </div>`).join('')
             : '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">No subjects assigned yet.</p>';
+        assignedSubjectIds = new Set((data || []).map(a => a.subject_id));
+        renderAssignOptions();
     };
+    await loadTeacherOptions();
     await renderAssignments();
+
+    addBtn.addEventListener('click', async () => {
+        const option = teacherOptions.find(o => o.assignmentId === teacherSelect.value && o.subjectId === subjectSelect.value);
+        if (!option) { setDialogMessage('edit-student-assign-msg', 'Choose a subject and a teacher.', 'error'); return; }
+
+        addBtn.disabled = true;
+        const { error } = await window.OrixaAuth.client.from('student_subject_assignments').insert({
+            student_id: studentId,
+            college_id: profile.college_id,
+            subject_id: option.subjectId,
+            academic_level_id: currentLevel.id,
+            academic_session_id: option.sessionId,
+            teacher_id: option.teacherId,
+            teacher_assignment_id: option.assignmentId
+        });
+        addBtn.disabled = false;
+
+        if (error) {
+            console.error('Add student subject error:', error);
+            setDialogMessage('edit-student-assign-msg',
+                error.code === '23505' ? 'This student already has that subject.' : `Error: ${error.message}`, 'error');
+            return;
+        }
+        setDialogMessage('edit-student-assign-msg', `Added ${option.subjectName} with ${option.teacherName}.`, 'success');
+        await renderAssignments();
+        await refreshHodAfterUserChange();
+    });
 
     dialog.querySelector('#edit-student-form').addEventListener('submit', async event => {
         event.preventDefault();
@@ -887,6 +979,10 @@ async function openEditStudentDialog(studentId) {
         }
         document.getElementById('edit-student-password').value = '';
         setDialogMessage('edit-student-msg', 'Details saved.', 'success');
+        if (yearChanged) {
+            currentLevel = ref.levels.find(l => l.id === newLevelId) || currentLevel;
+            await loadTeacherOptions();   // the subjects on offer belong to the new year
+        }
         await renderAssignments();
         await refreshHodAfterUserChange();
     });

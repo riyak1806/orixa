@@ -99,7 +99,11 @@ function renderStudentList() {
         return;
     }
 
-    tableBody.innerHTML = HOD_MOCK_DATA.students.map(student => `
+    // In login-ID order, with numbers compared as numbers (stu-2 comes before stu-10)
+    const studentsInOrder = [...HOD_MOCK_DATA.students].sort((a, b) =>
+        String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true, sensitivity: 'base' }));
+
+    tableBody.innerHTML = studentsInOrder.map(student => `
         <tr>
             <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(student.name)}</td>
             <td style="white-space: nowrap;"><code class="hod-code-badge">${escapeHtml(student.studentId)}</code></td>
@@ -557,6 +561,83 @@ function setFieldValid(input) {
     input.classList.remove('input-invalid');
     const errEl = document.getElementById(`${input.id}-error`);
     if (errEl) errEl.textContent = '';
+}
+
+function initHodPasswordForm() {
+    const drawer = document.getElementById('hod-password-drawer');
+    const openBtn = document.getElementById('open-hod-password-btn');
+    const closeBtn = document.getElementById('close-hod-password-btn');
+    const form = document.getElementById('hod-password-form');
+    if (!drawer || !openBtn || !form) return;
+
+    const fields = {
+        current: document.getElementById('hod-pwd-current'),
+        next: document.getElementById('hod-pwd-new'),
+        confirm: document.getElementById('hod-pwd-confirm')
+    };
+    const errors = {
+        current: document.getElementById('hod-pwd-current-error'),
+        next: document.getElementById('hod-pwd-new-error'),
+        confirm: document.getElementById('hod-pwd-confirm-error')
+    };
+    const msg = document.getElementById('hod-pwd-msg');
+    const saveBtn = document.getElementById('hod-pwd-save-btn');
+
+    const clearErrors = () => {
+        Object.values(fields).forEach(el => el.classList.remove('input-invalid'));
+        Object.values(errors).forEach(el => { el.textContent = ''; });
+        msg.textContent = '';
+        msg.className = 'teacher-form-msg';
+    };
+    const fail = (key, text) => {
+        fields[key].classList.add('input-invalid');
+        errors[key].textContent = text;
+    };
+    const open = () => { drawer.style.display = 'flex'; fields.current.focus(); };
+    const close = () => { drawer.style.display = 'none'; form.reset(); clearErrors(); openBtn.focus(); };
+
+    openBtn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    drawer.addEventListener('click', e => { if (e.target === drawer) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.style.display !== 'none') close(); });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        clearErrors();
+
+        const current = fields.current.value;
+        const next = fields.next.value;
+        const confirm = fields.confirm.value;
+
+        let valid = true;
+        if (!current) { fail('current', 'Current password is required.'); valid = false; }
+        if (!next) { fail('next', 'New password is required.'); valid = false; }
+        else if (next.length < 8) { fail('next', 'Password must be at least 8 characters.'); valid = false; }
+        else if (next === current) { fail('next', 'New password must be different from the current one.'); valid = false; }
+        if (!confirm) { fail('confirm', 'Please confirm your new password.'); valid = false; }
+        else if (next !== confirm) { fail('confirm', 'New passwords do not match.'); valid = false; }
+        if (!valid) return;
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING…';
+        const result = await window.OrixaAuth.changePassword(current, next);
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'SAVE PASSWORD';
+
+        if (result.error) {
+            if (result.field === 'current') {
+                fail('current', result.error);
+            } else {
+                msg.textContent = result.error;
+                msg.className = 'teacher-form-msg error';
+            }
+            return;
+        }
+
+        form.reset();
+        msg.textContent = 'Password changed successfully.';
+        msg.className = 'teacher-form-msg success';
+    });
 }
 
 function confirmHodLogout(event) {
@@ -2052,6 +2133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAddTeacherForm();
     initAddStudentForm();
     initDrawerToggles();
+    initHodPasswordForm();
     initHodPerformanceFilters();
     initUploadTogglesAndEvents();
 

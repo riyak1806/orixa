@@ -182,6 +182,24 @@
             return data;
         }
 
+        // Changes the signed-in user's password after confirming the current one.
+        // Returns {} on success, or { field: 'current' | undefined, error } on failure.
+        async changePassword(currentPassword, newPassword) {
+            const client = this.client;
+            const user = await this.getCurrentUser();
+            if (!client || !user || !user.email) {
+                return { error: 'You are not signed in. Please log in again.' };
+            }
+
+            const verify = await client.auth.signInWithPassword({ email: user.email, password: currentPassword });
+            if (verify.error) {
+                return { field: 'current', error: 'Current password is incorrect.' };
+            }
+
+            const { error } = await client.auth.updateUser({ password: newPassword });
+            return error ? { error: `Password change failed: ${error.message}` } : {};
+        }
+
         async getCurrentProfile() {
             if (this._cachedProfile) {
                 return this._cachedProfile;

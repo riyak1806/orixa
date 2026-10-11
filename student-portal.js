@@ -622,7 +622,10 @@ async function completeAttemptInSupabase(attemptId) {
     const { error } = await window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
         p_attempt_id: attemptId
     });
-    if (!error) return;
+    if (!error) {
+        loadStudentQuizHistory();
+        return;
+    }
 
     console.error('fn_complete_quiz_attempt error:', error);
     const screen = document.querySelector('#tile-game-window .tile-victory-screen');
@@ -748,6 +751,111 @@ function closeStudentProfileModal() {
     if (modal) {
         modal.classList.add('hidden');
     }
+    resetStudentPasswordForm();
+}
+
+/* ==========================================================================
+   CHANGE PASSWORD
+   ========================================================================== */
+
+function resetStudentPasswordForm() {
+    const form = document.getElementById('student-password-form');
+    const toggle = document.getElementById('student-password-toggle-btn');
+    if (!form) return;
+    form.reset();
+    form.classList.add('hidden');
+    form.querySelectorAll('.cartoon-input').forEach(el => el.classList.remove('input-invalid'));
+    form.querySelectorAll('.field-error').forEach(el => { el.textContent = ''; });
+    const msg = document.getElementById('student-pwd-msg');
+    if (msg) { msg.textContent = ''; msg.className = 'teacher-form-msg'; }
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function initStudentPasswordForm() {
+    const form = document.getElementById('student-password-form');
+    const toggle = document.getElementById('student-password-toggle-btn');
+    if (!form || !toggle) return;
+
+    toggle.addEventListener('click', () => {
+        const opening = form.classList.contains('hidden');
+        form.classList.toggle('hidden', !opening);
+        toggle.setAttribute('aria-expanded', String(opening));
+        if (opening) document.getElementById('student-pwd-current').focus();
+    });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const fields = {
+            current: document.getElementById('student-pwd-current'),
+            next: document.getElementById('student-pwd-new'),
+            confirm: document.getElementById('student-pwd-confirm')
+        };
+        const errors = {
+            current: document.getElementById('student-pwd-current-error'),
+            next: document.getElementById('student-pwd-new-error'),
+            confirm: document.getElementById('student-pwd-confirm-error')
+        };
+        const msg = document.getElementById('student-pwd-msg');
+        const saveBtn = document.getElementById('student-pwd-save-btn');
+
+        Object.values(fields).forEach(el => el.classList.remove('input-invalid'));
+        Object.values(errors).forEach(el => { el.textContent = ''; });
+        msg.textContent = '';
+        msg.className = 'teacher-form-msg';
+
+        const fail = (key, text) => {
+            fields[key].classList.add('input-invalid');
+            errors[key].textContent = text;
+        };
+        const current = fields.current.value;
+        const next = fields.next.value;
+        const confirm = fields.confirm.value;
+
+        let valid = true;
+        if (!current) { fail('current', 'Current password is required.'); valid = false; }
+        if (!next) { fail('next', 'New password is required.'); valid = false; }
+        else if (next.length < 8) { fail('next', 'Password must be at least 8 characters.'); valid = false; }
+        else if (next === current) { fail('next', 'New password must be different from the current one.'); valid = false; }
+        if (!confirm) { fail('confirm', 'Please confirm your new password.'); valid = false; }
+        else if (next !== confirm) { fail('confirm', 'New passwords do not match.'); valid = false; }
+        if (!valid) return;
+
+        const client = window.OrixaAuth && window.OrixaAuth.client;
+        const user = client ? await window.OrixaAuth.getCurrentUser() : null;
+        if (!client || !user || !user.email) {
+            msg.textContent = 'You are not signed in. Please log in again.';
+            msg.className = 'teacher-form-msg error';
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING…';
+
+        // Confirm the current password before allowing a change
+        const verify = await client.auth.signInWithPassword({ email: user.email, password: current });
+        if (verify.error) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'SAVE PASSWORD';
+            fail('current', 'Current password is incorrect.');
+            return;
+        }
+
+        const { error } = await client.auth.updateUser({ password: next });
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'SAVE PASSWORD';
+
+        if (error) {
+            console.error('Password change failed:', error);
+            msg.textContent = `Password change failed: ${error.message}`;
+            msg.className = 'teacher-form-msg error';
+            return;
+        }
+
+        form.reset();
+        msg.textContent = 'Password changed successfully.';
+        msg.className = 'teacher-form-msg success';
+    });
 }
 
 function escapeHTML(str) {
@@ -2312,6 +2420,59 @@ async function loadStudentProfileAndStats(profile) {
     }
 }
 
+const QUIZ_FORMAT_LABELS = {
+    TILE_PUZZLE: 'Tile Puzzle',
+    MATCH_FOLLOWING: 'Match the Following',
+    FILL_BLANKS: 'Fill in the Blanks',
+    TRUE_FALSE: 'True or False'
+};
+
+// Lists the quizzes this student has completed, newest first, in the profile popup
+async function loadStudentQuizHistory() {
+    const list = document.getElementById('student-quiz-history');
+    if (!list) return;
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+
+    const profile = await window.OrixaAuth.getCurrentProfile();
+    if (!profile) return;
+
+    const { data: attempts, error } = await window.OrixaAuth.client
+        .from('quiz_attempts')
+        .select('id, completed_at, final_earned_xp, final_stars, final_accuracy_pct, quizzes(title, game_type, subjects!quizzes_subject_id_fkey(name))')
+        .eq('student_id', profile.id)
+        .eq('status', 'COMPLETED')
+        .order('completed_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching quiz history:', error);
+        list.innerHTML = '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: var(--color-red-dark);">Could not load your quiz history.</p>';
+        return;
+    }
+
+    if (!attempts || attempts.length === 0) {
+        list.innerHTML = '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">You have not completed any quizzes yet.</p>';
+        return;
+    }
+
+    list.innerHTML = attempts.map(a => {
+        const quiz = a.quizzes || {};
+        const subject = quiz.subjects && quiz.subjects.name ? quiz.subjects.name : null;
+        const format = QUIZ_FORMAT_LABELS[quiz.game_type] || null;
+        const date = a.completed_at ? new Date(a.completed_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+        const meta = [subject, format, date].filter(Boolean).join(' \u00b7 ');
+        return `
+            <div role="listitem" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 8px 10px;">
+                <div style="min-width: 0;">
+                    <div style="font-family: var(--font-header); font-weight: 700; color: var(--border-dark); overflow-wrap: anywhere;">${escapeHTML(quiz.title || 'Quiz')}</div>
+                    <div style="font-family: var(--font-body); font-size: 0.8rem; color: #546e7a;">${escapeHTML(meta)}</div>
+                </div>
+                <div style="font-family: var(--font-header); font-size: 0.85rem; font-weight: 700; color: var(--border-dark); text-align: right;">
+                    ${Number(a.final_accuracy_pct || 0)}% &middot; ${Number(a.final_earned_xp || 0)} XP &middot; ${Number(a.final_stars || 0)}/3 stars
+                </div>
+            </div>`;
+    }).join('');
+}
+
 function renderQuizCards(quizzes) {
     const grid = document.querySelector('.student-quest-grid');
     if (!grid || !Array.isArray(quizzes)) return;
@@ -2502,6 +2663,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!profile) return;
         await loadStudentProfileAndStats(profile);
     }
+    initStudentPasswordForm();
+    loadStudentQuizHistory();
 
     await loadCompletedQuizzesFromSupabase();
     await fetchPublishedQuizzesFromSupabase();

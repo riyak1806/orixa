@@ -1004,7 +1004,7 @@ function parseAndValidateTeacherRows(rawRows) {
 
         if (!subjectsRaw) errors.push('Subjects is empty');
         if (!yearsRaw) errors.push('Classes/Years is empty');
-        if (password && password.length < 6) errors.push('Password must be at least 6 characters if provided');
+        if (password && password.length < 8) errors.push('Password must be at least 8 characters if provided');
 
         const subjects = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
         const years = yearsRaw.split(',').map(y => y.trim()).filter(Boolean);
@@ -1245,12 +1245,15 @@ function parseAndValidateStudentRows(rawRows) {
             errors.push('Assigned Teacher is empty');
         } else {
             // Check against existing teachers in HOD_MOCK_DATA
-            const teacherMatch = HOD_MOCK_DATA.teachers.find(t =>
-                t.name.toLowerCase().trim() === teacher.toLowerCase().trim() ||
-                t.name.toLowerCase().includes(teacher.toLowerCase()) ||
-                teacher.toLowerCase().includes(t.name.toLowerCase()) ||
-                t.empId.toLowerCase().trim() === teacher.toLowerCase().trim()
-            );
+            const wanted = teacher.toLowerCase().trim();
+            const teachesSubject = t => !subject || t.subjects.some(sub => sub.toLowerCase().trim() === subject.toLowerCase().trim());
+            // An exact name or employee ID wins; otherwise a partial name, preferring a teacher who teaches this subject
+            const exactMatches = HOD_MOCK_DATA.teachers.filter(t =>
+                t.name.toLowerCase().trim() === wanted || t.empId.toLowerCase().trim() === wanted);
+            const partialMatches = HOD_MOCK_DATA.teachers.filter(t =>
+                t.name.toLowerCase().includes(wanted) || wanted.includes(t.name.toLowerCase()));
+            const candidates = exactMatches.length > 0 ? exactMatches : partialMatches;
+            const teacherMatch = candidates.find(teachesSubject) || candidates[0];
 
             if (!teacherMatch) {
                 errors.push(`Teacher "${teacher}" not found in faculty list`);

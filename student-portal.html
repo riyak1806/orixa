@@ -644,7 +644,25 @@
                     <div>
                         <h4 id="student-modal-name" style="margin: 0; font-family: var(--font-header); font-size: 1.3rem; color: var(--border-dark);">Loading...</h4>
                         <p id="student-modal-login-id" style="margin: 2px 0 0 0; font-family: var(--font-header); font-size: 0.85rem; color: var(--color-purple-dark);">--</p>
+                        <p id="student-modal-nickname" style="margin: 2px 0 0 0; font-family: var(--font-body); font-size: 0.85rem; font-weight: 700; color: #546e7a;" hidden></p>
                     </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 2px dashed rgba(26,26,36,0.15);">
+                    <form id="student-nickname-form" class="teacher-form" novalidate style="gap: 8px;">
+                        <div class="form-field">
+                            <label for="student-nickname-input" class="field-label"><span>YOUR NICKNAME (ONLY YOU CAN SEE THIS)</span></label>
+                            <div class="input-shell">
+                                <input type="text" id="student-nickname-input" class="cartoon-input" maxlength="30" autocomplete="off" placeholder="e.g. Quiz Ninja">
+                            </div>
+                            <span class="field-error" id="student-nickname-error"></span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="submit" id="student-nickname-save-btn" class="quiz-mgmt-action-btn quiz-btn-view" style="height: 42px; min-height: 42px; flex: 1; flex-shrink: 0;">SAVE NICKNAME</button>
+                            <button type="button" id="student-nickname-clear-btn" class="quiz-mgmt-action-btn quiz-btn-delete" style="height: 42px; min-height: 42px; flex: 0 0 auto; width: auto; padding: 0 16px;">CLEAR</button>
+                        </div>
+                        <p class="teacher-form-msg" id="student-nickname-msg" role="status" aria-live="polite"></p>
+                    </form>
                 </div>
 
                 <div class="quiz-mgmt-card-body" style="gap: 10px; margin-top: 4px;">

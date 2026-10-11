@@ -306,14 +306,7 @@ function initAddTeacherForm() {
         }
 
         // Store subjects/years in local state for student assignment UI
-        const newTeacher = {
-            id: result.userId,
-            name: name,
-            empId: empId,
-            subjects: subjects,
-            years: years
-        };
-        HOD_MOCK_DATA.teachers.push(newTeacher);
+        recordTeacherAssignment({ id: result.userId, name, empId, subjects, years });
 
         form.reset();
         [nameInput, empIdInput, subjectsInput, yearsInput].forEach(setFieldValid);
@@ -969,8 +962,7 @@ function parseAndValidateTeacherRows(rawRows) {
         startIndex = 1;
     }
 
-    const existingEmpIds = new Set(HOD_MOCK_DATA.teachers.map(t => String(t.empId).trim().toLowerCase()));
-    const fileEmpIds = new Set();
+    const fileTeacherNames = new Map();   // employee ID -> name on its first row in this file
 
     parsedTeacherRecords = [];
 
@@ -992,19 +984,18 @@ function parseAndValidateTeacherRows(rawRows) {
         if (!empId) {
             errors.push('Employee ID is empty');
         } else {
+            // An existing teacher, or the same teacher on several rows, only gets more subjects/years
             const empIdLower = empId.toLowerCase();
-            if (existingEmpIds.has(empIdLower)) {
-                errors.push(`Employee ID "${empId}" already exists in faculty list`);
-            } else if (fileEmpIds.has(empIdLower)) {
-                errors.push(`Duplicate Employee ID "${empId}" in file`);
-            } else {
-                fileEmpIds.add(empIdLower);
+            const earlierName = fileTeacherNames.get(empIdLower);
+            if (earlierName !== undefined && earlierName.toLowerCase() !== name.toLowerCase()) {
+                errors.push(`Employee ID "${empId}" has a different name on another row`);
             }
+            if (earlierName === undefined) fileTeacherNames.set(empIdLower, name);
         }
 
         if (!subjectsRaw) errors.push('Subjects is empty');
         if (!yearsRaw) errors.push('Classes/Years is empty');
-        if (password && password.length < 6) errors.push('Password must be at least 6 characters if provided');
+        if (password && password.length < 8) errors.push('Password must be at least 8 characters if provided');
 
         const subjects = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
         const years = yearsRaw.split(',').map(y => y.trim()).filter(Boolean);
@@ -1112,25 +1103,26 @@ async function confirmTeacherImport() {
     const results = [];
     const BATCH_SIZE = 5;
     
-    for (let i = 0; i < validRecords.length; i += BATCH_SIZE) {
-        const batch = validRecords.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(batch.map(async r => {
-            const res = await saveTeacherToSupabase(r.name, r.empId, r.subjects, r.years, r.password);
-            return { record: r, result: res };
-        }));
-        
-        for (const { record: r, result: res } of batchResults) {
-            results.push({ record: r, result: res });
-            if (res.success) {
-                HOD_MOCK_DATA.teachers.push({
-                    id: res.userId,
-                    name: r.name,
-                    empId: r.empId,
-                    subjects: r.subjects,
-                    years: r.years
-                });
+    // A teacher may have several rows: keep a teacher's rows in order so the account is created once
+    const rowsByTeacher = new Map();
+    validRecords.forEach(r => {
+        const key = r.empId.trim().toLowerCase();
+        if (!rowsByTeacher.has(key)) rowsByTeacher.set(key, []);
+        rowsByTeacher.get(key).push(r);
+    });
+    const teacherGroups = Array.from(rowsByTeacher.values());
+
+    for (let i = 0; i < teacherGroups.length; i += BATCH_SIZE) {
+        const batch = teacherGroups.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async group => {
+            for (const r of group) {
+                const res = await saveTeacherToSupabase(r.name, r.empId, r.subjects, r.years, r.password);
+                results.push({ record: r, result: res });
+                if (res.success) {
+                    recordTeacherAssignment({ id: res.userId, name: r.name, empId: r.empId, subjects: r.subjects, years: r.years });
+                }
             }
-        }
+        }));
     }
 
     if (confirmBtn) { confirmBtn.disabled = false; }
@@ -1245,12 +1237,15 @@ function parseAndValidateStudentRows(rawRows) {
             errors.push('Assigned Teacher is empty');
         } else {
             // Check against existing teachers in HOD_MOCK_DATA
-            const teacherMatch = HOD_MOCK_DATA.teachers.find(t =>
-                t.name.toLowerCase().trim() === teacher.toLowerCase().trim() ||
-                t.name.toLowerCase().includes(teacher.toLowerCase()) ||
-                teacher.toLowerCase().includes(t.name.toLowerCase()) ||
-                t.empId.toLowerCase().trim() === teacher.toLowerCase().trim()
-            );
+            const wanted = teacher.toLowerCase().trim();
+            const teachesSubject = t => !subject || t.subjects.some(sub => sub.toLowerCase().trim() === subject.toLowerCase().trim());
+            // An exact name or employee ID wins; otherwise a partial name, preferring a teacher who teaches this subject
+            const exactMatches = HOD_MOCK_DATA.teachers.filter(t =>
+                t.name.toLowerCase().trim() === wanted || t.empId.toLowerCase().trim() === wanted);
+            const partialMatches = HOD_MOCK_DATA.teachers.filter(t =>
+                t.name.toLowerCase().includes(wanted) || wanted.includes(t.name.toLowerCase()));
+            const candidates = exactMatches.length > 0 ? exactMatches : partialMatches;
+            const teacherMatch = candidates.find(teachesSubject) || candidates[0];
 
             if (!teacherMatch) {
                 errors.push(`Teacher "${teacher}" not found in faculty list`);
@@ -1478,6 +1473,29 @@ function sameAcademicYear(a, b) {
     return academicYearRank(a) === academicYearRank(b);
 }
 
+function findHodTeacher(empId) {
+    const key = String(empId || '').trim().toLowerCase();
+    return HOD_MOCK_DATA.teachers.find(t => String(t.empId).trim().toLowerCase() === key) || null;
+}
+
+// A teacher can be given more subjects/years later: add them to the existing row or create the row.
+function recordTeacherAssignment({ id, name, empId, subjects, years }) {
+    const existing = findHodTeacher(empId);
+    if (!existing) {
+        HOD_MOCK_DATA.teachers.push({ id, name, empId, subjects, years });
+        return;
+    }
+    const merge = (current, added) => {
+        const list = (current || []).filter(v => v && v !== '—');
+        added.forEach(v => {
+            if (!list.some(x => x.toLowerCase() === v.toLowerCase())) list.push(v);
+        });
+        return list;
+    };
+    existing.subjects = merge(existing.subjects, subjects);
+    existing.years = merge(existing.years, years);
+}
+
 function findHodStudent(studentId) {
     const key = String(studentId || '').trim().toLowerCase();
     return HOD_MOCK_DATA.students.find(s => String(s.studentId).trim().toLowerCase() === key) || null;
@@ -1591,13 +1609,17 @@ async function saveTeacherToSupabase(fullName, loginId, subjects = [], years = [
         const client = window.OrixaAuth.client;
         const finalPassword = password && password.trim() ? password.trim() : 'Password123!';
         try {
-            const { data, error } = await client.rpc('fn_admin_provision_teacher', {
-                p_full_name: fullName,
-                p_login_id: loginId,
-                p_password: finalPassword,
-                p_department_id: deptId,
-                p_designation: 'Faculty'
-            });
+            // An existing teacher only gets more subjects/years; the account and password stay as they are
+            const existingTeacher = findHodTeacher(loginId);
+            const { data, error } = existingTeacher
+                ? { data: { user_id: existingTeacher.id }, error: null }
+                : await client.rpc('fn_admin_provision_teacher', {
+                    p_full_name: fullName,
+                    p_login_id: loginId,
+                    p_password: finalPassword,
+                    p_department_id: deptId,
+                    p_designation: 'Faculty'
+                });
 
             if (error) {
                 console.error('DB RPC provision teacher error:', error);

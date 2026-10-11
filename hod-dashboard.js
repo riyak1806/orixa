@@ -55,11 +55,29 @@ function renderHodStats() {
     }
 }
 
+// What the two search boxes currently hold
+const hodListSearch = { teacher: '', student: '' };
+
+// Every word typed must appear somewhere in the row (any order, any case)
+function matchesSearch(text, query) {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const haystack = String(text).toLowerCase();
+    return words.every(word => haystack.includes(word));
+}
+
+function updateResultCount(kind, shown, total, noun) {
+    const el = document.getElementById(`${kind}-result-count`);
+    if (!el) return;
+    el.textContent = hodListSearch[kind] ? `Showing ${shown} of ${total} ${noun}` : `${total} ${noun}`;
+}
+
 function renderTeacherList() {
     const tableBody = document.getElementById('teacher-table-body');
     if (!tableBody) return;
 
-    if (HOD_MOCK_DATA.teachers.length === 0) {
+    const total = HOD_MOCK_DATA.teachers.length;
+    if (total === 0) {
+        updateResultCount('teacher', 0, 0, 'teachers');
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="hod-no-results">
@@ -70,7 +88,21 @@ function renderTeacherList() {
         return;
     }
 
-    tableBody.innerHTML = HOD_MOCK_DATA.teachers.map(teacher => `
+    const query = hodListSearch.teacher.trim();
+    const teachers = HOD_MOCK_DATA.teachers.filter(t =>
+        matchesSearch([t.name, t.empId, t.subjects.join(' '), t.years.join(' ')].join(' '), query));
+    updateResultCount('teacher', teachers.length, total, 'teachers');
+
+    if (teachers.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="hod-no-results">No teachers match "${escapeHtml(query)}".</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = teachers.map(teacher => `
         <tr>
             <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(teacher.name)}</td>
             <td class="hod-empid-col"><code class="hod-code-badge">${escapeHtml(teacher.empId)}</code></td>
@@ -85,14 +117,21 @@ function renderTeacherList() {
     `).join('');
 }
 
+// The subject/teacher pairs of one student, shown side by side
+function studentAssignmentPairs(student) {
+    return (student.assignments || []).filter(a => a.subject);
+}
+
 function renderStudentList() {
     const tableBody = document.getElementById('student-table-body');
     if (!tableBody) return;
 
-    if (HOD_MOCK_DATA.students.length === 0) {
+    const total = HOD_MOCK_DATA.students.length;
+    if (total === 0) {
+        updateResultCount('student', 0, 0, 'students');
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="hod-no-results">
+                <td colspan="5" class="hod-no-results">
                     No students added or assigned yet. Use the form above to add student data.
                 </td>
             </tr>
@@ -100,20 +139,57 @@ function renderStudentList() {
         return;
     }
 
+    const query = hodListSearch.student.trim();
     // In login-ID order, with numbers compared as numbers (stu-2 comes before stu-10)
-    const studentsInOrder = [...HOD_MOCK_DATA.students].sort((a, b) =>
-        String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true, sensitivity: 'base' }));
+    const students = HOD_MOCK_DATA.students
+        .filter(st => matchesSearch([
+            st.name, st.studentId, st.year,
+            studentAssignmentPairs(st).map(a => `${a.subject} ${a.teacher}`).join(' ')
+        ].join(' '), query))
+        .sort((a, b) => String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true, sensitivity: 'base' }));
+    updateResultCount('student', students.length, total, 'students');
 
-    tableBody.innerHTML = studentsInOrder.map(student => `
+    if (students.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="hod-no-results">No students match "${escapeHtml(query)}".</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = students.map(student => {
+        const pairs = studentAssignmentPairs(student);
+        return `
         <tr>
             <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(student.name)}</td>
             <td style="white-space: nowrap;"><code class="hod-code-badge">${escapeHtml(student.studentId)}</code></td>
             <td><span class="hod-badge hod-badge-yellow">${escapeHtml(student.year)}</span></td>
-            <td><span class="hod-badge hod-badge-green">${escapeHtml(student.subject)}</span></td>
-            <td><span class="hod-badge hod-badge-purple">${escapeHtml(student.teacher)}</span></td>
+            <td>${pairs.length > 0
+                ? pairs.map(a => `<span class="hod-pair"><span class="hod-badge hod-badge-green">${escapeHtml(a.subject)}</span><span class="hod-badge hod-badge-purple">${escapeHtml(a.teacher || '\u2014')}</span></span>`).join('')
+                : '<span class="hod-badge hod-badge-yellow">\u2014</span>'}</td>
             <td class="hod-actions-col">${renderUserActionButtons('student', student.id, student.name)}</td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
+}
+
+function initHodSearch() {
+    [['teacher', renderTeacherList], ['student', renderStudentList]].forEach(([kind, render]) => {
+        const input = document.getElementById(`${kind}-search`);
+        const clear = document.getElementById(`${kind}-search-clear`);
+        if (!input) return;
+
+        const apply = () => {
+            hodListSearch[kind] = input.value;
+            clear.classList.toggle('hidden', input.value === '');
+            render();
+        };
+        input.addEventListener('input', apply);
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; apply(); }
+        });
+        clear.addEventListener('click', () => { input.value = ''; apply(); input.focus(); });
+    });
 }
 
 function updateStudentFormDropdowns() {
@@ -2115,7 +2191,7 @@ function splitCommaList(value) {
 function recordStudentAssignment({ id, name, studentId, year, subject, teacher }) {
     const existing = findHodStudent(studentId);
     if (!existing) {
-        HOD_MOCK_DATA.students.push({ id, name, studentId, year, subject, teacher });
+        HOD_MOCK_DATA.students.push({ id, name, studentId, year, subject, teacher, assignments: [{ subject, teacher }] });
         return;
     }
     const subjects = splitCommaList(existing.subject);
@@ -2124,6 +2200,11 @@ function recordStudentAssignment({ id, name, studentId, year, subject, teacher }
     if (!teachers.some(x => x.toLowerCase() === String(teacher).toLowerCase())) teachers.push(teacher);
     existing.subject = subjects.join(', ');
     existing.teacher = teachers.join(', ');
+
+    existing.assignments = existing.assignments || [];
+    if (!existing.assignments.some(a => a.subject.toLowerCase() === String(subject).toLowerCase())) {
+        existing.assignments.push({ subject, teacher });
+    }
 }
 
 // Matches "Second Year", "SE", "2" or "2nd year" to an academic level.
@@ -2599,7 +2680,10 @@ async function loadHodDataFromSupabase() {
                         studentId: sId,
                         year: sp.academic_levels?.display_name || sp.academic_levels?.code || '—',
                         subject: subjects,
-                        teacher: teachers
+                        teacher: teachers,
+                        assignments: activeAssignments
+                            .filter(a => a.subjects?.name)
+                            .map(a => ({ subject: a.subjects.name, teacher: a.profiles?.full_name || '' }))
                     };
                 });
             }
@@ -2661,6 +2745,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initDrawerToggles();
     initHodProfile();
     initUserManagement();
+    initHodSearch();
     initHodPerformanceFilters();
     initUploadTogglesAndEvents();
 

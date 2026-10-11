@@ -99,7 +99,11 @@ function renderStudentList() {
         return;
     }
 
-    tableBody.innerHTML = HOD_MOCK_DATA.students.map(student => `
+    // In login-ID order, with numbers compared as numbers (stu-2 comes before stu-10)
+    const studentsInOrder = [...HOD_MOCK_DATA.students].sort((a, b) =>
+        String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true, sensitivity: 'base' }));
+
+    tableBody.innerHTML = studentsInOrder.map(student => `
         <tr>
             <td style="font-weight: 700; color: var(--border-dark);">${escapeHtml(student.name)}</td>
             <td style="white-space: nowrap;"><code class="hod-code-badge">${escapeHtml(student.studentId)}</code></td>

@@ -37,8 +37,6 @@ const ICONS = {
 
 // Centralized Data Architecture (Populated from Supabase)
 const MOCK_DATA = {
-    unreadCount: 0,
-    notifications: [],
     teacher: {
         name: "",
         email: "",
@@ -74,11 +72,9 @@ const MOCK_DATA = {
         { label: 'Recent Activity', value: '0', caption: 'Quiz submissions today', icon: 'clock', tone: 'orange' }
     ],
     students: [],
-    activities: [],
     quizzes: [],
     results: [],
     searchableItems: [],
-    pastQuizzes: []
 };
 
 const navItems = [
@@ -87,8 +83,6 @@ const navItems = [
     { label: 'Create Quiz', icon: 'plus', target: 'create-quiz' },
     { label: 'Students', icon: 'users', target: 'students' },
     { label: 'Results', icon: 'chart', target: 'results' },
-    { label: 'Past Quizzes', icon: 'history', target: 'past-quizzes' },
-    { label: 'Notifications', icon: 'bell', target: 'notifications' },
     { label: 'Settings', icon: 'settings', target: 'settings' },
     { label: 'Help', icon: 'help', target: 'help' }
 ];
@@ -159,30 +153,6 @@ function createQuickAction(action) {
     return button;
 }
 
-
-function createActivityItem(activity) {
-    const item = document.createElement('div');
-    item.className = 'activity-item';
-    item.innerHTML = `
-        <span class="activity-icon">${icon(activity.icon)}</span>
-        <div>
-            <p class="activity-title">${activity.title}</p>
-            <span class="activity-meta">${activity.desc} &bull; ${activity.time}</span>
-        </div>
-    `;
-    return item;
-}
-
-function renderActivities() {
-    const activityList = document.getElementById('activity-list');
-
-    if (!activityList) {
-        return;
-    }
-
-    activityList.innerHTML = '';
-    activityList.append(...MOCK_DATA.activities.map(createActivityItem));
-}
 
 function createQuizItem(quiz) {
     const item = document.createElement('div');
@@ -328,18 +298,6 @@ function renderTeacherProfile() {
     `;
 }
 
-function renderNotificationDot() {
-    const dot = document.querySelector('.notification-dot');
-    if (!dot) {
-        return;
-    }
-    if (MOCK_DATA.unreadCount > 0) {
-        dot.classList.remove('hidden');
-    } else {
-        dot.classList.add('hidden');
-    }
-}
-
 let createQuizState = null;
 
 async function fetchTeacherQuizzesFromSupabase() {
@@ -460,14 +418,23 @@ async function fetchTeacherStudentsFromSupabase() {
     if (!user) return;
 
     try {
-        // Note: email column does not exist on public.profiles or public.student_profiles (stored in auth.users).
-        // A schema migration is required if public email selection is needed. Generated internal auth email is used as fallback.
-        const { data: assignments, error } = await client
-            .from('student_subject_assignments')
-            .select('student_id, subjects(name), academic_levels!student_subject_assignments_academic_level_id_fkey(display_name), profiles!student_subject_assignments_student_id_fkey(id, full_name, login_id, student_profiles!student_profiles_profile_id_fkey(student_id, roll_number))')
-            .eq('teacher_id', user.id)
-            .eq('is_active', true)
-            .limit(100);
+        // A student has one row per subject, so fetch in pages: the API returns at most 1000 rows at a time
+        // and a fixed limit would cut the list off.
+        const PAGE_SIZE = 1000;
+        const assignments = [];
+        let error = null;
+        for (let from = 0; ; from += PAGE_SIZE) {
+            const page = await client
+                .from('student_subject_assignments')
+                .select('id, student_id, subjects(name), academic_levels!student_subject_assignments_academic_level_id_fkey(display_name), profiles!student_subject_assignments_student_id_fkey(id, full_name, login_id, student_profiles!student_profiles_profile_id_fkey(student_id, roll_number))')
+                .eq('teacher_id', user.id)
+                .eq('is_active', true)
+                .order('id')
+                .range(from, from + PAGE_SIZE - 1);
+            if (page.error) { error = page.error; break; }
+            assignments.push(...page.data);
+            if (page.data.length < PAGE_SIZE) break;
+        }
 
         if (error) {
             console.error('Error fetching students from Supabase:', error);
@@ -487,11 +454,9 @@ async function fetchTeacherStudentsFromSupabase() {
                 if (a.academic_levels && a.academic_levels.display_name) entry.grades.add(a.academic_levels.display_name);
             });
             const studentsList = Array.from(byStudent.values()).map(({ prof, subjects, grades }) => {
-                const cleanLoginId = prof.login_id || 'student';
                 return {
                     id: prof.login_id || prof.id,
                     name: prof.full_name || 'Student',
-                    email: `${cleanLoginId}@auth.orixa.internal`,
                     grade: Array.from(grades).join(', ') || '—',
                     subject: Array.from(subjects).join(', ') || '—',
                     status: 'Active',
@@ -503,44 +468,6 @@ async function fetchTeacherStudentsFromSupabase() {
         }
     } catch (e) {
         console.warn('Could not fetch students from Supabase:', e);
-    }
-}
-
-async function fetchNotificationsFromSupabase() {
-    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
-    const client = window.OrixaAuth.client;
-    try {
-        const user = await window.OrixaAuth.getCurrentUser();
-        if (!user) return;
-
-        const { data: notifs, error } = await client
-            .from('notifications')
-            .select('id, title, message, category, priority, is_read, created_at')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(100);
-
-        if (error) {
-            console.error('Error fetching notifications from Supabase:', error);
-            return;
-        }
-
-        if (notifs) {
-            MOCK_DATA.notifications = notifs.map(n => ({
-                id: n.id,
-                title: n.title,
-                message: n.message,
-                category: n.category || 'General',
-                priority: n.priority || 'Normal',
-                read: n.is_read || false,
-                timestamp: n.created_at,
-                dateStr: n.created_at ? n.created_at.split('T')[0] : 'Today'
-            }));
-            MOCK_DATA.unreadCount = MOCK_DATA.notifications.filter(n => !n.read).length;
-            renderNotificationDot();
-        }
-    } catch (e) {
-        console.warn('Could not fetch notifications from Supabase:', e);
     }
 }
 
@@ -2337,15 +2264,6 @@ function navigateToView(target) {
         return;
     }
 
-    if (target === 'notifications') {
-        overviewPage.classList.add('hidden');
-        dynamicPage.classList.remove('hidden');
-        renderNotificationsPage();
-        setActiveNavigation('notifications');
-        window.history.replaceState(null, '', `#notifications`);
-        return;
-    }
-
     // Always hide search dropdown on navigate
     if (searchDropdown) {
         searchDropdown.classList.add('hidden');
@@ -2404,15 +2322,6 @@ function navigateToView(target) {
         renderResultsPage();
         setActiveNavigation('results');
         window.history.replaceState(null, '', `#results`);
-        return;
-    }
-
-    if (target === 'past-quizzes') {
-        overviewPage.classList.add('hidden');
-        dynamicPage.classList.remove('hidden');
-        renderPastQuizzesPage();
-        setActiveNavigation('past-quizzes');
-        window.history.replaceState(null, '', `#past-quizzes`);
         return;
     }
 
@@ -3152,7 +3061,7 @@ function renderStudentsPage() {
                 <div class="quiz-mgmt-filters">
                     <div class="quiz-mgmt-search-container">
                         <span class="quiz-mgmt-search-icon" data-icon="search"></span>
-                        <input type="search" id="student-search-input" placeholder="Search students by name, ID, email..." value="${escapeHTML(studentsPageState.searchQuery)}" autocomplete="off">
+                        <input type="search" id="student-search-input" placeholder="Search students by name or ID..." value="${escapeHTML(studentsPageState.searchQuery)}" autocomplete="off">
                     </div>
                     <select id="student-status-filter" class="quiz-mgmt-select">
                         <option value="All" ${studentsPageState.statusFilter === 'All' ? 'selected' : ''}>All Statuses</option>
@@ -3251,8 +3160,7 @@ function renderStudentsList() {
     if (query) {
         filtered = filtered.filter(s =>
             s.name.toLowerCase().includes(query) ||
-            s.id.toLowerCase().includes(query) ||
-            s.email.toLowerCase().includes(query)
+            s.id.toLowerCase().includes(query)
         );
     }
 
@@ -3305,7 +3213,6 @@ function renderStudentsList() {
                         <th style="padding: 12px var(--t-space-2);">STUDENT NAME</th>
                         <th style="padding: 12px var(--t-space-2);">STUDENT ID</th>
                         <th style="padding: 12px var(--t-space-2);">GRADE</th>
-                        <th style="padding: 12px var(--t-space-2);">EMAIL</th>
                         <th style="padding: 12px var(--t-space-2);">QUIZZES</th>
                         <th style="padding: 12px var(--t-space-2);">AVG SCORE</th>
                         <th style="padding: 12px var(--t-space-2);">STATUS</th>
@@ -3321,7 +3228,6 @@ function renderStudentsList() {
                                 <td style="padding: 12px var(--t-space-2); font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHTML(s.name)}</td>
                                 <td style="padding: 12px var(--t-space-2); font-weight: 700; color: #546e7a;">${escapeHTML(s.id)}</td>
                                 <td style="padding: 12px var(--t-space-2);">${escapeHTML(s.grade)}</td>
-                                <td style="padding: 12px var(--t-space-2); color: #546e7a;">${escapeHTML(s.email)}</td>
                                 <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700;">${s.quizzesAttempted}</td>
                                 <td style="padding: 12px var(--t-space-2); text-align: center; font-weight: 700; color: ${s.averageScore >= 80 ? 'var(--color-green-dark)' : (s.averageScore >= 60 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)')}">${s.averageScore}%</td>
                                 <td style="padding: 12px var(--t-space-2);">
@@ -3413,10 +3319,6 @@ window.viewStudentDetails = function(id) {
                 <!-- Basic Meta Details -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--t-space-1); font-family: var(--font-body); font-size: 0.9rem;">
                     <div>
-                        <span style="font-weight: 700; color: #78909c;">Email:</span>
-                        <div style="color: var(--border-dark); font-weight: 700; word-break: break-all;">${escapeHTML(s.email)}</div>
-                    </div>
-                    <div>
                         <span style="font-weight: 700; color: #78909c;">Grade/Class:</span>
                         <div style="color: var(--border-dark); font-weight: 700;">${escapeHTML(s.grade)}</div>
                     </div>
@@ -3484,7 +3386,6 @@ function renderStudentForm(dynamicPage) {
 
     const name = s ? s.name : '';
     const id = s ? s.id : '';
-    const email = s ? s.email : '';
     const grade = s ? s.grade : 'Grade 8';
     const subject = s ? s.subject : 'Science';
     const status = s ? s.status : 'Active';
@@ -3516,7 +3417,7 @@ function renderStudentForm(dynamicPage) {
                     <span class="field-error" id="err-s-name" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
                 </div>
 
-                <!-- Student ID & Email Row -->
+                <!-- Student ID Row -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--t-space-2);">
                     <div class="form-field">
                         <label class="field-label" for="form-s-id">STUDENT ID *</label>
@@ -3525,13 +3426,6 @@ function renderStudentForm(dynamicPage) {
                         </div>
                         <span class="field-error" id="err-s-id" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
                     </div>
-
-                    <div class="form-field">
-                        <label class="field-label" for="form-s-email">EMAIL ADDRESS *</label>
-                        <div class="input-shell">
-                            <input type="text" id="form-s-email" class="cartoon-input" placeholder="e.g. student@example.com" value="${escapeHTML(email)}">
-                        </div>
-                        <span class="field-error" id="err-s-email" style="color: var(--color-red-dark); font-family: var(--font-header); font-size: 0.82rem; margin-top: 4px; display: block;"></span>
                     </div>
                 </div>
 
@@ -3601,14 +3495,12 @@ window.saveStudentProfile = function(event) {
 
     const nameInput = document.getElementById('form-s-name');
     const idInput = document.getElementById('form-s-id');
-    const emailInput = document.getElementById('form-s-email');
     const gradeSelect = document.getElementById('form-s-grade');
     const subjectSelect = document.getElementById('form-s-subject');
     const statusSelect = document.getElementById('form-s-status');
 
     const nameVal = nameInput.value.trim();
     const idVal = idInput.value.trim().toUpperCase();
-    const emailVal = emailInput.value.trim();
     const gradeVal = gradeSelect.value;
     const subjectVal = subjectSelect.value;
     const statusVal = statusSelect.value;
@@ -3635,20 +3527,6 @@ window.saveStudentProfile = function(event) {
                 document.getElementById('err-s-id').textContent = 'This Student ID is already assigned to another student.';
                 isValid = false;
             }
-        }
-    }
-
-    if (!emailVal) {
-        emailInput.classList.add('input-invalid');
-        document.getElementById('err-s-email').textContent = 'Email address is required.';
-        isValid = false;
-    } else {
-        // Basic Email Regex
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailPattern.test(emailVal)) {
-            emailInput.classList.add('input-invalid');
-            document.getElementById('err-s-email').textContent = 'Please enter a valid email address.';
-            isValid = false;
         }
     }
 
@@ -3684,7 +3562,6 @@ window.saveStudentProfile = function(event) {
         const s = MOCK_DATA.students.find(student => student.id === studentsPageState.editingStudentId);
         if (s) {
             s.name = nameVal;
-            s.email = emailVal;
             s.grade = gradeVal;
             s.subject = subjectVal;
             s.status = statusVal;
@@ -3695,7 +3572,6 @@ window.saveStudentProfile = function(event) {
             id: idVal,
             name: nameVal,
             grade: gradeVal,
-            email: emailVal,
             quizzesAttempted: 0,
             averageScore: 0,
             status: statusVal,
@@ -3815,22 +3691,6 @@ let resultsPageState = {
     activeTab: 'attempts', // 'attempts', 'quizzes', 'students'
     selectedQuizId: null,
     selectedStudentId: null
-};
-
-let pastQuizzesPageState = {
-    searchQuery: '',
-    subjectFilter: 'All',
-    gradeFilter: 'All',
-    dateFilter: 'All Time',
-    sortBy: 'Most Recent'
-};
-
-let notificationsPageState = {
-    searchQuery: '',
-    statusFilter: 'All',
-    categoryFilter: 'All',
-    priorityFilter: 'All',
-    sortBy: 'Newest'
 };
 
 /* ==========================================================================
@@ -4490,524 +4350,8 @@ window.filterAttemptsByStudent = function(studentName) {
 };
 
 /* ==========================================================================
-   PAST QUIZZES SECTION CONTROLLER
+   RESULT DETAILS
    ========================================================================== */
-
-function renderPastQuizzesPage() {
-    const dynamicPage = document.getElementById('dynamic-placeholder-page');
-    if (!dynamicPage) return;
-
-    // Apply active filters on MOCK_DATA.pastQuizzes
-    let filtered = [...MOCK_DATA.pastQuizzes];
-
-    // Search Query
-    const query = pastQuizzesPageState.searchQuery.trim().toLowerCase();
-    if (query) {
-        filtered = filtered.filter(q =>
-            q.title.toLowerCase().includes(query) ||
-            q.subject.toLowerCase().includes(query) ||
-            (q.description && q.description.toLowerCase().includes(query))
-        );
-    }
-
-    // Subject Filter
-    if (pastQuizzesPageState.subjectFilter !== 'All') {
-        filtered = filtered.filter(q => q.subject === pastQuizzesPageState.subjectFilter);
-    }
-
-    // Grade Filter
-    if (pastQuizzesPageState.gradeFilter !== 'All') {
-        filtered = filtered.filter(q => q.grade === pastQuizzesPageState.gradeFilter);
-    }
-
-    // Date Filter (All Time, This Week, This Month, This Semester)
-    if (pastQuizzesPageState.dateFilter !== 'All Time') {
-        filtered = filtered.filter(q => {
-            const limitDate = new Date("2026-08-13");
-            const qDate = new Date(q.completionDate);
-            const diffTime = Math.abs(limitDate - qDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (pastQuizzesPageState.dateFilter === 'This Week') return diffDays <= 7;
-            if (pastQuizzesPageState.dateFilter === 'This Month') return diffDays <= 30;
-            if (pastQuizzesPageState.dateFilter === 'This Semester') return diffDays <= 120;
-            return true;
-        });
-    }
-
-    // Sort Options (Most Recent, Oldest, Highest Average Score, Lowest Average Score, A-Z, Z-A)
-    if (pastQuizzesPageState.sortBy === 'Most Recent') {
-        filtered.sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
-    } else if (pastQuizzesPageState.sortBy === 'Oldest') {
-        filtered.sort((a, b) => new Date(a.completionDate) - new Date(b.completionDate));
-    } else if (pastQuizzesPageState.sortBy === 'Highest Average Score') {
-        filtered.sort((a, b) => b.averageScore - a.averageScore);
-    } else if (pastQuizzesPageState.sortBy === 'Lowest Average Score') {
-        filtered.sort((a, b) => a.averageScore - b.averageScore);
-    } else if (pastQuizzesPageState.sortBy === 'A-Z') {
-        filtered.sort((a, b) => a.title.localeCompare(b.title));
-    } else if (pastQuizzesPageState.sortBy === 'Z-A') {
-        filtered.sort((a, b) => b.title.localeCompare(a.title));
-    }
-
-    // Compute stats dynamically from current mock data array
-    const totalPastQuizzes = MOCK_DATA.pastQuizzes.length;
-    const totalAttempts = MOCK_DATA.pastQuizzes.reduce((sum, q) => sum + q.attempts, 0);
-    const avgScore = totalPastQuizzes > 0 ? Math.round(MOCK_DATA.pastQuizzes.reduce((sum, q) => sum + q.averageScore, 0) / totalPastQuizzes) : 0;
-
-    // Most recent past quiz
-    let mostRecentQuizTitle = "N/A";
-    if (MOCK_DATA.pastQuizzes.length > 0) {
-        const sortedByDate = [...MOCK_DATA.pastQuizzes].sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
-        mostRecentQuizTitle = sortedByDate[0].title;
-    }
-
-    const uniqueSubjects = Array.from(new Set(MOCK_DATA.pastQuizzes.map(q => q.subject))).sort();
-    const uniqueGrades = Array.from(new Set(MOCK_DATA.pastQuizzes.map(q => q.grade))).sort();
-
-    const isFiltersActive = pastQuizzesPageState.searchQuery !== '' ||
-                            pastQuizzesPageState.subjectFilter !== 'All' ||
-                            pastQuizzesPageState.gradeFilter !== 'All' ||
-                            pastQuizzesPageState.dateFilter !== 'All Time';
-
-    dynamicPage.innerHTML = `
-        <div class="past-quizzes-container" style="display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
-            <!-- Page Header -->
-            <div>
-                <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
-                <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Past Quizzes</h2>
-                <p class="cartoon-subtitle" style="margin-top: 4px;">View and manage your completed quizzes</p>
-            </div>
-
-            <!-- Stats Row -->
-            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
-                <article class="stat-card cartoon-panel is-yellow">
-                    <div class="stat-topline">
-                        <span class="stat-label">Total Past Quizzes</span>
-                        <span class="stat-icon" data-icon="clipboard"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value">${totalPastQuizzes}</div>
-                        <p class="stat-caption">Completed quizzes</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-blue">
-                    <div class="stat-topline">
-                        <span class="stat-label">Total Attempts</span>
-                        <span class="stat-icon" data-icon="users"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value">${totalAttempts}</div>
-                        <p class="stat-caption">Student submissions</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-green">
-                    <div class="stat-topline">
-                        <span class="stat-label">Average Score</span>
-                        <span class="stat-icon" data-icon="target"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value">${avgScore}%</div>
-                        <p class="stat-caption">Mean class performance</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-orange">
-                    <div class="stat-topline">
-                        <span class="stat-label">Most Recent Quiz</span>
-                        <span class="stat-icon" data-icon="clock"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" style="font-size: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(mostRecentQuizTitle)}">${escapeHTML(mostRecentQuizTitle)}</div>
-                        <p class="stat-caption">Latest closure</p>
-                    </div>
-                </article>
-            </div>
-
-            <!-- Toolbar (Search & Filters) -->
-            <div class="quiz-mgmt-toolbar">
-                <div class="quiz-mgmt-filters">
-                    <div class="quiz-mgmt-search-container">
-                        <span class="quiz-mgmt-search-icon" data-icon="search"></span>
-                        <input type="search" id="past-quiz-search-input" placeholder="Search past quizzes by name, subject..." value="${escapeHTML(pastQuizzesPageState.searchQuery)}" autocomplete="off">
-                    </div>
-                    <select id="past-quiz-subject-filter" class="quiz-mgmt-select">
-                        <option value="All">All Subjects</option>
-                        ${uniqueSubjects.map(sub => `<option value="${escapeHTML(sub)}" ${pastQuizzesPageState.subjectFilter === sub ? 'selected' : ''}>${escapeHTML(sub)}</option>`).join('')}
-                    </select>
-                    <select id="past-quiz-grade-filter" class="quiz-mgmt-select">
-                        <option value="All">All Grades</option>
-                        ${uniqueGrades.map(g => `<option value="${escapeHTML(g)}" ${pastQuizzesPageState.gradeFilter === g ? 'selected' : ''}>${escapeHTML(g)}</option>`).join('')}
-                    </select>
-                    <select id="past-quiz-date-filter" class="quiz-mgmt-select">
-                        <option value="All Time" ${pastQuizzesPageState.dateFilter === 'All Time' ? 'selected' : ''}>All Time</option>
-                        <option value="This Week" ${pastQuizzesPageState.dateFilter === 'This Week' ? 'selected' : ''}>This Week</option>
-                        <option value="This Month" ${pastQuizzesPageState.dateFilter === 'This Month' ? 'selected' : ''}>This Month</option>
-                        <option value="This Semester" ${pastQuizzesPageState.dateFilter === 'This Semester' ? 'selected' : ''}>This Semester</option>
-                    </select>
-                    <select id="past-quiz-sort-select" class="quiz-mgmt-select">
-                        <option value="Most Recent" ${pastQuizzesPageState.sortBy === 'Most Recent' ? 'selected' : ''}>Most Recent</option>
-                        <option value="Oldest" ${pastQuizzesPageState.sortBy === 'Oldest' ? 'selected' : ''}>Oldest</option>
-                        <option value="Highest Average Score" ${pastQuizzesPageState.sortBy === 'Highest Average Score' ? 'selected' : ''}>Highest Score</option>
-                        <option value="Lowest Average Score" ${pastQuizzesPageState.sortBy === 'Lowest Average Score' ? 'selected' : ''}>Lowest Score</option>
-                        <option value="A-Z" ${pastQuizzesPageState.sortBy === 'A-Z' ? 'selected' : ''}>A-Z</option>
-                        <option value="Z-A" ${pastQuizzesPageState.sortBy === 'Z-A' ? 'selected' : ''}>Z-A</option>
-                    </select>
-                    ${isFiltersActive ? `
-                        <button type="button" class="cartoon-action-btn" id="past-quiz-clear-filters-btn" style="height: 44px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-dark); background: var(--color-orange); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
-                            Clear Filters
-                        </button>
-                    ` : ''}
-                </div>
-            </div>
-
-            <!-- Quiz List Container -->
-            <div id="past-quiz-list-container"></div>
-        </div>
-    `;
-
-    renderIcons(dynamicPage);
-    renderPastQuizzesList(filtered);
-
-    // Attach control event listeners
-    const searchInput = document.getElementById('past-quiz-search-input');
-    const subjectFilter = document.getElementById('past-quiz-subject-filter');
-    const gradeFilter = document.getElementById('past-quiz-grade-filter');
-    const dateFilter = document.getElementById('past-quiz-date-filter');
-    const sortSelect = document.getElementById('past-quiz-sort-select');
-
-    searchInput.addEventListener('input', (e) => {
-        pastQuizzesPageState.searchQuery = e.target.value;
-        renderPastQuizzesPage();
-    });
-
-    subjectFilter.addEventListener('change', (e) => {
-        pastQuizzesPageState.subjectFilter = e.target.value;
-        renderPastQuizzesPage();
-    });
-
-    gradeFilter.addEventListener('change', (e) => {
-        pastQuizzesPageState.gradeFilter = e.target.value;
-        renderPastQuizzesPage();
-    });
-
-    dateFilter.addEventListener('change', (e) => {
-        pastQuizzesPageState.dateFilter = e.target.value;
-        renderPastQuizzesPage();
-    });
-
-    sortSelect.addEventListener('change', (e) => {
-        pastQuizzesPageState.sortBy = e.target.value;
-        renderPastQuizzesPage();
-    });
-
-    const clearFiltersBtn = document.getElementById('past-quiz-clear-filters-btn');
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', () => {
-            pastQuizzesPageState.searchQuery = '';
-            pastQuizzesPageState.subjectFilter = 'All';
-            pastQuizzesPageState.gradeFilter = 'All';
-            pastQuizzesPageState.dateFilter = 'All Time';
-            renderPastQuizzesPage();
-        });
-    }
-}
-
-function renderPastQuizzesList(filtered) {
-    const listContainer = document.getElementById('past-quiz-list-container');
-    if (!listContainer) return;
-
-    if (filtered.length === 0) {
-        listContainer.innerHTML = `
-            <div class="quiz-mgmt-no-results">
-                <div class="quiz-mgmt-no-results-title">No past quizzes found</div>
-                <div class="quiz-mgmt-no-results-desc">Try modifying your search or filter settings.</div>
-            </div>
-        `;
-        return;
-    }
-
-    listContainer.innerHTML = `
-        <div class="quiz-grid">
-            ${filtered.map(quiz => {
-                return `
-                    <article class="quiz-mgmt-card">
-                        <div class="quiz-mgmt-card-header">
-                            <div>
-                                <h3 class="quiz-mgmt-card-title">${escapeHTML(quiz.title)}</h3>
-                                <div class="quiz-mgmt-card-subject">${escapeHTML(quiz.subject)} | ${escapeHTML(quiz.grade)}</div>
-                            </div>
-                            <span class="quiz-status-pill pill-closed">Completed</span>
-                        </div>
-                        <div class="quiz-mgmt-card-body">
-                            <div class="quiz-mgmt-card-info-row">
-                                <span class="quiz-meta">Questions</span>
-                                <span style="font-weight: 700;">${quiz.questionsCount} questions</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span class="quiz-meta">Participants / Attempts</span>
-                                <span style="font-weight: 700;">${quiz.attempts} students</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span class="quiz-meta">Scores (Avg / High / Low)</span>
-                                <span style="font-weight: 700; color: var(--color-green-dark);">${quiz.averageScore}% / ${quiz.highestScore}% / ${quiz.lowestScore}%</span>
-                            </div>
-                            <div class="quiz-mgmt-card-info-row">
-                                <span class="quiz-meta">Completed On</span>
-                                <span style="font-weight: 700; color: #546e7a;">${quiz.completionDate}</span>
-                            </div>
-                        </div>
-                        <div class="quiz-mgmt-card-actions">
-                            <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewPastQuizDetails('${quiz.id}')" title="View Details">
-                                <span data-icon="search"></span> View
-                            </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-edit" onclick="duplicatePastQuiz('${quiz.id}')" style="background: var(--color-green);" title="Duplicate Quiz">
-                                <span data-icon="plus"></span> Duplicate
-                            </button>
-                            <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="archivePastQuizConfirm('${quiz.id}')" title="Archive/Delete Quiz">
-                                <span data-icon="x"></span> Archive
-                            </button>
-                        </div>
-                    </article>
-                `;
-            }).join('')}
-        </div>
-    `;
-
-    renderIcons(listContainer);
-}
-
-window.viewPastQuizDetails = function(id) {
-    const quiz = MOCK_DATA.pastQuizzes.find(q => String(q.id) === String(id));
-    if (!quiz) return;
-
-    // Student list rendering with fictional details
-    const studentPerformanceHtml = quiz.studentPerformance && quiz.studentPerformance.length > 0 ? `
-        <div class="cartoon-panel" style="overflow-x: auto; background: var(--surface-white); padding: var(--t-space-1); margin-top: 8px;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-body); font-size: 0.9rem;">
-                <thead>
-                    <tr style="border-bottom: 3px solid var(--border-dark); font-family: var(--font-header); font-size: 0.82rem; color: #78909c;">
-                        <th style="padding: 8px var(--t-space-1);">STUDENT NAME</th>
-                        <th style="padding: 8px var(--t-space-1);">STUDENT ID</th>
-                        <th style="padding: 8px var(--t-space-1); text-align: center;">SCORE</th>
-                        <th style="padding: 8px var(--t-space-1); text-align: center;">PERCENTAGE</th>
-                        <th style="padding: 8px var(--t-space-1); text-align: center;">CORRECT</th>
-                        <th style="padding: 8px var(--t-space-1);">COMPLETED DATE</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${quiz.studentPerformance.map(s => {
-                        return `
-                            <tr style="border-bottom: 2px dashed rgba(26,26,36,0.1); transition: background 0.15s ease;">
-                                <td style="padding: 8px var(--t-space-1); font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHTML(s.name)}</td>
-                                <td style="padding: 8px var(--t-space-1); font-weight: 700; color: #546e7a;">${escapeHTML(s.id)}</td>
-                                <td style="padding: 8px var(--t-space-1); text-align: center; font-weight: 700;">${s.score}/${quiz.questionsCount}</td>
-                                <td style="padding: 8px var(--t-space-1); text-align: center; font-weight: 700; color: ${s.percentage >= 80 ? 'var(--color-green-dark)' : (s.percentage >= 60 ? 'var(--color-orange-dark)' : 'var(--color-red-dark)')};">${s.percentage}%</td>
-                                <td style="padding: 8px var(--t-space-1); text-align: center; font-weight: 700;">${s.correctAnswers}</td>
-                                <td style="padding: 8px var(--t-space-1); color: #78909c;">${s.date}</td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    ` : `
-        <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-2); text-align: center; background: var(--color-cream); margin-top: 8px;">
-            <span style="font-family: var(--font-header); font-size: 0.95rem; color: #546e7a;">No student performance metrics available.</span>
-        </div>
-    `;
-
-    // Question-level metrics breakdown
-    const questionPerformanceHtml = quiz.questionPerformance && quiz.questionPerformance.length > 0 ? `
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
-            ${quiz.questionPerformance.map(q => {
-                return `
-                    <div style="border: 2px solid var(--border-dark); border-radius: 12px; padding: var(--t-space-1); background: var(--color-cream); display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow-chunky-pressed);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(26,26,36,0.1); padding-bottom: 4px; margin-bottom: 4px;">
-                            <span style="font-family: var(--font-header); font-size: 0.9rem; font-weight: 700; color: var(--border-dark);">Question ${q.number}</span>
-                            <span class="quiz-status-pill" style="font-size: 0.72rem; padding: 1px 6px; background: var(--color-yellow);">${q.accuracy}% Accuracy</span>
-                        </div>
-                        <p style="font-weight: 700; font-size: 0.95rem; line-height: 1.3; color: var(--border-dark); margin: 0 0 4px 0;">${escapeHTML(q.text)}</p>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.82rem; font-family: var(--font-body); text-align: center;">
-                            <div style="background: #e8f5e9; border: 1px solid var(--border-dark); border-radius: 6px; padding: 4px;">
-                                <span style="font-weight: 700; color: var(--color-green-dark);">Correct: ${q.correct} students</span>
-                            </div>
-                            <div style="background: #ffebee; border: 1px solid var(--border-dark); border-radius: 6px; padding: 4px;">
-                                <span style="font-weight: 700; color: var(--color-red-dark);">Incorrect: ${q.incorrect} students</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('')}
-        </div>
-    ` : `
-        <div style="border: 2px dashed rgba(26,26,36,0.15); border-radius: 12px; padding: var(--t-space-2); text-align: center; background: var(--color-cream); margin-top: 8px;">
-            <span style="font-family: var(--font-header); font-size: 0.95rem; color: #546e7a;">No question-level metrics available.</span>
-        </div>
-    `;
-
-    const html = `
-        <div class="orixa-modal-card" style="width: min(100%, 650px); max-height: 90vh;">
-            <header class="orixa-modal-header" style="background: var(--color-yellow);">
-                <h3 class="orixa-modal-title" style="color: var(--border-dark); font-family: var(--font-header);">${escapeHTML(quiz.title)} Details</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto; gap: var(--t-space-2); padding: var(--t-space-2);">
-                <!-- General Info & Description -->
-                <div>
-                    <span class="quiz-meta" style="text-transform: uppercase;">Description</span>
-                    <p style="font-size: 0.95rem; line-height: 1.4; color: var(--border-dark); margin-top: 2px;">${escapeHTML(quiz.description || "No description provided.")}</p>
-                </div>
-
-                <!-- Score Summary Cards -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 4px;">
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
-                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">AVG SCORE</span>
-                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--color-green-dark); margin-top: 2px;">${quiz.averageScore}%</div>
-                    </div>
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
-                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">HIGHEST SCORE</span>
-                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--color-blue-dark); margin-top: 2px;">${quiz.highestScore}%</div>
-                    </div>
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
-                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">LOWEST SCORE</span>
-                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--color-red-dark); margin-top: 2px;">${quiz.lowestScore}%</div>
-                    </div>
-                    <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-chunky-pressed);">
-                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">PASS RATE</span>
-                        <div style="font-family: var(--font-header); font-size: 1.4rem; color: var(--border-dark); margin-top: 2px;">${quiz.passRate}%</div>
-                    </div>
-                </div>
-
-                <!-- Section Tabs or Combined View -->
-                <div style="margin-top: 8px;">
-                    <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 4px; margin-bottom: 4px;">Student Performance</h4>
-                    ${studentPerformanceHtml}
-                </div>
-
-                <div style="margin-top: 12px;">
-                    <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 4px; margin-bottom: 4px;">Question Performance Breakdown</h4>
-                    ${questionPerformanceHtml}
-                </div>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Close Analysis
-                </button>
-            </footer>
-        </div>
-    `;
-
-    openOrixaModal(html);
-};
-
-window.duplicatePastQuiz = function(id) {
-    const quiz = MOCK_DATA.pastQuizzes.find(q => String(q.id) === String(id));
-    if (!quiz) return;
-
-    // Load original questions or format fictional ones to draft state
-    createQuizState = {
-        step: 'builder',
-        gameType: quiz.gameType || 'TILE_PUZZLE',
-        title: `${quiz.title} — Copy`,
-        subject: quiz.subject,
-        grade: quiz.grade,
-        description: quiz.description || "",
-        settings: {
-            timeLimit: 15,
-            attempts: 1,
-            passingScore: 70,
-            shuffleQuestions: false,
-            shuffleAnswers: false
-        },
-        questions: quiz.questionPerformance ? quiz.questionPerformance.map((q, index) => {
-            return {
-                id: Date.now() + '-' + Math.floor(Math.random() * 1000) + '-' + index,
-                text: q.text,
-                type: 'Multiple Choice',
-                options: ['Option A', 'Option B', 'Option C', 'Option D'],
-                correctAnswer: 0,
-                marks: 5
-            };
-        }) : [
-            {
-                id: Date.now() + '-' + Math.floor(Math.random() * 1000),
-                text: 'Sample Question text',
-                type: 'Multiple Choice',
-                options: ['Option A', 'Option B', 'Option C', 'Option D'],
-                correctAnswer: 0,
-                marks: 5
-            }
-        ]
-    };
-
-    openOrixaModal(`
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: var(--color-green);">
-                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Quiz Duplicated!</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal(); navigateToView('create-quiz');" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                <p style="font-size: 1.2rem; font-weight: 700; color: var(--border-dark);">"${escapeHTML(createQuizState.title)}" is ready as a draft!</p>
-                <p style="color: #546e7a; font-size: 0.95rem; margin-top: 8px;">We've preloaded all original quiz properties and questions. You can now edit, configure, or publish this copy.</p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); navigateToView('create-quiz');" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Edit Duplicated Quiz
-                </button>
-            </footer>
-        </div>
-    `);
-};
-
-window.archivePastQuizConfirm = function(id) {
-    const quiz = MOCK_DATA.pastQuizzes.find(q => String(q.id) === String(id));
-    if (!quiz) return;
-
-    const html = `
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: #ffebee;">
-                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Archive</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body">
-                <p style="font-size: 1.15rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
-                    Are you sure you want to archive this quiz?
-                </p>
-                <p style="font-size: 0.95rem; color: var(--border-dark); background: var(--color-cream); border: var(--border-comic-thin); padding: 12px; border-radius: 12px; font-style: italic; margin-top: 8px; word-break: break-word;">
-                    "${escapeHTML(quiz.title)}"
-                </p>
-                <p style="font-size: 0.9rem; color: #546e7a; margin-top: 8px;">
-                    This will remove the quiz from your active completed quiz metrics. You can restore it later if needed.
-                </p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performArchivePastQuiz('${quiz.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Archive
-                </button>
-            </footer>
-        </div>
-    `;
-
-    openOrixaModal(html);
-};
-
-window.performArchivePastQuiz = function(id) {
-    const index = MOCK_DATA.pastQuizzes.findIndex(q => String(q.id) === String(id));
-    if (index !== -1) {
-        MOCK_DATA.pastQuizzes.splice(index, 1);
-        closeOrixaModal();
-        renderPastQuizzesPage();
-    }
-};
 
 window.viewResultDetails = function(resultId) {
     const r = MOCK_DATA.results.find(res => res.id === resultId);
@@ -5137,483 +4481,6 @@ window.viewResultDetails = function(resultId) {
         </div>
     `;
 
-    openOrixaModal(html);
-};
-
-/* ==========================================================================
-   NOTIFICATIONS SECTION CONTROLLER
-   ========================================================================== */
-
-function getCategoryIcon(category) {
-    if (category === 'Quiz') return 'clipboard';
-    if (category === 'Student') return 'users';
-    if (category === 'Results') return 'chart';
-    if (category === 'System') return 'settings';
-    return 'bell'; // General
-}
-
-function getCategoryColor(category) {
-    if (category === 'Quiz') return 'var(--color-yellow)';
-    if (category === 'Student') return 'var(--color-blue)';
-    if (category === 'Results') return 'var(--color-green)';
-    if (category === 'System') return '#cfd8dc'; // grey
-    return 'var(--color-cream)';
-}
-
-function renderNotificationsPage() {
-    const dynamicPage = document.getElementById('dynamic-placeholder-page');
-    if (!dynamicPage) return;
-
-    // 1. Calculate dynamic statistics
-    const totalNotifications = MOCK_DATA.notifications.length;
-    const unreadCount = MOCK_DATA.notifications.filter(n => !n.read).length;
-    const readCount = MOCK_DATA.notifications.filter(n => n.read).length;
-    const importantCount = MOCK_DATA.notifications.filter(n => n.priority === 'Important').length;
-
-    // Sync with the main application unreadCount
-    MOCK_DATA.unreadCount = unreadCount;
-    renderNotificationDot();
-
-    // 2. Build the structural HTML for Notifications Page
-    dynamicPage.innerHTML = `
-        <div class="notifications-container" style="display: flex; flex-direction: column; gap: var(--t-space-2); animation: qb-pop 0.25s ease-out;">
-
-            <!-- Page Header -->
-            <div class="notifications-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--t-space-2);">
-                <div>
-                    <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
-                    <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Notifications</h2>
-                    <p class="cartoon-subtitle" style="margin-top: 4px;">Stay updated with your quizzes, students, and classroom activity</p>
-                </div>
-                <div style="display: flex; gap: var(--t-space-1); flex-wrap: wrap;">
-                    <button type="button" class="cartoon-action-btn primary-yellow-btn" id="notifications-mark-all-btn" style="height: 44px; padding: 0 16px; font-size: 0.9rem; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
-                        Mark All as Read
-                    </button>
-                    <button type="button" class="cartoon-action-btn" id="notifications-clear-all-btn" style="height: 44px; padding: 0 16px; font-size: 0.9rem; border-radius: 12px; border-color: var(--border-dark); background: var(--color-red); color: var(--border-dark); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border-width: 3px;">
-                        Clear All
-                    </button>
-                </div>
-            </div>
-
-            <!-- Statistics Row (Dynamic) -->
-            <div class="stats-grid" style="margin-top: var(--t-space-1); margin-bottom: var(--t-space-1);">
-                <article class="stat-card cartoon-panel is-blue">
-                    <div class="stat-topline">
-                        <span class="stat-label">Total Notifications</span>
-                        <span class="stat-icon" data-icon="bell"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="noti-stat-total">${totalNotifications}</div>
-                        <p class="stat-caption">All notifications</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-orange">
-                    <div class="stat-topline">
-                        <span class="stat-label">Unread</span>
-                        <span class="stat-icon" data-icon="clock"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="noti-stat-unread">${unreadCount}</div>
-                        <p class="stat-caption">Unread updates</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-green">
-                    <div class="stat-topline">
-                        <span class="stat-label">Read</span>
-                        <span class="stat-icon" data-icon="clipboard"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="noti-stat-read">${readCount}</div>
-                        <p class="stat-caption">Acknowledged updates</p>
-                    </div>
-                </article>
-                <article class="stat-card cartoon-panel is-yellow">
-                    <div class="stat-topline">
-                        <span class="stat-label">Important</span>
-                        <span class="stat-icon" data-icon="target"></span>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="noti-stat-important">${importantCount}</div>
-                        <p class="stat-caption">High priority alerts</p>
-                    </div>
-                </article>
-            </div>
-
-            <!-- Toolbar (Search & Filters) -->
-            <div class="quiz-mgmt-toolbar">
-                <div class="quiz-mgmt-filters">
-                    <div class="quiz-mgmt-search-container">
-                        <span class="quiz-mgmt-search-icon" data-icon="search"></span>
-                        <input type="search" id="noti-search-input" placeholder="Search notifications..." value="${escapeHTML(notificationsPageState.searchQuery)}" autocomplete="off">
-                    </div>
-                    <select id="noti-status-filter" class="quiz-mgmt-select">
-                        <option value="All" ${notificationsPageState.statusFilter === 'All' ? 'selected' : ''}>All Statuses</option>
-                        <option value="Unread" ${notificationsPageState.statusFilter === 'Unread' ? 'selected' : ''}>Unread</option>
-                        <option value="Read" ${notificationsPageState.statusFilter === 'Read' ? 'selected' : ''}>Read</option>
-                    </select>
-                    <select id="noti-category-filter" class="quiz-mgmt-select">
-                        <option value="All" ${notificationsPageState.categoryFilter === 'All' ? 'selected' : ''}>All Categories</option>
-                        <option value="Quiz" ${notificationsPageState.categoryFilter === 'Quiz' ? 'selected' : ''}>Quiz</option>
-                        <option value="Student" ${notificationsPageState.categoryFilter === 'Student' ? 'selected' : ''}>Student</option>
-                        <option value="Results" ${notificationsPageState.categoryFilter === 'Results' ? 'selected' : ''}>Results</option>
-                        <option value="System" ${notificationsPageState.categoryFilter === 'System' ? 'selected' : ''}>System</option>
-                        <option value="General" ${notificationsPageState.categoryFilter === 'General' ? 'selected' : ''}>General</option>
-                    </select>
-                    <select id="noti-priority-filter" class="quiz-mgmt-select">
-                        <option value="All" ${notificationsPageState.priorityFilter === 'All' ? 'selected' : ''}>All Priorities</option>
-                        <option value="Important" ${notificationsPageState.priorityFilter === 'Important' ? 'selected' : ''}>Important</option>
-                        <option value="Normal" ${notificationsPageState.priorityFilter === 'Normal' ? 'selected' : ''}>Normal</option>
-                    </select>
-                    <select id="noti-sort-select" class="quiz-mgmt-select">
-                        <option value="Newest" ${notificationsPageState.sortBy === 'Newest' ? 'selected' : ''}>Newest First</option>
-                        <option value="Oldest" ${notificationsPageState.sortBy === 'Oldest' ? 'selected' : ''}>Oldest First</option>
-                    </select>
-                    <button type="button" class="cartoon-action-btn" id="noti-clear-filters-btn" style="height: 44px; padding: 0 16px; font-size: 0.85rem; border-color: var(--border-dark); background: var(--color-orange); box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-header); font-weight: 700; border-radius: 12px; display: ${(notificationsPageState.searchQuery || notificationsPageState.statusFilter !== 'All' || notificationsPageState.categoryFilter !== 'All' || notificationsPageState.priorityFilter !== 'All') ? 'inline-flex' : 'none'}; align-items: center; justify-content: center; border-width: 3px;">
-                        Clear Filters
-                    </button>
-                </div>
-            </div>
-
-            <!-- Notifications List Container -->
-            <div id="notifications-list-container" style="display: flex; flex-direction: column; gap: var(--t-space-1);"></div>
-        </div>
-    `;
-
-    renderIcons(dynamicPage);
-    renderFilteredNotifications();
-
-    // Attach control event listeners
-    const searchInput = document.getElementById('noti-search-input');
-    const statusFilter = document.getElementById('noti-status-filter');
-    const categoryFilter = document.getElementById('noti-category-filter');
-    const priorityFilter = document.getElementById('noti-priority-filter');
-    const sortSelect = document.getElementById('noti-sort-select');
-
-    searchInput.addEventListener('input', (e) => {
-        notificationsPageState.searchQuery = e.target.value;
-        renderFilteredNotifications();
-    });
-
-    statusFilter.addEventListener('change', (e) => {
-        notificationsPageState.statusFilter = e.target.value;
-        renderFilteredNotifications();
-    });
-
-    categoryFilter.addEventListener('change', (e) => {
-        notificationsPageState.categoryFilter = e.target.value;
-        renderFilteredNotifications();
-    });
-
-    priorityFilter.addEventListener('change', (e) => {
-        notificationsPageState.priorityFilter = e.target.value;
-        renderFilteredNotifications();
-    });
-
-    sortSelect.addEventListener('change', (e) => {
-        notificationsPageState.sortBy = e.target.value;
-        renderFilteredNotifications();
-    });
-
-    const clearFiltersBtn = document.getElementById('noti-clear-filters-btn');
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', () => {
-            notificationsPageState.searchQuery = '';
-            notificationsPageState.statusFilter = 'All';
-            notificationsPageState.categoryFilter = 'All';
-            notificationsPageState.priorityFilter = 'All';
-            renderNotificationsPage();
-        });
-    }
-
-    const markAllBtn = document.getElementById('notifications-mark-all-btn');
-    if (markAllBtn) {
-        markAllBtn.addEventListener('click', () => {
-            markAllNotificationsRead();
-        });
-    }
-
-    const clearAllBtn = document.getElementById('notifications-clear-all-btn');
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', () => {
-            clearAllNotificationsConfirm();
-        });
-    }
-}
-
-function renderFilteredNotifications() {
-    const listContainer = document.getElementById('notifications-list-container');
-    if (!listContainer) return;
-
-    let filtered = [...MOCK_DATA.notifications];
-
-    // 1. Search Query
-    const query = notificationsPageState.searchQuery.trim().toLowerCase();
-    if (query) {
-        filtered = filtered.filter(n =>
-            n.title.toLowerCase().includes(query) ||
-            n.message.toLowerCase().includes(query)
-        );
-    }
-
-    // 2. Status Filter
-    if (notificationsPageState.statusFilter === 'Unread') {
-        filtered = filtered.filter(n => !n.read);
-    } else if (notificationsPageState.statusFilter === 'Read') {
-        filtered = filtered.filter(n => n.read);
-    }
-
-    // 3. Category Filter
-    if (notificationsPageState.categoryFilter !== 'All') {
-        filtered = filtered.filter(n => n.category === notificationsPageState.categoryFilter);
-    }
-
-    // 4. Priority Filter
-    if (notificationsPageState.priorityFilter !== 'All') {
-        filtered = filtered.filter(n => n.priority === notificationsPageState.priorityFilter);
-    }
-
-    // 5. Sorting
-    if (notificationsPageState.sortBy === 'Newest') {
-        filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    } else if (notificationsPageState.sortBy === 'Oldest') {
-        filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    }
-
-    // Toggle clear filters button visibility dynamically
-    const clearBtn = document.getElementById('noti-clear-filters-btn');
-    if (clearBtn) {
-        const hasActiveFilters = !!(notificationsPageState.searchQuery || notificationsPageState.statusFilter !== 'All' || notificationsPageState.categoryFilter !== 'All' || notificationsPageState.priorityFilter !== 'All');
-        clearBtn.style.display = hasActiveFilters ? 'inline-flex' : 'none';
-    }
-
-    // Check if total list is empty vs filtered empty
-    if (MOCK_DATA.notifications.length === 0) {
-        listContainer.innerHTML = `
-            <div class="quiz-mgmt-no-results">
-                <div class="quiz-mgmt-no-results-title">No notifications</div>
-                <div class="quiz-mgmt-no-results-desc">You're all caught up.</div>
-            </div>
-        `;
-        return;
-    }
-
-    if (filtered.length === 0) {
-        listContainer.innerHTML = `
-            <div class="quiz-mgmt-no-results">
-                <div class="quiz-mgmt-no-results-title">No matching notifications</div>
-                <div class="quiz-mgmt-no-results-desc">Try modifying your search or filter settings.</div>
-            </div>
-        `;
-        return;
-    }
-
-    listContainer.innerHTML = filtered.map(noti => {
-        return `
-            <article class="notification-card cartoon-panel" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--t-space-2); padding: var(--t-space-2); border-width: 3px; border-radius: 16px; transition: transform 0.15s ease; ${noti.read ? 'background: var(--surface-white);' : 'background: var(--color-cream);' }">
-                <div style="display: flex; align-items: center; gap: var(--t-space-2); flex: 1; min-width: 0;">
-                    <!-- Icon -->
-                    <span class="activity-icon" style="flex-shrink: 0;">
-                        <span data-icon="${getCategoryIcon(noti.category)}"></span>
-                    </span>
-                    <!-- Content -->
-                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                            <h4 class="notification-title" style="font-family: var(--font-header); font-size: 1.1rem; color: var(--border-dark); margin: 0; ${noti.read ? 'font-weight: 600;' : 'font-weight: 700;' }">
-                                ${escapeHTML(noti.title)}
-                            </h4>
-                            <!-- Category Badge -->
-                            <span class="quiz-status-pill" style="font-size: 0.7rem; padding: 1px 8px; background: ${getCategoryColor(noti.category)};">
-                                ${noti.category}
-                            </span>
-                            <!-- Priority Badge -->
-                            ${noti.priority === 'Important' ? `
-                            <span class="quiz-status-pill pill-closed" style="font-size: 0.7rem; padding: 1px 8px;">
-                                Important
-                            </span>
-                            ` : ''}
-                            <!-- Subtle Unread Dot inside the card header -->
-                            ${!noti.read ? `
-                            <span style="display: inline-block; width: 8px; height: 8px; background: var(--color-red); border-radius: 50%; border: 1px solid var(--border-dark);"></span>
-                            ` : ''}
-                        </div>
-                        <p style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a; margin: 0; line-height: 1.4; word-break: break-word;">
-                            ${escapeHTML(noti.message)}
-                        </p>
-                        <span style="font-family: var(--font-header); font-size: 0.75rem; color: #78909c;">
-                            ${noti.dateStr}
-                        </span>
-                    </div>
-                </div>
-                <!-- Actions -->
-                <div style="display: flex; gap: var(--t-space-1); align-items: center; flex-shrink: 0; flex-wrap: wrap;">
-                    <button class="quiz-mgmt-action-btn quiz-btn-view" onclick="viewNotificationDetails('${noti.id}')" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="View Details">
-                        <span data-icon="search"></span> View
-                    </button>
-                    <button class="quiz-mgmt-action-btn" onclick="toggleNotificationRead('${noti.id}')" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto; border: var(--border-comic-thin); font-family: var(--font-header); font-weight: 700; color: var(--border-dark); cursor: pointer; box-shadow: var(--shadow-chunky-pressed); background: ${noti.read ? 'var(--color-yellow)' : '#cfd8dc'};" title="${noti.read ? 'Mark as Unread' : 'Mark as Read'}">
-                        <span data-icon="clipboard"></span> ${noti.read ? 'Mark Unread' : 'Mark Read'}
-                    </button>
-                    <button class="quiz-mgmt-action-btn quiz-btn-delete" onclick="deleteNotificationConfirm('${noti.id}')" style="height: 34px; padding: 0 12px; font-size: 0.8rem; flex: none; border-radius: 8px; width: auto;" title="Delete Notification">
-                        <span data-icon="x"></span> Delete
-                    </button>
-                </div>
-            </article>
-        `;
-    }).join('');
-
-    renderIcons(listContainer);
-}
-
-window.toggleNotificationRead = function(id) {
-    const noti = MOCK_DATA.notifications.find(n => String(n.id) === String(id));
-    if (noti) {
-        noti.read = !noti.read;
-        renderNotificationsPage();
-    }
-};
-
-window.markAllNotificationsRead = function() {
-    MOCK_DATA.notifications.forEach(n => n.read = true);
-    renderNotificationsPage();
-};
-
-window.deleteNotificationConfirm = function(id) {
-    const noti = MOCK_DATA.notifications.find(n => String(n.id) === String(id));
-    if (!noti) return;
-
-    const html = `
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: #ffebee;">
-                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Delete</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body">
-                <p style="font-size: 1.1rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
-                    Are you sure you want to delete this notification?
-                </p>
-                <p style="font-size: 0.95rem; color: var(--border-dark); background: var(--color-cream); border: var(--border-comic-thin); padding: 12px; border-radius: 12px; font-style: italic; margin-top: 8px; word-break: break-word;">
-                    "${escapeHTML(noti.title)}"
-                </p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performDeleteNotification('${noti.id}')" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Delete
-                </button>
-            </footer>
-        </div>
-    `;
-    openOrixaModal(html);
-};
-
-window.performDeleteNotification = function(id) {
-    const idx = MOCK_DATA.notifications.findIndex(n => String(n.id) === String(id));
-    if (idx !== -1) {
-        MOCK_DATA.notifications.splice(idx, 1);
-        closeOrixaModal();
-        renderNotificationsPage();
-    }
-};
-
-window.clearAllNotificationsConfirm = function() {
-    if (MOCK_DATA.notifications.length === 0) return;
-
-    const html = `
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: #ffebee;">
-                <h3 class="orixa-modal-title" style="color: var(--color-red-dark);">Confirm Clear All</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body">
-                <p style="font-size: 1.1rem; line-height: 1.4; color: var(--border-dark); font-weight: 700;">
-                    Are you sure you want to clear all notifications?
-                </p>
-                <p style="font-size: 0.9rem; color: #546e7a; margin-top: 4px;">
-                    This will remove every notification permanently from your list. This action cannot be undone.
-                </p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Cancel
-                </button>
-                <button type="button" class="cartoon-action-btn quiz-btn-delete" onclick="performClearAllNotifications()" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Clear All
-                </button>
-            </footer>
-        </div>
-    `;
-    openOrixaModal(html);
-};
-
-window.performClearAllNotifications = function() {
-    MOCK_DATA.notifications = [];
-    closeOrixaModal();
-    renderNotificationsPage();
-};
-
-window.viewNotificationDetails = function(id) {
-    const noti = MOCK_DATA.notifications.find(n => String(n.id) === String(id));
-    if (!noti) return;
-
-    // Automatically mark as read when viewed!
-    if (!noti.read) {
-        noti.read = true;
-        renderNotificationsPage();
-    }
-
-    let actionButtonHtml = '';
-    if (noti.target) {
-        let actionLabel = 'Go to Page';
-        if (noti.category === 'Quiz') actionLabel = 'Open Quiz';
-        else if (noti.category === 'Student') actionLabel = 'View Student';
-        else if (noti.category === 'Results') actionLabel = 'View Results';
-        else if (noti.category === 'Past Quiz') actionLabel = 'View Past Quiz';
-
-        actionButtonHtml = `
-            <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal(); navigateToView('${noti.target}');" style="padding: 10px 24px; font-size: 0.95rem;">
-                ${actionLabel}
-            </button>
-        `;
-    }
-
-    const priorityBadge = noti.priority === 'Important' ? `
-        <span class="quiz-status-pill pill-closed" style="font-size: 0.78rem;">Important</span>
-    ` : `
-        <span class="quiz-status-pill" style="font-size: 0.78rem; background: var(--color-cream);">Normal</span>
-    `;
-
-    const html = `
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: ${getCategoryColor(noti.category)};">
-                <h3 class="orixa-modal-title" style="color: var(--border-dark);">${escapeHTML(noti.title)}</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="gap: var(--t-space-2); padding: var(--t-space-2);">
-                <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-chunky-pressed); font-family: var(--font-body); font-size: 1.05rem; color: var(--border-dark); line-height: 1.5; word-break: break-word;">
-                    ${escapeHTML(noti.message)}
-                </div>
-
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <span class="quiz-status-pill" style="font-size: 0.78rem; background: ${getCategoryColor(noti.category)};">Category: ${noti.category}</span>
-                    ${priorityBadge}
-                    <span class="quiz-status-pill" style="font-size: 0.78rem; background: white;">Received: ${noti.dateStr}</span>
-                </div>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">
-                    Close
-                </button>
-                ${actionButtonHtml}
-            </footer>
-        </div>
-    `;
     openOrixaModal(html);
 };
 
@@ -6372,7 +5239,7 @@ const HELP_TOPICS = [
     {
         id: 'faq-6',
         title: "Something is not working",
-        solution: "Try refreshing the page or logging out and back in. If the problem persists, use the 'Report a Problem' form below to submit details to our support team."
+        solution: "Try refreshing the page or logging out and back in. If the problem persists, contact your HOD or college administrator."
     }
 ];
 
@@ -6387,7 +5254,7 @@ function renderHelpPage() {
                 <div>
                     <p class="panel-kicker" style="margin-bottom: 4px;">Teacher Portal</p>
                     <h2 style="font-family: var(--font-header); color: var(--border-dark); font-size: 2.1rem; line-height: 1.1; margin: 0;">Help</h2>
-                    <p class="cartoon-subtitle" style="margin-top: 4px;">Find solutions or report a problem</p>
+                    <p class="cartoon-subtitle" style="margin-top: 4px;">Find solutions to common problems</p>
                 </div>
                 <button class="cartoon-action-btn primary-yellow-btn" onclick="navigateToView('dashboard')" style="padding: 10px 20px; font-size: 1rem; height: 44px; display: inline-flex; align-items: center;">
                     Back to Dashboard
@@ -6417,53 +5284,6 @@ function renderHelpPage() {
                             </div>
                         `).join('')}
                     </div>
-                </div>
-
-                <!-- AREA 2: REPORT A PROBLEM -->
-                <div class="cartoon-panel" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
-                    <div style="border-bottom: 2px dashed rgba(26,26,36,0.15); padding-bottom: 8px;">
-                        <p class="panel-kicker" style="margin-bottom: 2px;">CONTACT SUPPORT</p>
-                        <h3 style="font-family: var(--font-header); font-size: 1.35rem; color: var(--border-dark); margin: 0;">Report a Problem</h3>
-                    </div>
-
-                    <form id="help-report-form" onsubmit="handleHelpReportSubmit(event)" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
-                        <div class="form-field">
-                            <label class="field-label" for="help-problem-type">PROBLEM TYPE *</label>
-                            <select id="help-problem-type" class="cartoon-input" style="padding: 0 var(--t-space-2); font-family: var(--font-header);" required>
-                                <option value="" disabled selected>Select a problem category</option>
-                                <option value="Technical Issue">Technical Issue</option>
-                                <option value="Quiz Issue">Quiz Issue</option>
-                                <option value="Student Issue">Student Issue</option>
-                                <option value="Results Issue">Results Issue</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-
-                        <div class="form-field">
-                            <label class="field-label" for="help-subject">SUBJECT *</label>
-                            <div class="input-shell">
-                                <input type="text" id="help-subject" class="cartoon-input" placeholder="Brief summary of the issue" required>
-                            </div>
-                        </div>
-
-                        <div class="form-field">
-                            <label class="field-label" for="help-description">DESCRIPTION *</label>
-                            <div class="input-shell">
-                                <textarea id="help-description" class="cartoon-input" placeholder="Please describe what happened and steps to reproduce..." style="height: auto; min-height: 110px; padding: 10px 14px; resize: vertical; line-height: 1.4;" required></textarea>
-                            </div>
-                        </div>
-
-                        <div class="form-field">
-                            <label class="field-label" for="help-attachment">ATTACHMENT (OPTIONAL)</label>
-                            <div class="input-shell">
-                                <input type="file" id="help-attachment" class="cartoon-input" style="padding: 8px 12px; font-size: 0.85rem;" accept="image/*,.pdf">
-                            </div>
-                        </div>
-
-                        <button type="submit" class="cartoon-action-btn primary-yellow-btn" style="padding: 12px 24px; font-size: 1rem; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                            Send Feedback
-                        </button>
-                    </form>
                 </div>
 
             </div>
@@ -6497,51 +5317,6 @@ function renderHelpPage() {
         });
     }
 }
-
-function handleHelpReportSubmit(e) {
-    e.preventDefault();
-
-    const problemType = document.getElementById('help-problem-type').value;
-    const subject = document.getElementById('help-subject').value.trim();
-    const description = document.getElementById('help-description').value.trim();
-
-    if (!problemType || !subject || !description) {
-        return;
-    }
-
-    // Reset form fields
-    const form = document.getElementById('help-report-form');
-    if (form) {
-        form.reset();
-    }
-
-    // Show frontend submission confirmation modal
-    openOrixaModal(`
-        <div class="orixa-modal-card">
-            <header class="orixa-modal-header" style="background: var(--color-green);">
-                <h3 class="orixa-modal-title" style="color: var(--border-dark);">Feedback Received</h3>
-                <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
-                    <span data-icon="x"></span>
-                </button>
-            </header>
-            <div class="orixa-modal-body" style="text-align: center; padding: var(--t-space-3);">
-                <p style="font-size: 1.2rem; font-weight: 700; color: var(--border-dark); margin: 0 0 8px 0;">
-                    Thank you. Your feedback has been submitted.
-                </p>
-                <p style="font-family: var(--font-body); font-size: 0.95rem; color: #546e7a; margin: 0; line-height: 1.4;">
-                    We have logged your report regarding "<strong>${escapeHTML(subject)}</strong>". Our support team will review it shortly.
-                </p>
-            </div>
-            <footer class="orixa-modal-footer">
-                <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="closeOrixaModal()" style="padding: 10px 24px; font-size: 0.95rem;">
-                    Close
-                </button>
-            </footer>
-        </div>
-    `);
-}
-
-window.handleHelpReportSubmit = handleHelpReportSubmit;
 
 function confirmTeacherLogout(event) {
     if (event) {
@@ -6650,14 +5425,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     initDashboardNavigation();
     initSidebarCollapsible();
     initSearch();
-    renderNotificationDot();
     updateTopBarProfileChip();
 
     await Promise.all([
         fetchTeacherQuizzesFromSupabase(),
         fetchTeacherStudentsFromSupabase(),
-        fetchTeacherResultsFromSupabase(),
-        fetchNotificationsFromSupabase()
+        fetchTeacherResultsFromSupabase()
     ]);
 
     MOCK_DATA.students.forEach(st => {
@@ -6673,7 +5446,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     updateDashboardStats();
-    renderActivities();
     renderQuizzes();
     renderIcons();
 });

@@ -186,6 +186,46 @@ function escapeHtml(str) {
    SUPABASE DATA LAYER
    ========================================================================== */
 
+// Students, teachers and average accuracy of every department of the college: Map(department id -> numbers)
+async function loadDepartmentStats(client, collegeId) {
+    const stats = new Map();
+    const { data, error } = await client
+        .from('vw_department_analytics')
+        .select('department_id, total_students, total_teachers, total_completed_attempts, avg_accuracy_pct')
+        .eq('college_id', collegeId);
+
+    if (!error && data) {
+        data.forEach(r => stats.set(r.department_id, {
+            students: Number(r.total_students) || 0,
+            teachers: Number(r.total_teachers) || 0,
+            attempts: Number(r.total_completed_attempts) || 0,
+            accuracy: Number(r.avg_accuracy_pct) || 0
+        }));
+        return stats;
+    }
+
+    // The view is missing or refused: count the people directly (in pages, the API returns 1000 rows at most)
+    console.warn('vw_department_analytics unavailable, counting profiles directly:', error);
+    for (let from = 0; ; from += 1000) {
+        const page = await client
+            .from('profiles')
+            .select('department_id, role')
+            .eq('college_id', collegeId)
+            .in('role', ['STUDENT', 'TEACHER'])
+            .order('id')
+            .range(from, from + 999);
+        if (page.error) { console.error('Could not count department members:', page.error); break; }
+        page.data.forEach(r => {
+            if (!r.department_id) return;
+            const entry = stats.get(r.department_id) || { students: 0, teachers: 0, attempts: 0, accuracy: 0 };
+            if (r.role === 'STUDENT') entry.students++; else entry.teachers++;
+            stats.set(r.department_id, entry);
+        });
+        if (page.data.length < 1000) break;
+    }
+    return stats;
+}
+
 async function loadCollegeDataFromSupabase() {
     if (!window.OrixaAuth || !window.OrixaAuth.client) return;
     const client = window.OrixaAuth.client;
@@ -242,16 +282,19 @@ async function loadCollegeDataFromSupabase() {
                 }
             }
 
+            const deptStats = await loadDepartmentStats(client, profile.college_id);
+
             MOCK_COLLEGE_DATA.departments = depts.map(d => {
                 const hod = hodMap[d.id];
+                const stats = deptStats.get(d.id);
                 return {
                     id: d.id,
                     name: d.name,
                     hodName: hod?.full_name || 'Unassigned',
                     hodEmpId: hod?.login_id || '—',
-                    totalStudents: 0,
-                    activeTeachers: 0,
-                    avgAccuracy: null
+                    totalStudents: stats ? stats.students : 0,
+                    activeTeachers: stats ? stats.teachers : 0,
+                    avgAccuracy: stats && stats.attempts > 0 ? stats.accuracy : null
                 };
             });
         }
@@ -628,6 +671,106 @@ function initPerformanceFilters() {
     }
 }
 
+function initCollegeProfile() {
+    const drawer = document.getElementById('college-profile-drawer');
+    const openBtn = document.getElementById('open-college-profile-btn');
+    const closeBtn = document.getElementById('close-college-profile-btn');
+    const form = document.getElementById('college-password-form');
+    const toggleBtn = document.getElementById('college-password-toggle-btn');
+    if (!drawer || !openBtn || !form || !toggleBtn) return;
+
+    const fields = {
+        current: document.getElementById('college-pwd-current'),
+        next: document.getElementById('college-pwd-new'),
+        confirm: document.getElementById('college-pwd-confirm')
+    };
+    const errors = {
+        current: document.getElementById('college-pwd-current-error'),
+        next: document.getElementById('college-pwd-new-error'),
+        confirm: document.getElementById('college-pwd-confirm-error')
+    };
+    const msg = document.getElementById('college-pwd-msg');
+    const saveBtn = document.getElementById('college-pwd-save-btn');
+
+    const fillProfile = async () => {
+        const profile = await window.OrixaAuth.getCurrentProfile();
+        if (!profile) return;
+        const name = profile.full_name || 'Admin';
+        document.getElementById('college-profile-name').textContent = name;
+        document.getElementById('college-profile-avatar').textContent =
+            name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '--';
+        document.getElementById('college-profile-login').textContent = profile.login_id || '\u2014';
+        document.getElementById('college-profile-college').textContent = MOCK_COLLEGE_DATA.collegeInfo.name || '\u2014';
+        const year = MOCK_COLLEGE_DATA.collegeInfo.academicYear;
+        document.getElementById('college-profile-year').textContent = year ? window.OrixaAuth.formatAcademicYear(year) : '\u2014';
+    };
+
+    const clearErrors = () => {
+        Object.values(fields).forEach(el => el.classList.remove('input-invalid'));
+        Object.values(errors).forEach(el => { el.textContent = ''; });
+        msg.textContent = '';
+        msg.className = 'teacher-form-msg';
+    };
+    const fail = (key, text) => {
+        fields[key].classList.add('input-invalid');
+        errors[key].textContent = text;
+    };
+    const setFormOpen = isOpen => {
+        form.classList.toggle('hidden', !isOpen);
+        toggleBtn.setAttribute('aria-expanded', String(isOpen));
+    };
+    const open = () => { drawer.style.display = 'flex'; closeBtn.focus(); fillProfile(); };
+    const close = () => { drawer.style.display = 'none'; form.reset(); clearErrors(); setFormOpen(false); openBtn.focus(); };
+
+    openBtn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    drawer.addEventListener('click', e => { if (e.target === drawer) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.style.display !== 'none') close(); });
+    toggleBtn.addEventListener('click', () => {
+        const opening = form.classList.contains('hidden');
+        setFormOpen(opening);
+        if (opening) fields.current.focus();
+    });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        clearErrors();
+
+        const current = fields.current.value;
+        const next = fields.next.value;
+        const confirm = fields.confirm.value;
+
+        let valid = true;
+        if (!current) { fail('current', 'Current password is required.'); valid = false; }
+        if (!next) { fail('next', 'New password is required.'); valid = false; }
+        else if (next.length < 8) { fail('next', 'Password must be at least 8 characters.'); valid = false; }
+        else if (next === current) { fail('next', 'New password must be different from the current one.'); valid = false; }
+        if (!confirm) { fail('confirm', 'Please confirm your new password.'); valid = false; }
+        else if (next !== confirm) { fail('confirm', 'New passwords do not match.'); valid = false; }
+        if (!valid) return;
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING\u2026';
+        const result = await window.OrixaAuth.changePassword(current, next);
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'SAVE PASSWORD';
+
+        if (result.error) {
+            if (result.field === 'current') {
+                fail('current', result.error);
+            } else {
+                msg.textContent = result.error;
+                msg.className = 'teacher-form-msg error';
+            }
+            return;
+        }
+
+        form.reset();
+        msg.textContent = 'Password changed successfully.';
+        msg.className = 'teacher-form-msg success';
+    });
+}
+
 function confirmCollegeLogout(event) {
     if (event) event.preventDefault();
 
@@ -677,6 +820,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     MOCK_COLLEGE_DATA.collegeInfo.academicYear = academicYear ? academicYear.code : '';
     showAcademicYear(MOCK_COLLEGE_DATA.collegeInfo.academicYear);
     initAcademicYearModal();
+    initCollegeProfile();
 
     renderCollegeStats();
     renderDepartmentList();

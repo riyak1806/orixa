@@ -62,7 +62,7 @@ function renderTeacherList() {
     if (HOD_MOCK_DATA.teachers.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="4" class="hod-no-results">
+                <td colspan="5" class="hod-no-results">
                     No teachers added yet. Use the form above to add department teachers.
                 </td>
             </tr>
@@ -80,6 +80,7 @@ function renderTeacherList() {
             <td>
                 ${teacher.years.map(y => `<span class="hod-badge hod-badge-yellow" style="margin: 2px;">${escapeHtml(y.trim())}</span>`).join('')}
             </td>
+            <td class="hod-actions-col">${renderUserActionButtons('teacher', teacher.id, teacher.name)}</td>
         </tr>
     `).join('');
 }
@@ -91,7 +92,7 @@ function renderStudentList() {
     if (HOD_MOCK_DATA.students.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="5" class="hod-no-results">
+                <td colspan="6" class="hod-no-results">
                     No students added or assigned yet. Use the form above to add student data.
                 </td>
             </tr>
@@ -110,6 +111,7 @@ function renderStudentList() {
             <td><span class="hod-badge hod-badge-yellow">${escapeHtml(student.year)}</span></td>
             <td><span class="hod-badge hod-badge-green">${escapeHtml(student.subject)}</span></td>
             <td><span class="hod-badge hod-badge-purple">${escapeHtml(student.teacher)}</span></td>
+            <td class="hod-actions-col">${renderUserActionButtons('student', student.id, student.name)}</td>
         </tr>
     `).join('');
 }
@@ -561,6 +563,402 @@ function setFieldValid(input) {
     input.classList.remove('input-invalid');
     const errEl = document.getElementById(`${input.id}-error`);
     if (errEl) errEl.textContent = '';
+}
+
+/* ==========================================================================
+   USER MANAGEMENT - edit and delete teachers and students
+   ========================================================================== */
+
+const PENCIL_ICON = '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>';
+const TRASH_ICON = '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>';
+const CLOSE_ICON = '<svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>';
+
+function renderUserActionButtons(kind, id, name) {
+    const who = escapeHtml(name);
+    return `<span class="hod-row-actions">
+        <button type="button" class="hod-icon-btn" data-user-action="edit" data-user-kind="${kind}" data-user-id="${escapeHtml(id)}" aria-label="Edit ${who}" title="Edit">${PENCIL_ICON}</button>
+        <button type="button" class="hod-icon-btn is-danger" data-user-action="delete" data-user-kind="${kind}" data-user-id="${escapeHtml(id)}" aria-label="Delete ${who}" title="Delete">${TRASH_ICON}</button>
+    </span>`;
+}
+
+function openHodDialog(title, bodyHtml) {
+    closeHodDialog();
+    const overlay = document.createElement('div');
+    overlay.id = 'hod-user-dialog';
+    overlay.className = 'orixa-modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+        <div class="orixa-modal-card hod-modal-card" role="dialog" aria-modal="true" aria-labelledby="hod-user-dialog-title" style="width: min(100%, 560px);">
+            <header class="orixa-modal-header" style="background: var(--color-yellow);">
+                <h3 class="orixa-modal-title" id="hod-user-dialog-title" style="color: var(--border-dark);">${escapeHtml(title)}</h3>
+                <button type="button" class="sidebar-toggle-btn" data-dialog-close aria-label="Close modal" style="width: 32px; height: 32px;">${CLOSE_ICON}</button>
+            </header>
+            <div class="orixa-modal-body" style="padding: var(--t-space-3);">${bodyHtml}</div>
+        </div>`;
+    overlay.addEventListener('click', e => {
+        if (e.target === overlay || e.target.closest('[data-dialog-close]')) closeHodDialog();
+    });
+    document.body.appendChild(overlay);
+    const first = overlay.querySelector('input, select, button:not([data-dialog-close])');
+    if (first) first.focus();
+    return overlay;
+}
+
+function closeHodDialog() {
+    const existing = document.getElementById('hod-user-dialog');
+    if (existing) existing.remove();
+}
+
+function hodFormField(id, label, { type = 'text', value = '', placeholder = '', autocomplete = 'off', help = '' } = {}) {
+    return `
+        <div class="form-field">
+            <label for="${id}" class="field-label"><span>${label}</span></label>
+            <div class="input-shell">
+                <input type="${type}" id="${id}" class="cartoon-input" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}" autocomplete="${autocomplete}">
+            </div>
+            ${help ? `<span style="font-family: var(--font-body); font-size: 0.82rem; color: #546e7a;">${escapeHtml(help)}</span>` : ''}
+            <span class="field-error" id="${id}-error"></span>
+        </div>`;
+}
+
+function setDialogMessage(id, text, kind) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = kind ? `teacher-form-msg ${kind}` : 'teacher-form-msg';
+}
+
+async function refreshHodAfterUserChange() {
+    hodReferenceDataPromise = null;   // teacher and subject lookups changed
+    await loadHodDataFromSupabase();
+    renderHodStats();
+    renderTeacherList();
+    renderStudentList();
+    updateStudentFormDropdowns();
+    renderHodTeacherAndSubjectFilters();
+    renderHodPerformanceTable();
+}
+
+// Shared validation for the name / ID / optional password fields of both edit dialogs
+function readUserDetailFields(prefix) {
+    const name = document.getElementById(`${prefix}-name`);
+    const id = document.getElementById(`${prefix}-id`);
+    const password = document.getElementById(`${prefix}-password`);
+    let valid = true;
+
+    [name, id, password].forEach(setFieldValid);
+    if (!name.value.trim()) { setFieldInvalid(name, 'Name is required.'); valid = false; }
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id.value.trim())) {
+        setFieldInvalid(id, 'Use letters, numbers, dots, dashes or underscores (no spaces).');
+        valid = false;
+    }
+    if (password.value && password.value.length < 8) {
+        setFieldInvalid(password, 'Password must be at least 8 characters.');
+        valid = false;
+    }
+    return valid ? { name: name.value.trim(), loginId: id.value.trim(), password: password.value } : null;
+}
+
+async function saveUserDetails(userId, details) {
+    return window.OrixaAuth.client.rpc('fn_admin_update_user', {
+        p_user_id: userId,
+        p_full_name: details.name,
+        p_login_id: details.loginId,
+        p_password: details.password || null
+    });
+}
+
+/* ---------------- teachers ---------------- */
+
+async function openEditTeacherDialog(teacherId) {
+    const teacher = HOD_MOCK_DATA.teachers.find(t => t.id === teacherId);
+    if (!teacher) return;
+
+    const profile = await window.OrixaAuth.getCurrentProfile();
+    const ref = await getHodReferenceData(profile.department_id, profile.college_id);
+
+    const dialog = openHodDialog('Edit Faculty Member', `
+        <form id="edit-teacher-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
+            ${hodFormField('edit-teacher-name', 'FACULTY NAME', { value: teacher.name })}
+            ${hodFormField('edit-teacher-id', 'EMPLOYEE ID', { value: teacher.empId, help: 'This is also the ID the teacher logs in with.' })}
+            ${hodFormField('edit-teacher-password', 'NEW PASSWORD (OPTIONAL)', { type: 'password', autocomplete: 'new-password', placeholder: 'Blank keeps the current one' })}
+            <p class="teacher-form-msg" id="edit-teacher-msg" role="status" aria-live="polite"></p>
+            <button type="submit" class="cartoon-action-btn primary-yellow-btn" id="edit-teacher-save" style="padding: 10px 24px; font-size: 0.95rem;">SAVE DETAILS</button>
+        </form>
+        <section aria-labelledby="edit-teacher-assign-title" style="border-top: 2px dashed rgba(26,26,36,0.15); margin-top: var(--t-space-3); padding-top: var(--t-space-2); display: flex; flex-direction: column; gap: 10px;">
+            <h4 id="edit-teacher-assign-title" style="margin: 0; font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark);">Subjects &amp; Years Taught</h4>
+            <div id="edit-teacher-assignments" role="list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            <div class="form-field">
+                <label for="edit-teacher-new-subject" class="field-label"><span>ADD A SUBJECT</span></label>
+                <div class="input-shell"><input type="text" id="edit-teacher-new-subject" class="cartoon-input" placeholder="e.g. Data Structures" autocomplete="off"></div>
+            </div>
+            <div class="form-field">
+                <label for="edit-teacher-new-year" class="field-label"><span>FOR YEAR</span></label>
+                <div class="input-shell">
+                    <select id="edit-teacher-new-year" class="cartoon-select">
+                        ${ref.levels.map(l => `<option value="${escapeHtml(l.display_name)}">${escapeHtml(l.display_name)}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <p class="teacher-form-msg" id="edit-teacher-assign-msg" role="status" aria-live="polite"></p>
+            <button type="button" class="cartoon-action-btn" id="edit-teacher-add-assignment" style="padding: 10px 24px; font-size: 0.95rem;">ADD SUBJECT &amp; YEAR</button>
+        </section>`);
+
+    const renderAssignments = async () => {
+        const holder = document.getElementById('edit-teacher-assignments');
+        if (!holder) return;
+        const { data, error } = await window.OrixaAuth.client
+            .from('teacher_subject_class_assignments')
+            .select('id, subjects!teacher_subject_class_assignments_subject_id_fkey(name), academic_levels!teacher_subject_class_assignments_academic_level_id_fkey(display_name)')
+            .eq('teacher_id', teacherId)
+            .eq('is_active', true);
+        if (error) {
+            holder.innerHTML = `<p style="margin: 0; color: var(--color-red-dark);">Could not load assignments: ${escapeHtml(error.message)}</p>`;
+            return;
+        }
+        holder.innerHTML = (data && data.length > 0)
+            ? data.map(a => `
+                <div class="hod-assignment-row" role="listitem">
+                    <span style="font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHtml(a.subjects ? a.subjects.name : '-')} &middot; ${escapeHtml(a.academic_levels ? a.academic_levels.display_name : '-')}</span>
+                    <button type="button" class="hod-icon-btn is-danger" data-remove-assignment="${escapeHtml(a.id)}" aria-label="Remove ${escapeHtml(a.subjects ? a.subjects.name : 'subject')} for ${escapeHtml(a.academic_levels ? a.academic_levels.display_name : 'year')}" title="Remove">${TRASH_ICON}</button>
+                </div>`).join('')
+            : '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">No subjects assigned yet.</p>';
+    };
+    await renderAssignments();
+
+    dialog.querySelector('#edit-teacher-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const details = readUserDetailFields('edit-teacher');
+        if (!details) return;
+
+        const saveBtn = document.getElementById('edit-teacher-save');
+        saveBtn.disabled = true; saveBtn.textContent = 'SAVING\u2026';
+        const { error } = await saveUserDetails(teacherId, details);
+        saveBtn.disabled = false; saveBtn.textContent = 'SAVE DETAILS';
+
+        if (error) {
+            console.error('Update teacher error:', error);
+            setDialogMessage('edit-teacher-msg', `Error: ${error.message}`, 'error');
+            return;
+        }
+        document.getElementById('edit-teacher-password').value = '';
+        setDialogMessage('edit-teacher-msg', 'Details saved.', 'success');
+        await refreshHodAfterUserChange();
+    });
+
+    dialog.querySelector('#edit-teacher-assignments').addEventListener('click', async event => {
+        const btn = event.target.closest('[data-remove-assignment]');
+        if (!btn) return;
+        if (!window.confirm('Remove this subject and year? Students assigned to this teacher for it, and quizzes the teacher made for it, are removed too.')) return;
+
+        const { error } = await window.OrixaAuth.client
+            .from('teacher_subject_class_assignments').delete().eq('id', btn.dataset.removeAssignment);
+        if (error) {
+            console.error('Remove assignment error:', error);
+            setDialogMessage('edit-teacher-assign-msg', `Error: ${error.message}`, 'error');
+            return;
+        }
+        setDialogMessage('edit-teacher-assign-msg', 'Removed.', 'success');
+        await renderAssignments();
+        await refreshHodAfterUserChange();
+    });
+
+    dialog.querySelector('#edit-teacher-add-assignment').addEventListener('click', async () => {
+        const subjectInput = document.getElementById('edit-teacher-new-subject');
+        const yearName = document.getElementById('edit-teacher-new-year').value;
+        const subjectName = subjectInput.value.trim();
+        if (!subjectName) { setDialogMessage('edit-teacher-assign-msg', 'Enter a subject to add.', 'error'); return; }
+
+        const freshRef = await getHodReferenceData(profile.department_id, profile.college_id);
+        const level = findAcademicLevel(freshRef.levels, yearName);
+        if (!level || !freshRef.sessionId) {
+            setDialogMessage('edit-teacher-assign-msg', 'The year or the current academic year is not set up for your college.', 'error');
+            return;
+        }
+
+        try {
+            const subject = await ensureDepartmentSubject(freshRef, profile.department_id, subjectName);
+            const { error } = await window.OrixaAuth.client.from('teacher_subject_class_assignments').insert({
+                teacher_id: teacherId,
+                college_id: profile.college_id,
+                department_id: profile.department_id,
+                subject_id: subject.id,
+                academic_level_id: level.id,
+                academic_session_id: freshRef.sessionId
+            });
+            if (error) {
+                setDialogMessage('edit-teacher-assign-msg',
+                    error.code === '23505' ? 'This teacher already teaches that subject for that year.' : `Error: ${error.message}`, 'error');
+                return;
+            }
+        } catch (err) {
+            setDialogMessage('edit-teacher-assign-msg', `Error: ${err.message}`, 'error');
+            return;
+        }
+        subjectInput.value = '';
+        setDialogMessage('edit-teacher-assign-msg', 'Added.', 'success');
+        await renderAssignments();
+        await refreshHodAfterUserChange();
+    });
+}
+
+/* ---------------- students ---------------- */
+
+async function openEditStudentDialog(studentId) {
+    const student = HOD_MOCK_DATA.students.find(st => st.id === studentId);
+    if (!student) return;
+
+    const profile = await window.OrixaAuth.getCurrentProfile();
+    const ref = await getHodReferenceData(profile.department_id, profile.college_id);
+    const currentLevel = findAcademicLevel(ref.levels, student.year);
+
+    const dialog = openHodDialog('Edit Student', `
+        <form id="edit-student-form" class="teacher-form" novalidate style="gap: var(--t-space-2);">
+            ${hodFormField('edit-student-name', 'STUDENT NAME', { value: student.name })}
+            ${hodFormField('edit-student-id', 'STUDENT ID', { value: student.studentId, help: 'This is also the ID the student logs in with.' })}
+            <div class="form-field">
+                <label for="edit-student-year" class="field-label"><span>YEAR / CLASS</span></label>
+                <div class="input-shell">
+                    <select id="edit-student-year" class="cartoon-select">
+                        ${ref.levels.map(l => `<option value="${escapeHtml(l.id)}" ${currentLevel && currentLevel.id === l.id ? 'selected' : ''}>${escapeHtml(l.display_name)}</option>`).join('')}
+                    </select>
+                </div>
+                <span style="font-family: var(--font-body); font-size: 0.82rem; color: #546e7a;">Changing the year removes the student's current subjects, because they belong to the old year.</span>
+            </div>
+            ${hodFormField('edit-student-password', 'NEW PASSWORD (OPTIONAL)', { type: 'password', autocomplete: 'new-password', placeholder: 'Blank keeps the current one' })}
+            <p class="teacher-form-msg" id="edit-student-msg" role="status" aria-live="polite"></p>
+            <button type="submit" class="cartoon-action-btn primary-yellow-btn" id="edit-student-save" style="padding: 10px 24px; font-size: 0.95rem;">SAVE DETAILS</button>
+        </form>
+        <section aria-labelledby="edit-student-assign-title" style="border-top: 2px dashed rgba(26,26,36,0.15); margin-top: var(--t-space-3); padding-top: var(--t-space-2); display: flex; flex-direction: column; gap: 10px;">
+            <h4 id="edit-student-assign-title" style="margin: 0; font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark);">Subjects &amp; Teachers</h4>
+            <div id="edit-student-assignments" role="list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            <p class="teacher-form-msg" id="edit-student-assign-msg" role="status" aria-live="polite"></p>
+            <p style="margin: 0; font-family: var(--font-body); font-size: 0.82rem; color: #546e7a;">To add another subject, use the Add Student form with this student's ID.</p>
+        </section>`);
+
+    const renderAssignments = async () => {
+        const holder = document.getElementById('edit-student-assignments');
+        if (!holder) return;
+        const { data, error } = await window.OrixaAuth.client
+            .from('student_subject_assignments')
+            .select('id, subjects(name), profiles!student_subject_assignments_teacher_id_fkey(full_name)')
+            .eq('student_id', studentId)
+            .eq('is_active', true);
+        if (error) {
+            holder.innerHTML = `<p style="margin: 0; color: var(--color-red-dark);">Could not load subjects: ${escapeHtml(error.message)}</p>`;
+            return;
+        }
+        holder.innerHTML = (data && data.length > 0)
+            ? data.map(a => `
+                <div class="hod-assignment-row" role="listitem">
+                    <span style="font-family: var(--font-header); font-weight: 700; color: var(--border-dark);">${escapeHtml(a.subjects ? a.subjects.name : '-')} &middot; ${escapeHtml(a.profiles ? a.profiles.full_name : '-')}</span>
+                    <button type="button" class="hod-icon-btn is-danger" data-remove-assignment="${escapeHtml(a.id)}" aria-label="Remove ${escapeHtml(a.subjects ? a.subjects.name : 'subject')}" title="Remove">${TRASH_ICON}</button>
+                </div>`).join('')
+            : '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">No subjects assigned yet.</p>';
+    };
+    await renderAssignments();
+
+    dialog.querySelector('#edit-student-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const details = readUserDetailFields('edit-student');
+        if (!details) return;
+
+        const newLevelId = document.getElementById('edit-student-year').value;
+        const yearChanged = !!currentLevel && newLevelId !== currentLevel.id;
+        if (yearChanged && !window.confirm('Changing the year removes this student\'s current subjects. Continue?')) return;
+
+        const saveBtn = document.getElementById('edit-student-save');
+        saveBtn.disabled = true; saveBtn.textContent = 'SAVING\u2026';
+        const { error } = await saveUserDetails(studentId, details);
+        let yearError = null;
+        if (!error && yearChanged) {
+            const removal = await window.OrixaAuth.client.from('student_subject_assignments').delete().eq('student_id', studentId);
+            const update = removal.error ? removal : await window.OrixaAuth.client
+                .from('student_profiles').update({ academic_level_id: newLevelId }).eq('profile_id', studentId);
+            yearError = update.error;
+        }
+        saveBtn.disabled = false; saveBtn.textContent = 'SAVE DETAILS';
+
+        if (error || yearError) {
+            const failure = error || yearError;
+            console.error('Update student error:', failure);
+            setDialogMessage('edit-student-msg', `Error: ${failure.message}`, 'error');
+            return;
+        }
+        document.getElementById('edit-student-password').value = '';
+        setDialogMessage('edit-student-msg', 'Details saved.', 'success');
+        await renderAssignments();
+        await refreshHodAfterUserChange();
+    });
+
+    dialog.querySelector('#edit-student-assignments').addEventListener('click', async event => {
+        const btn = event.target.closest('[data-remove-assignment]');
+        if (!btn) return;
+        if (!window.confirm('Remove this subject from the student?')) return;
+
+        const { error } = await window.OrixaAuth.client
+            .from('student_subject_assignments').delete().eq('id', btn.dataset.removeAssignment);
+        if (error) {
+            console.error('Remove student subject error:', error);
+            setDialogMessage('edit-student-assign-msg', `Error: ${error.message}`, 'error');
+            return;
+        }
+        setDialogMessage('edit-student-assign-msg', 'Removed.', 'success');
+        await renderAssignments();
+        await refreshHodAfterUserChange();
+    });
+}
+
+/* ---------------- delete ---------------- */
+
+function openDeleteUserDialog(kind, userId) {
+    const person = (kind === 'teacher' ? HOD_MOCK_DATA.teachers : HOD_MOCK_DATA.students).find(x => x.id === userId);
+    if (!person) return;
+
+    const consequence = kind === 'teacher'
+        ? 'Their login, their subject and year assignments, the quizzes they created and the students\' results on those quizzes will be deleted.'
+        : 'Their login, their subjects and all of their quiz results will be deleted.';
+
+    const dialog = openHodDialog(kind === 'teacher' ? 'Delete Faculty Member' : 'Delete Student', `
+        <p style="margin: 0 0 8px 0; font-family: var(--font-body); font-size: 1.05rem; font-weight: 700; color: var(--border-dark);">Delete ${escapeHtml(person.name)} (${escapeHtml(kind === 'teacher' ? person.empId : person.studentId)})?</p>
+        <p style="margin: 0 0 var(--t-space-2) 0; font-family: var(--font-body); font-size: 0.92rem; color: #546e7a;">${escapeHtml(consequence)} This cannot be undone.</p>
+        <p class="teacher-form-msg" id="delete-user-msg" role="alert"></p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="quiz-mgmt-action-btn" data-dialog-close style="background: var(--color-cream); height: 42px;">Cancel</button>
+            <button type="button" class="quiz-mgmt-action-btn quiz-btn-delete" id="confirm-delete-user" style="height: 42px;">Yes, Delete</button>
+        </div>`);
+
+    dialog.querySelector('#confirm-delete-user').addEventListener('click', async event => {
+        const btn = event.currentTarget;
+        btn.disabled = true; btn.textContent = 'Deleting\u2026';
+        const { error } = await window.OrixaAuth.client.rpc('fn_admin_delete_user', { p_user_id: userId });
+        if (error) {
+            console.error('Delete user error:', error);
+            btn.disabled = false; btn.textContent = 'Yes, Delete';
+            setDialogMessage('delete-user-msg', `Could not delete: ${error.message}`, 'error');
+            return;
+        }
+        closeHodDialog();
+        await refreshHodAfterUserChange();
+    });
+}
+
+function initUserManagement() {
+    const handle = event => {
+        const btn = event.target.closest('[data-user-action]');
+        if (!btn) return;
+        const { userAction, userKind, userId } = btn.dataset;
+        if (userAction === 'delete') openDeleteUserDialog(userKind, userId);
+        else if (userKind === 'teacher') openEditTeacherDialog(userId);
+        else openEditStudentDialog(userId);
+    };
+    ['teacher-table-body', 'student-table-body'].forEach(id => {
+        const body = document.getElementById(id);
+        if (body) body.addEventListener('click', handle);
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeHodDialog();
+    });
 }
 
 function initHodPasswordForm() {
@@ -2080,6 +2478,7 @@ async function loadHodDataFromSupabase() {
             }
         }
 
+        HOD_MOCK_DATA.performance = [];
         // Load performance data from quiz_attempts for this department's students
         const studentIds = HOD_MOCK_DATA.students.map(s => s.id);
         if (studentIds.length > 0) {
@@ -2134,6 +2533,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAddStudentForm();
     initDrawerToggles();
     initHodPasswordForm();
+    initUserManagement();
     initHodPerformanceFilters();
     initUploadTogglesAndEvents();
 

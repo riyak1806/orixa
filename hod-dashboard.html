@@ -99,6 +99,61 @@
             outline-offset: 2px;
         }
 
+        .hod-actions-col {
+            width: 1%;
+            white-space: nowrap;
+        }
+
+        .hod-row-actions {
+            display: inline-flex;
+            gap: 6px;
+        }
+
+        .hod-icon-btn {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-cream);
+            color: var(--border-dark);
+            border: var(--border-comic-thin);
+            border-radius: 10px;
+            box-shadow: var(--shadow-chunky-pressed);
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .hod-icon-btn.is-danger {
+            background: var(--color-red);
+        }
+
+        .hod-icon-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-chunky-small);
+        }
+
+        .hod-icon-btn:active {
+            transform: translateY(1px);
+            box-shadow: var(--shadow-chunky-pressed);
+        }
+
+        .hod-icon-btn:focus-visible {
+            outline: 3px solid var(--border-dark);
+            outline-offset: 2px;
+        }
+
+        .hod-assignment-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            padding: 6px 10px;
+        }
+
         .hod-logout-btn:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-chunky-small);
@@ -673,6 +728,7 @@
                                 <th class="hod-empid-col">Employee ID</th>
                                 <th>Subjects Taught</th>
                                 <th>Classes / Years</th>
+                                <th class="hod-actions-col">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="teacher-table-body">
@@ -893,6 +949,7 @@
                                 <th>Year / Class</th>
                                 <th>Subject</th>
                                 <th>Assigned Teacher</th>
+                                <th class="hod-actions-col">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="student-table-body">

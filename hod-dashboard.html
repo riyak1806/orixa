@@ -99,6 +99,44 @@
             outline-offset: 2px;
         }
 
+        .hod-list-footer {
+            display: flex;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .hod-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 38px;
+            padding: 0 16px;
+            font-family: var(--font-header);
+            font-size: 0.85rem;
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            box-shadow: var(--shadow-chunky-pressed);
+            cursor: pointer;
+        }
+
+        .hod-toggle-btn.hidden {
+            display: none;
+        }
+
+        .hod-toggle-btn svg {
+            transition: transform 0.2s ease;
+        }
+
+        .hod-toggle-btn[aria-expanded="true"] svg {
+            transform: rotate(180deg);
+        }
+
+        .hod-toggle-btn:focus-visible {
+            outline: 3px solid var(--border-dark);
+            outline-offset: 2px;
+        }
+
         .hod-sr-only {
             position: absolute;
             width: 1px;
@@ -885,6 +923,13 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div class="hod-list-footer">
+                    <button type="button" class="cartoon-action-btn hod-toggle-btn hidden" id="teacher-toggle-all" aria-expanded="false" aria-controls="teacher-table-body">
+                        <span class="hod-toggle-label">Show all</span>
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" fill="currentColor"/></svg>
+                    </button>
+                </div>
             </div>
 
             <!-- RIGHT CARD: STUDENT LIST -->
@@ -922,6 +967,9 @@
                                 </p>
                                 <p style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a; margin: 0 0 12px 0; font-weight: 600;">
                                     Please keep the columns in this order so the data can be imported correctly.
+                                </p>
+                                <p style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a; margin: 0 0 12px 0; font-weight: 600;">
+                                    Several subjects for one student? Put them in one cell separated by commas and list the teachers in the same order (for example <strong>Subject:</strong> TOM, DBMS &nbsp;<strong>Teacher:</strong> Dr. A, Dr. B). If one teacher teaches all of them, write that teacher once.
                                 </p>
                                 <button type="button" id="download-student-template-btn" class="cartoon-action-btn" style="height: 34px; padding: 0 14px; font-family: var(--font-header); font-size: 0.82rem; background: var(--color-green); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                                     <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
@@ -1114,6 +1162,13 @@
                             <!-- Populated dynamically -->
                         </tbody>
                     </table>
+                </div>
+
+                <div class="hod-list-footer">
+                    <button type="button" class="cartoon-action-btn hod-toggle-btn hidden" id="student-toggle-all" aria-expanded="false" aria-controls="student-table-body">
+                        <span class="hod-toggle-label">Show all</span>
+                        <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" fill="currentColor"/></svg>
+                    </button>
                 </div>
             </div>
         </section>

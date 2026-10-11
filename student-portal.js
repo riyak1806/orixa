@@ -740,6 +740,70 @@ function filterQuizzes() {
     }
 }
 
+/* ==========================================================================
+   NICKNAME (private: stored in student_nicknames, readable only by the student)
+   ========================================================================== */
+
+function initStudentNickname(profile) {
+    const form = document.getElementById('student-nickname-form');
+    if (!form || !profile || !window.OrixaAuth || !window.OrixaAuth.client) return;
+
+    const client = window.OrixaAuth.client;
+    const input = document.getElementById('student-nickname-input');
+    const error = document.getElementById('student-nickname-error');
+    const msg = document.getElementById('student-nickname-msg');
+    const saveBtn = document.getElementById('student-nickname-save-btn');
+    const clearBtn = document.getElementById('student-nickname-clear-btn');
+    const shown = document.getElementById('student-modal-nickname');
+
+    const show = (nickname) => {
+        input.value = nickname || '';
+        shown.textContent = nickname ? `aka ${nickname}` : '';
+        shown.hidden = !nickname;
+        clearBtn.style.display = nickname ? '' : 'none';
+    };
+    const say = (text, ok) => {
+        msg.textContent = text;
+        msg.className = `teacher-form-msg ${ok ? 'success' : 'error'}`;
+    };
+    const busy = (isBusy) => { saveBtn.disabled = isBusy; clearBtn.disabled = isBusy; };
+
+    show('');
+    client.from('student_nicknames').select('nickname').eq('student_id', profile.id).maybeSingle()
+        .then(({ data, error: loadError }) => {
+            if (loadError) { console.error('Could not load nickname:', loadError); return; }
+            show(data ? data.nickname : '');
+        });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        error.textContent = '';
+        input.classList.remove('input-invalid');
+        msg.textContent = '';
+
+        const nickname = input.value.trim();
+        if (!nickname) { input.classList.add('input-invalid'); error.textContent = 'Type a nickname, or use CLEAR to remove it.'; return; }
+        if (nickname.length > 30) { input.classList.add('input-invalid'); error.textContent = 'A nickname can have at most 30 characters.'; return; }
+
+        busy(true);
+        const { error: saveError } = await client.from('student_nicknames')
+            .upsert({ student_id: profile.id, nickname, updated_at: new Date().toISOString() });
+        busy(false);
+        if (saveError) { say(`Nickname could not be saved: ${saveError.message}`, false); return; }
+        show(nickname);
+        say('Nickname saved. Only you can see it.', true);
+    });
+
+    clearBtn.addEventListener('click', async () => {
+        busy(true);
+        const { error: delError } = await client.from('student_nicknames').delete().eq('student_id', profile.id);
+        busy(false);
+        if (delError) { say(`Nickname could not be removed: ${delError.message}`, false); return; }
+        show('');
+        say('Nickname removed.', true);
+    });
+}
+
 function openStudentProfileModal() {
     const modal = document.getElementById('student-profile-modal');
     if (modal) {
@@ -2648,6 +2712,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         profile = await window.OrixaAuth.requireRole(['STUDENT'], 'student-login.html');
         if (!profile) return;
         await loadStudentProfileAndStats(profile);
+        initStudentNickname(profile);
     }
     initStudentPasswordForm();
     if (window.OrixaAchievements) window.OrixaAchievements.init();

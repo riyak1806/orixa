@@ -68,7 +68,24 @@ function matchesSearch(text, query) {
 function updateResultCount(kind, shown, total, noun) {
     const el = document.getElementById(`${kind}-result-count`);
     if (!el) return;
-    el.textContent = hodListSearch[kind] ? `Showing ${shown} of ${total} ${noun}` : `${total} ${noun}`;
+    el.textContent = shown < total ? `Showing ${shown} of ${total} ${noun}` : `${total} ${noun}`;
+}
+
+// Only the first rows are shown until the HOD unfolds the list (a search shows every match)
+const COLLAPSED_ROWS = 5;
+const hodListExpanded = { teacher: false, student: false };
+
+function limitListRows(kind, rows, searching) {
+    const collapsible = !searching && rows.length > COLLAPSED_ROWS;
+    const btn = document.getElementById(`${kind}-toggle-all`);
+    if (btn) {
+        btn.classList.toggle('hidden', !collapsible);
+        btn.setAttribute('aria-expanded', String(hodListExpanded[kind]));
+        const noun = kind === 'teacher' ? 'teachers' : 'students';
+        btn.querySelector('.hod-toggle-label').textContent =
+            hodListExpanded[kind] ? 'Show fewer' : `Show all ${rows.length} ${noun}`;
+    }
+    return collapsible && !hodListExpanded[kind] ? rows.slice(0, COLLAPSED_ROWS) : rows;
 }
 
 function renderTeacherList() {
@@ -78,6 +95,7 @@ function renderTeacherList() {
     const total = HOD_MOCK_DATA.teachers.length;
     if (total === 0) {
         updateResultCount('teacher', 0, 0, 'teachers');
+        limitListRows('teacher', [], false);
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="hod-no-results">
@@ -89,8 +107,9 @@ function renderTeacherList() {
     }
 
     const query = hodListSearch.teacher.trim();
-    const teachers = HOD_MOCK_DATA.teachers.filter(t =>
+    const matching = HOD_MOCK_DATA.teachers.filter(t =>
         matchesSearch([t.name, t.empId, t.subjects.join(' '), t.years.join(' ')].join(' '), query));
+    const teachers = limitListRows('teacher', matching, query !== '');
     updateResultCount('teacher', teachers.length, total, 'teachers');
 
     if (teachers.length === 0) {
@@ -129,6 +148,7 @@ function renderStudentList() {
     const total = HOD_MOCK_DATA.students.length;
     if (total === 0) {
         updateResultCount('student', 0, 0, 'students');
+        limitListRows('student', [], false);
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="hod-no-results">
@@ -141,12 +161,13 @@ function renderStudentList() {
 
     const query = hodListSearch.student.trim();
     // In login-ID order, with numbers compared as numbers (stu-2 comes before stu-10)
-    const students = HOD_MOCK_DATA.students
+    const matching = HOD_MOCK_DATA.students
         .filter(st => matchesSearch([
             st.name, st.studentId, st.year,
             studentAssignmentPairs(st).map(a => `${a.subject} ${a.teacher}`).join(' ')
         ].join(' '), query))
         .sort((a, b) => String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true, sensitivity: 'base' }));
+    const students = limitListRows('student', matching, query !== '');
     updateResultCount('student', students.length, total, 'students');
 
     if (students.length === 0) {
@@ -184,6 +205,15 @@ function initHodSearch() {
             clear.classList.toggle('hidden', input.value === '');
             render();
         };
+        const toggle = document.getElementById(`${kind}-toggle-all`);
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                hodListExpanded[kind] = !hodListExpanded[kind];
+                render();
+                if (!hodListExpanded[kind]) toggle.scrollIntoView({ block: 'nearest' });
+            });
+        }
+
         input.addEventListener('input', apply);
         input.addEventListener('keydown', e => {
             if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; apply(); }

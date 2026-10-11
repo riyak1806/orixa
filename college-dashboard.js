@@ -698,6 +698,7 @@ function initCollegeProfile() {
     };
     const msg = document.getElementById('college-pwd-msg');
     const saveBtn = document.getElementById('college-pwd-save-btn');
+    const passwordSafety = window.OrixaAuth.attachPasswordSafety(fields.next);
 
     const fillProfile = async () => {
         const profile = await window.OrixaAuth.getCurrentProfile();
@@ -754,6 +755,7 @@ function initCollegeProfile() {
         else if (next === current) { fail('next', 'New password must be different from the current one.'); valid = false; }
         if (!confirm) { fail('confirm', 'Please confirm your new password.'); valid = false; }
         else if (next !== confirm) { fail('confirm', 'New passwords do not match.'); valid = false; }
+        if (valid && !passwordSafety.isCopied()) { fail('next', 'Copy your new password first (use COPY NEW PASSWORD) so you can keep it safe. It cannot be recovered if forgotten.'); valid = false; }
         if (!valid) return;
 
         saveBtn.disabled = true;

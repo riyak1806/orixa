@@ -777,6 +777,8 @@ function initStudentPasswordForm() {
     const toggle = document.getElementById('student-password-toggle-btn');
     if (!form || !toggle) return;
 
+    const passwordSafety = window.OrixaAuth.attachPasswordSafety(document.getElementById('student-pwd-new'));
+
     toggle.addEventListener('click', () => {
         const opening = form.classList.contains('hidden');
         form.classList.toggle('hidden', !opening);
@@ -820,6 +822,7 @@ function initStudentPasswordForm() {
         else if (next === current) { fail('next', 'New password must be different from the current one.'); valid = false; }
         if (!confirm) { fail('confirm', 'Please confirm your new password.'); valid = false; }
         else if (next !== confirm) { fail('confirm', 'New passwords do not match.'); valid = false; }
+        if (valid && !passwordSafety.isCopied()) { fail('next', 'Copy your new password first (use COPY NEW PASSWORD) so you can keep it safe. It cannot be recovered if forgotten.'); valid = false; }
         if (!valid) return;
 
         const client = window.OrixaAuth && window.OrixaAuth.client;

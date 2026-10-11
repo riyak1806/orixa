@@ -1254,6 +1254,7 @@ function initHodProfile() {
     };
     const msg = document.getElementById('hod-pwd-msg');
     const saveBtn = document.getElementById('hod-pwd-save-btn');
+    const passwordSafety = window.OrixaAuth.attachPasswordSafety(fields.next);
 
     const clearErrors = () => {
         Object.values(fields).forEach(el => el.classList.remove('input-invalid'));
@@ -1297,6 +1298,7 @@ function initHodProfile() {
         else if (next === current) { fail('next', 'New password must be different from the current one.'); valid = false; }
         if (!confirm) { fail('confirm', 'Please confirm your new password.'); valid = false; }
         else if (next !== confirm) { fail('confirm', 'New passwords do not match.'); valid = false; }
+        if (valid && !passwordSafety.isCopied()) { fail('next', 'Copy your new password first (use COPY NEW PASSWORD) so you can keep it safe. It cannot be recovered if forgotten.'); valid = false; }
         if (!valid) return;
 
         saveBtn.disabled = true;

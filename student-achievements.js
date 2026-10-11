@@ -34,6 +34,7 @@
     let state = null;
     let loadedFor = null;
     let status = 'idle'; // idle | loading | ready | error
+    let lastError = '';
     let loadPromise = null;
     let collectionEl = null;
     let celebrationEl = null;
@@ -130,6 +131,7 @@
                 status = 'ready';
             } catch (e) {
                 console.error('Could not load achievements:', e);
+                lastError = (e && e.message) || 'Unknown error';
                 status = 'error';
             }
             renderAll();
@@ -185,7 +187,7 @@
         const panel = document.getElementById('achievements-panel');
         if (!panel) return;
         if (status !== 'ready') {
-            panel.innerHTML = `<p class="ach-panel-note" ${status === 'error' ? 'role="alert"' : ''}>${status === 'error' ? 'Could not load your badges and trophies.' : 'Loading your badges and trophies...'}</p>
+            panel.innerHTML = `<p class="ach-panel-note" ${status === 'error' ? 'role="alert"' : ''}>${status === 'error' ? 'Could not load your badges and trophies: ' + esc(lastError) : 'Loading your badges and trophies...'}</p>
                 ${status === 'error' ? '<button type="button" class="quiz-mgmt-action-btn quiz-btn-edit ach-retry-btn" style="height: 42px; max-width: 160px;">TRY AGAIN</button>' : ''}`;
             const retry = panel.querySelector('.ach-retry-btn');
             if (retry) retry.addEventListener('click', () => loadAll());
@@ -265,7 +267,7 @@
         if (!collectionEl) return;
         const body = collectionEl.querySelector('#ach-collection-body');
         if (status !== 'ready') {
-            body.innerHTML = `<p class="ach-note" ${status === 'error' ? 'role="alert"' : ''}>${status === 'error' ? 'Could not load your badges and trophies.' : 'Loading...'}</p>
+            body.innerHTML = `<p class="ach-note" ${status === 'error' ? 'role="alert"' : ''}>${status === 'error' ? 'Could not load your badges and trophies: ' + esc(lastError) : 'Loading...'}</p>
                 ${status === 'error' ? '<button type="button" class="cartoon-action-btn primary-yellow-btn ach-retry-btn">TRY AGAIN</button>' : ''}`;
             const retry = body.querySelector('.ach-retry-btn');
             if (retry) retry.addEventListener('click', () => loadAll());

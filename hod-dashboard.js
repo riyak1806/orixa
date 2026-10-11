@@ -1219,14 +1219,14 @@ function parseAndValidateStudentRows(rawRows) {
             const registered = findHodStudent(studentId);
             const earlierRow = fileStudents.get(idLower);
 
-            if (registered && year && registered.year.toLowerCase() !== year.toLowerCase()) {
+            if (registered && year && registered.year !== '—' && !sameAcademicYear(registered.year, year)) {
                 errors.push(`Student ID "${studentId}" is already registered in ${registered.year}`);
             }
             if (registered && subject && splitCommaList(registered.subject).some(x => x.toLowerCase() === subjectLower)) {
                 errors.push(`Student ID "${studentId}" already takes "${subject}"`);
             }
             if (earlierRow) {
-                if (earlierRow.name.toLowerCase() !== name.toLowerCase() || earlierRow.year.toLowerCase() !== year.toLowerCase()) {
+                if (earlierRow.name.toLowerCase() !== name.toLowerCase() || !sameAcademicYear(earlierRow.year, year)) {
                     errors.push(`Student ID "${studentId}" has a different name or year on another row`);
                 }
                 if (subject && earlierRow.subjects.has(subjectLower)) {
@@ -1460,6 +1460,22 @@ function getHodReferenceData(deptId, collegeId) {
 // PostgREST returns a one-to-one embed (e.g. a student's profile) as an object and a one-to-many embed as an array
 function firstRelated(value) {
     return Array.isArray(value) ? value[0] : value;
+}
+
+// "TE", "3rd Year", "Third Year" and "3" all mean the same academic year
+function academicYearRank(text) {
+    const t = String(text || '').trim().toLowerCase();
+    const byCode = { fe: 1, se: 2, te: 3, be: 4 };
+    const byWord = { first: 1, second: 2, third: 3, fourth: 4 };
+    if (byCode[t]) return byCode[t];
+    const word = t.split(/\s+/)[0];
+    if (byWord[word]) return byWord[word];
+    const n = parseInt(t, 10);
+    return Number.isNaN(n) ? t : n;
+}
+
+function sameAcademicYear(a, b) {
+    return academicYearRank(a) === academicYearRank(b);
 }
 
 function findHodStudent(studentId) {
@@ -1697,7 +1713,7 @@ async function saveStudentToSupabase(fullName, loginId, levelCode, subject = '�
 
     const existingStudent = findHodStudent(loginId);
     if (existingStudent) {
-        if (existingStudent.year && existingStudent.year !== '—' && String(year).toLowerCase() !== existingStudent.year.toLowerCase()) {
+        if (existingStudent.year && existingStudent.year !== '—' && !sameAcademicYear(year, existingStudent.year)) {
             return { success: false, error: `Student ${loginId} is already registered in ${existingStudent.year}.` };
         }
         if (splitCommaList(existingStudent.subject).some(x => x.toLowerCase() === String(subject).toLowerCase())) {

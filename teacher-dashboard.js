@@ -4709,7 +4709,10 @@ window.openChangePasswordModal = function() {
         </div>
     `;
     openOrixaModal(html);
+    teacherPasswordSafety = window.OrixaAuth.attachPasswordSafety(document.getElementById('pwd-new'));
 };
+
+let teacherPasswordSafety = null;
 
 window.submitChangePassword = async function(event) {
     event.preventDefault();
@@ -4763,6 +4766,12 @@ window.submitChangePassword = async function(event) {
     } else if (newVal !== confirmVal) {
         confirmEl.classList.add('input-invalid');
         if (errConfirm) errConfirm.textContent = 'New passwords do not match.';
+        isValid = false;
+    }
+
+    if (isValid && teacherPasswordSafety && !teacherPasswordSafety.isCopied()) {
+        newEl.classList.add('input-invalid');
+        if (errNew) errNew.textContent = 'Copy your new password first (use COPY NEW PASSWORD) so you can keep it safe. It cannot be recovered if forgotten.';
         isValid = false;
     }
 

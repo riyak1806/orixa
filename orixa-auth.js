@@ -198,6 +198,67 @@
             return data;
         }
 
+        // Shows the "keep your password safe" warning and a COPY button under a new-password input.
+        // The password counts as copied only while the input still holds exactly the text that was copied;
+        // each change-password form refuses to save until isCopied() is true.
+        attachPasswordSafety(newInput) {
+            const field = newInput && (newInput.closest('.form-field') || newInput.parentElement);
+            if (!field) return { isCopied: () => true, reset() {} };
+
+            const box = document.createElement('div');
+            box.className = 'password-safety';
+            box.style.cssText = 'display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; margin-top: 8px; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px;';
+            box.innerHTML =
+                '<p role="note" style="margin: 0; font-family: var(--font-body); font-size: 0.85rem; font-weight: 700; color: var(--border-dark); line-height: 1.35;">' +
+                'Important: if you forget your password there is no way to get it back. Copy it and keep it saved somewhere safe.</p>' +
+                '<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">' +
+                '<button type="button" class="cartoon-action-btn password-safety-copy" style="padding: 8px 16px; font-size: 0.85rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">COPY NEW PASSWORD</button>' +
+                '<span class="password-safety-status" role="status" aria-live="polite" style="font-family: var(--font-body); font-size: 0.85rem; font-weight: 700;"></span></div>';
+            field.appendChild(box);
+
+            const copyBtn = box.querySelector('.password-safety-copy');
+            const status = box.querySelector('.password-safety-status');
+            let copiedValue = null;
+
+            const setStatus = (text, ok) => {
+                status.textContent = text;
+                status.style.color = ok ? 'var(--color-green-dark)' : 'var(--color-red-dark)';
+            };
+            const reset = () => { copiedValue = null; setStatus('', true); };
+
+            const writeToClipboard = async (text) => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall back below */ }
+                }
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.cssText = 'position: fixed; top: 0; left: 0; opacity: 0;';
+                document.body.appendChild(ta);
+                ta.select();
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                ta.remove();
+                return ok;
+            };
+
+            copyBtn.addEventListener('click', async () => {
+                const value = newInput.value;
+                if (!value) { setStatus('Type your new password first, then copy it.', false); newInput.focus(); return; }
+                if (await writeToClipboard(value)) {
+                    copiedValue = value;
+                    setStatus('Copied. Paste it somewhere safe before you continue.', true);
+                } else {
+                    copiedValue = null;
+                    setStatus('Could not copy automatically. Allow clipboard access and try again.', false);
+                }
+            });
+            newInput.addEventListener('input', () => { if (copiedValue !== null && copiedValue !== newInput.value) reset(); });
+            if (newInput.form) newInput.form.addEventListener('reset', reset);
+
+            return { isCopied: () => copiedValue !== null && copiedValue === newInput.value, reset };
+        }
+
         // Changes the signed-in user's password after confirming the current one.
         // Returns {} on success, or { field: 'current' | undefined, error } on failure.
         async changePassword(currentPassword, newPassword) {

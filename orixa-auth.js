@@ -27,14 +27,30 @@
                 }
 
                 if (this._client && this._client.auth) {
-                    this._client.auth.onAuthStateChange((event) => {
+                    this._client.auth.onAuthStateChange((event, session) => {
+                        // A browser keeps one login per site. If another tab signs in as someone else (or
+                        // signs out) while this page is showing one user's dashboard, this page's requests
+                        // silently run as the other user and the database refuses them. Catch that here.
+                        const loadedUserId = this._cachedProfile && this._cachedProfile.id;
+                        const sessionUserId = session && session.user && session.user.id;
+
                         if (event === 'SIGNED_OUT') {
                             this._cachedProfile = null;
+                            if (loadedUserId) this.handleSessionChanged('You were signed out in another tab. Please log in again.');
+                        } else if (loadedUserId && sessionUserId && sessionUserId !== loadedUserId) {
+                            this._cachedProfile = null;
+                            this.handleSessionChanged('Another account was signed in from another tab in this browser, so this page was closed. Please log in again. Tip: use a separate browser window or profile for each role.');
                         }
                     });
                 }
             }
             return this._client;
+        }
+
+        // Tells the person why the page is being closed, then returns to the start page
+        handleSessionChanged(message) {
+            alert(message);
+            window.location.replace('index.html');
         }
 
         async getCurrentUser() {

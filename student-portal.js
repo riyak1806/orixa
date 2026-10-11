@@ -748,6 +748,111 @@ function closeStudentProfileModal() {
     if (modal) {
         modal.classList.add('hidden');
     }
+    resetStudentPasswordForm();
+}
+
+/* ==========================================================================
+   CHANGE PASSWORD
+   ========================================================================== */
+
+function resetStudentPasswordForm() {
+    const form = document.getElementById('student-password-form');
+    const toggle = document.getElementById('student-password-toggle-btn');
+    if (!form) return;
+    form.reset();
+    form.classList.add('hidden');
+    form.querySelectorAll('.cartoon-input').forEach(el => el.classList.remove('input-invalid'));
+    form.querySelectorAll('.field-error').forEach(el => { el.textContent = ''; });
+    const msg = document.getElementById('student-pwd-msg');
+    if (msg) { msg.textContent = ''; msg.className = 'teacher-form-msg'; }
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function initStudentPasswordForm() {
+    const form = document.getElementById('student-password-form');
+    const toggle = document.getElementById('student-password-toggle-btn');
+    if (!form || !toggle) return;
+
+    toggle.addEventListener('click', () => {
+        const opening = form.classList.contains('hidden');
+        form.classList.toggle('hidden', !opening);
+        toggle.setAttribute('aria-expanded', String(opening));
+        if (opening) document.getElementById('student-pwd-current').focus();
+    });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const fields = {
+            current: document.getElementById('student-pwd-current'),
+            next: document.getElementById('student-pwd-new'),
+            confirm: document.getElementById('student-pwd-confirm')
+        };
+        const errors = {
+            current: document.getElementById('student-pwd-current-error'),
+            next: document.getElementById('student-pwd-new-error'),
+            confirm: document.getElementById('student-pwd-confirm-error')
+        };
+        const msg = document.getElementById('student-pwd-msg');
+        const saveBtn = document.getElementById('student-pwd-save-btn');
+
+        Object.values(fields).forEach(el => el.classList.remove('input-invalid'));
+        Object.values(errors).forEach(el => { el.textContent = ''; });
+        msg.textContent = '';
+        msg.className = 'teacher-form-msg';
+
+        const fail = (key, text) => {
+            fields[key].classList.add('input-invalid');
+            errors[key].textContent = text;
+        };
+        const current = fields.current.value;
+        const next = fields.next.value;
+        const confirm = fields.confirm.value;
+
+        let valid = true;
+        if (!current) { fail('current', 'Current password is required.'); valid = false; }
+        if (!next) { fail('next', 'New password is required.'); valid = false; }
+        else if (next.length < 8) { fail('next', 'Password must be at least 8 characters.'); valid = false; }
+        else if (next === current) { fail('next', 'New password must be different from the current one.'); valid = false; }
+        if (!confirm) { fail('confirm', 'Please confirm your new password.'); valid = false; }
+        else if (next !== confirm) { fail('confirm', 'New passwords do not match.'); valid = false; }
+        if (!valid) return;
+
+        const client = window.OrixaAuth && window.OrixaAuth.client;
+        const user = client ? await window.OrixaAuth.getCurrentUser() : null;
+        if (!client || !user || !user.email) {
+            msg.textContent = 'You are not signed in. Please log in again.';
+            msg.className = 'teacher-form-msg error';
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING…';
+
+        // Confirm the current password before allowing a change
+        const verify = await client.auth.signInWithPassword({ email: user.email, password: current });
+        if (verify.error) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'SAVE PASSWORD';
+            fail('current', 'Current password is incorrect.');
+            return;
+        }
+
+        const { error } = await client.auth.updateUser({ password: next });
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'SAVE PASSWORD';
+
+        if (error) {
+            console.error('Password change failed:', error);
+            msg.textContent = `Password change failed: ${error.message}`;
+            msg.className = 'teacher-form-msg error';
+            return;
+        }
+
+        form.reset();
+        msg.textContent = 'Password changed successfully.';
+        msg.className = 'teacher-form-msg success';
+    });
 }
 
 function escapeHTML(str) {
@@ -2502,6 +2607,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!profile) return;
         await loadStudentProfileAndStats(profile);
     }
+    initStudentPasswordForm();
 
     await loadCompletedQuizzesFromSupabase();
     await fetchPublishedQuizzesFromSupabase();

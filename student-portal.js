@@ -622,7 +622,10 @@ async function completeAttemptInSupabase(attemptId) {
     const { error } = await window.OrixaAuth.client.rpc('fn_complete_quiz_attempt', {
         p_attempt_id: attemptId
     });
-    if (!error) return;
+    if (!error) {
+        loadStudentQuizHistory();
+        return;
+    }
 
     console.error('fn_complete_quiz_attempt error:', error);
     const screen = document.querySelector('#tile-game-window .tile-victory-screen');
@@ -2417,6 +2420,59 @@ async function loadStudentProfileAndStats(profile) {
     }
 }
 
+const QUIZ_FORMAT_LABELS = {
+    TILE_PUZZLE: 'Tile Puzzle',
+    MATCH_FOLLOWING: 'Match the Following',
+    FILL_BLANKS: 'Fill in the Blanks',
+    TRUE_FALSE: 'True or False'
+};
+
+// Lists the quizzes this student has completed, newest first, in the profile popup
+async function loadStudentQuizHistory() {
+    const list = document.getElementById('student-quiz-history');
+    if (!list) return;
+    if (!window.OrixaAuth || !window.OrixaAuth.client) return;
+
+    const profile = await window.OrixaAuth.getCurrentProfile();
+    if (!profile) return;
+
+    const { data: attempts, error } = await window.OrixaAuth.client
+        .from('quiz_attempts')
+        .select('id, completed_at, final_earned_xp, final_stars, final_accuracy_pct, quizzes(title, game_type, subjects!quizzes_subject_id_fkey(name))')
+        .eq('student_id', profile.id)
+        .eq('status', 'COMPLETED')
+        .order('completed_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching quiz history:', error);
+        list.innerHTML = '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: var(--color-red-dark);">Could not load your quiz history.</p>';
+        return;
+    }
+
+    if (!attempts || attempts.length === 0) {
+        list.innerHTML = '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">You have not completed any quizzes yet.</p>';
+        return;
+    }
+
+    list.innerHTML = attempts.map(a => {
+        const quiz = a.quizzes || {};
+        const subject = quiz.subjects && quiz.subjects.name ? quiz.subjects.name : null;
+        const format = QUIZ_FORMAT_LABELS[quiz.game_type] || null;
+        const date = a.completed_at ? new Date(a.completed_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+        const meta = [subject, format, date].filter(Boolean).join(' \u00b7 ');
+        return `
+            <div role="listitem" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--color-cream); border: var(--border-comic-thin); border-radius: 12px; padding: 8px 10px;">
+                <div style="min-width: 0;">
+                    <div style="font-family: var(--font-header); font-weight: 700; color: var(--border-dark); overflow-wrap: anywhere;">${escapeHTML(quiz.title || 'Quiz')}</div>
+                    <div style="font-family: var(--font-body); font-size: 0.8rem; color: #546e7a;">${escapeHTML(meta)}</div>
+                </div>
+                <div style="font-family: var(--font-header); font-size: 0.85rem; font-weight: 700; color: var(--border-dark); text-align: right;">
+                    ${Number(a.final_accuracy_pct || 0)}% &middot; ${Number(a.final_earned_xp || 0)} XP &middot; ${Number(a.final_stars || 0)}/3 stars
+                </div>
+            </div>`;
+    }).join('');
+}
+
 function renderQuizCards(quizzes) {
     const grid = document.querySelector('.student-quest-grid');
     if (!grid || !Array.isArray(quizzes)) return;
@@ -2608,6 +2664,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadStudentProfileAndStats(profile);
     }
     initStudentPasswordForm();
+    loadStudentQuizHistory();
 
     await loadCompletedQuizzesFromSupabase();
     await fetchPublishedQuizzesFromSupabase();

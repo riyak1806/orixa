@@ -134,6 +134,7 @@ function renderTeacherList() {
             <td class="hod-actions-col">${renderUserActionButtons('teacher', teacher.id, teacher.name)}</td>
         </tr>
     `).join('');
+    alignRosterRows();
 }
 
 // The subject/teacher pairs of one student, shown side by side
@@ -192,9 +193,37 @@ function renderStudentList() {
             <td class="hod-actions-col">${renderUserActionButtons('student', student.id, student.name)}</td>
         </tr>`;
     }).join('');
+    alignRosterRows();
+}
+
+// While the Faculty and Student panels sit side by side, row N of both tables gets the same height,
+// so the two lists read as one aligned grid (stacked on a phone they are left alone)
+function alignRosterRows() {
+    const teacherBody = document.getElementById('teacher-table-body');
+    const studentBody = document.getElementById('student-table-body');
+    if (!teacherBody || !studentBody) return;
+
+    const dataRows = body => [...body.querySelectorAll('tr')].filter(tr => !tr.querySelector('.hod-no-results'));
+    const teacherRows = dataRows(teacherBody);
+    const studentRows = dataRows(studentBody);
+    [...teacherRows, ...studentRows].forEach(tr => { tr.style.height = ''; });
+
+    const tops = [teacherBody, studentBody].map(b => b.closest('.dashboard-panel').getBoundingClientRect().top);
+    if (Math.abs(tops[0] - tops[1]) > 4) return;
+
+    for (let i = 0; i < Math.min(teacherRows.length, studentRows.length); i++) {
+        const height = Math.ceil(Math.max(teacherRows[i].getBoundingClientRect().height, studentRows[i].getBoundingClientRect().height));
+        teacherRows[i].style.height = studentRows[i].style.height = `${height}px`;
+    }
 }
 
 function initHodSearch() {
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(alignRosterRows, 120);
+    });
+
     [['teacher', renderTeacherList], ['student', renderStudentList]].forEach(([kind, render]) => {
         const input = document.getElementById(`${kind}-search`);
         const clear = document.getElementById(`${kind}-search-clear`);

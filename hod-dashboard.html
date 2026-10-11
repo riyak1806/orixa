@@ -99,6 +99,115 @@
             outline-offset: 2px;
         }
 
+        .hod-sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+        }
+
+        .hod-list-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px 14px;
+            margin: 4px 0 12px 0;
+        }
+
+        .hod-search {
+            position: relative;
+            flex: 1 1 240px;
+            max-width: 460px;
+        }
+
+        .hod-search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            width: 18px;
+            height: 18px;
+            transform: translateY(-50%);
+            color: #546e7a;
+            pointer-events: none;
+        }
+
+        .hod-search-input {
+            width: 100%;
+            height: 40px;
+            padding: 0 40px 0 40px;
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            color: var(--border-dark);
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+            box-shadow: var(--shadow-chunky-pressed);
+            transition: box-shadow 0.15s ease;
+        }
+
+        .hod-search-input::-webkit-search-cancel-button {
+            display: none;
+        }
+
+        .hod-search-input:focus {
+            outline: 3px solid var(--border-dark);
+            outline-offset: 2px;
+        }
+
+        .hod-search-clear {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            width: 26px;
+            height: 26px;
+            transform: translateY(-50%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            color: var(--border-dark);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .hod-search-clear:hover {
+            background: rgba(26, 26, 36, 0.1);
+        }
+
+        .hod-search-clear:focus-visible {
+            outline: 2px solid var(--border-dark);
+        }
+
+        .hod-result-count {
+            font-family: var(--font-header);
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #546e7a;
+        }
+
+        /* one subject next to its teacher, one pair per line */
+        .hod-pair {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 4px;
+            width: fit-content;
+            margin: 3px 0;
+            padding: 3px 6px;
+            background: var(--color-cream);
+            border: var(--border-comic-thin);
+            border-radius: 12px;
+        }
+
+        .hod-pair .hod-badge {
+            margin: 0;
+            white-space: nowrap;
+        }
+
         .hod-actions-col {
             width: 1%;
             white-space: nowrap;
@@ -750,7 +859,17 @@
                     </div>
                 </div>
 
-                <div class="hod-table-wrapper">
+                                <div class="hod-list-toolbar">
+                    <div class="hod-search">
+                        <svg class="monotone-icon hod-search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
+                        <label for="teacher-search" class="hod-sr-only">Search faculty</label>
+                        <input type="search" id="teacher-search" class="hod-search-input" placeholder="Search faculty by name, ID, subject or year" autocomplete="off">
+                        <button type="button" class="hod-search-clear hidden" id="teacher-search-clear" aria-label="Clear search"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+                    </div>
+                    <span class="hod-result-count" id="teacher-result-count" aria-live="polite"></span>
+                </div>
+
+<div class="hod-table-wrapper">
                     <table class="hod-data-table">
                         <thead>
                             <tr>
@@ -970,15 +1089,24 @@
                     </div>
                 </div>
 
-                <div class="hod-table-wrapper">
+                                <div class="hod-list-toolbar">
+                    <div class="hod-search">
+                        <svg class="monotone-icon hod-search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
+                        <label for="student-search" class="hod-sr-only">Search students</label>
+                        <input type="search" id="student-search" class="hod-search-input" placeholder="Search students by name, ID, year, subject or teacher" autocomplete="off">
+                        <button type="button" class="hod-search-clear hidden" id="student-search-clear" aria-label="Clear search"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg></button>
+                    </div>
+                    <span class="hod-result-count" id="student-result-count" aria-live="polite"></span>
+                </div>
+
+<div class="hod-table-wrapper">
                     <table class="hod-data-table">
                         <thead>
                             <tr>
                                 <th>Student Name</th>
                                 <th style="min-width: 170px; white-space: nowrap;">Student ID</th>
                                 <th>Year / Class</th>
-                                <th>Subject</th>
-                                <th>Assigned Teacher</th>
+                                <th>Subjects &amp; Teachers</th>
                                 <th class="hod-actions-col">Actions</th>
                             </tr>
                         </thead>

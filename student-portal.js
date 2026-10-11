@@ -1280,7 +1280,17 @@ function attemptMatch(qId, aId) {
                 const errLine = document.getElementById(`err-line-${qId}-${aId}`);
                 if (errLine) errLine.remove();
 
+                // The database allows only a limited number of tries per prompt: once they are used up the
+                // prompt is locked as failed, otherwise the game could never finish.
+                if (stat && stat.totalAttempts >= matchGameState.configuredChances) {
+                    matchGameState.failedPairs.add(qId);
+                }
+
                 renderMatchGameBoard();
+
+                if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+                    setGameTimeout(renderMatchVictoryScreen, 600);
+                }
             }, 600);
         }
     };

@@ -1600,7 +1600,7 @@ function downloadStudentTemplate() {
     const templateData = [
         ['Student Name', 'Student ID', 'Year/Class', 'Teacher', 'Subject', 'Password (Optional)'],
         ['Aarav Sharma', 'STU-CS-101', '1st Year', 'Prof. Sarah Jenkins', 'Data Structures', 'Student123!'],
-        ['Ananya Deshmukh', 'STU-CS-102', '2nd Year', 'Prof. Alan Turing', 'Database Management', '']
+        ['Ananya Deshmukh', 'STU-CS-102', '2nd Year', 'Prof. Alan Turing, Prof. Sarah Jenkins', 'Database Management, Data Structures', '']
     ];
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
@@ -1879,6 +1879,29 @@ function handleStudentExcelFileSelect(event) {
     reader.readAsArrayBuffer(file);
 }
 
+// One Excel row may hold several subjects and teachers: "TOM, DBMS" + "Dr. A, Dr. B" gives
+// TOM with Dr. A and DBMS with Dr. B. A single teacher on their own is used for every subject.
+function pairSubjectsAndTeachers(subjectCell, teacherCell) {
+    const split = text => String(text || '').split(/[,;|\n]+/).map(x => x.trim()).filter(Boolean);
+    const subjects = split(subjectCell);
+    const teachers = split(teacherCell);
+
+    if (subjects.length === 0 || teachers.length === 0) {
+        // the usual "is empty" messages apply
+        return { pairs: [{ subject: subjects.join(', '), teacher: teachers.join(', ') }] };
+    }
+    if (teachers.length === 1) {
+        return { pairs: subjects.map(subject => ({ subject, teacher: teachers[0] })) };
+    }
+    if (teachers.length === subjects.length) {
+        return { pairs: subjects.map((subject, i) => ({ subject, teacher: teachers[i] })) };
+    }
+    return {
+        pairs: [],
+        error: `${subjects.length} subjects but ${teachers.length} teachers: give one teacher per subject in the same order, or a single teacher for all`
+    };
+}
+
 function parseAndValidateStudentRows(rawRows) {
     if (!rawRows || rawRows.length === 0) {
         alert('Uploaded Excel file is empty.');
@@ -1907,89 +1930,101 @@ function parseAndValidateStudentRows(rawRows) {
         const name = String(row[0] || '').trim();
         const studentId = String(row[1] || '').trim();
         const year = String(row[2] || '').trim();
-        const teacher = String(row[3] || '').trim();
-        const subject = String(row[4] || '').trim();
+        const teacherCell = String(row[3] || '').trim();
+        const subjectCell = String(row[4] || '').trim();
         const password = String(row[5] || '').trim();
 
-        const errors = [];
 
-        if (!name) errors.push('Student Name is empty');
-        if (!studentId) {
-            errors.push('Student ID is empty');
-        } else {
-            // A student may appear on several rows (one per subject), as long as the rows agree
-            const idLower = studentId.toLowerCase();
-            const subjectLower = subject.toLowerCase();
-            const registered = findHodStudent(studentId);
-            const earlierRow = fileStudents.get(idLower);
-
-            if (registered && year && registered.year !== '—' && !sameAcademicYear(registered.year, year)) {
-                errors.push(`Student ID "${studentId}" is already registered in ${registered.year}`);
-            }
-            if (registered && subject && splitCommaList(registered.subject).some(x => x.toLowerCase() === subjectLower)) {
-                errors.push(`Student ID "${studentId}" already takes "${subject}"`);
-            }
-            if (earlierRow) {
-                if (earlierRow.name.toLowerCase() !== name.toLowerCase() || !sameAcademicYear(earlierRow.year, year)) {
-                    errors.push(`Student ID "${studentId}" has a different name or year on another row`);
-                }
-                if (subject && earlierRow.subjects.has(subjectLower)) {
-                    errors.push(`Student ID "${studentId}" lists "${subject}" more than once`);
-                }
-                if (subject) earlierRow.subjects.add(subjectLower);
-            } else {
-                fileStudents.set(idLower, { name, year, subjects: new Set(subject ? [subjectLower] : []) });
-            }
+        const { pairs, error: pairingError } = pairSubjectsAndTeachers(subjectCell, teacherCell);
+        if (pairingError) {
+            parsedStudentRecords.push({
+                rowNum: i + 1, name, studentId, year, teacher: teacherCell, subject: subjectCell, password,
+                isValid: false, errors: [pairingError]
+            });
+            continue;
         }
 
-        if (!year) errors.push('Year/Class is empty');
+        for (const { subject, teacher } of pairs) {
+            const errors = [];
 
-        let matchedTeacherName = teacher;
-        if (!teacher) {
-            errors.push('Assigned Teacher is empty');
-        } else {
-            // Check against existing teachers in HOD_MOCK_DATA
-            const wanted = teacher.toLowerCase().trim();
-            const teachesSubject = t => !subject || t.subjects.some(sub => sub.toLowerCase().trim() === subject.toLowerCase().trim());
-            // An exact name or employee ID wins; otherwise a partial name, preferring a teacher who teaches this subject
-            const exactMatches = HOD_MOCK_DATA.teachers.filter(t =>
-                t.name.toLowerCase().trim() === wanted || t.empId.toLowerCase().trim() === wanted);
-            const partialMatches = HOD_MOCK_DATA.teachers.filter(t =>
-                t.name.toLowerCase().includes(wanted) || wanted.includes(t.name.toLowerCase()));
-            const candidates = exactMatches.length > 0 ? exactMatches : partialMatches;
-            const teacherMatch = candidates.find(teachesSubject) || candidates[0];
-
-            if (!teacherMatch) {
-                errors.push(`Teacher "${teacher}" not found in faculty list`);
+            if (!name) errors.push('Student Name is empty');
+            if (!studentId) {
+                errors.push('Student ID is empty');
             } else {
-                matchedTeacherName = teacherMatch.name; // Normalize to exact teacher name
-                if (subject) {
-                    const subjectMatch = teacherMatch.subjects.some(sub =>
-                        sub.toLowerCase().trim() === subject.toLowerCase().trim() ||
-                        sub.toLowerCase().includes(subject.toLowerCase()) ||
-                        subject.toLowerCase().includes(sub.toLowerCase())
-                    );
-                    if (!subjectMatch) {
-                        errors.push(`Subject "${subject}" is not taught by ${matchedTeacherName}`);
+                // A student may appear on several rows (one per subject), as long as the rows agree
+                const idLower = studentId.toLowerCase();
+                const subjectLower = subject.toLowerCase();
+                const registered = findHodStudent(studentId);
+                const earlierRow = fileStudents.get(idLower);
+
+                if (registered && year && registered.year !== '—' && !sameAcademicYear(registered.year, year)) {
+                    errors.push(`Student ID "${studentId}" is already registered in ${registered.year}`);
+                }
+                if (registered && subject && splitCommaList(registered.subject).some(x => x.toLowerCase() === subjectLower)) {
+                    errors.push(`Student ID "${studentId}" already takes "${subject}"`);
+                }
+                if (earlierRow) {
+                    if (earlierRow.name.toLowerCase() !== name.toLowerCase() || !sameAcademicYear(earlierRow.year, year)) {
+                        errors.push(`Student ID "${studentId}" has a different name or year on another row`);
+                    }
+                    if (subject && earlierRow.subjects.has(subjectLower)) {
+                        errors.push(`Student ID "${studentId}" lists "${subject}" more than once`);
+                    }
+                    if (subject) earlierRow.subjects.add(subjectLower);
+                } else {
+                    fileStudents.set(idLower, { name, year, subjects: new Set(subject ? [subjectLower] : []) });
+                }
+            }
+
+            if (!year) errors.push('Year/Class is empty');
+
+            let matchedTeacherName = teacher;
+            if (!teacher) {
+                errors.push('Assigned Teacher is empty');
+            } else {
+                // Check against existing teachers in HOD_MOCK_DATA
+                const wanted = teacher.toLowerCase().trim();
+                const teachesSubject = t => !subject || t.subjects.some(sub => sub.toLowerCase().trim() === subject.toLowerCase().trim());
+                // An exact name or employee ID wins; otherwise a partial name, preferring a teacher who teaches this subject
+                const exactMatches = HOD_MOCK_DATA.teachers.filter(t =>
+                    t.name.toLowerCase().trim() === wanted || t.empId.toLowerCase().trim() === wanted);
+                const partialMatches = HOD_MOCK_DATA.teachers.filter(t =>
+                    t.name.toLowerCase().includes(wanted) || wanted.includes(t.name.toLowerCase()));
+                const candidates = exactMatches.length > 0 ? exactMatches : partialMatches;
+                const teacherMatch = candidates.find(teachesSubject) || candidates[0];
+
+                if (!teacherMatch) {
+                    errors.push(`Teacher "${teacher}" not found in faculty list`);
+                } else {
+                    matchedTeacherName = teacherMatch.name; // Normalize to exact teacher name
+                    if (subject) {
+                        const subjectMatch = teacherMatch.subjects.some(sub =>
+                            sub.toLowerCase().trim() === subject.toLowerCase().trim() ||
+                            sub.toLowerCase().includes(subject.toLowerCase()) ||
+                            subject.toLowerCase().includes(sub.toLowerCase())
+                        );
+                        if (!subjectMatch) {
+                            errors.push(`Subject "${subject}" is not taught by ${matchedTeacherName}`);
+                        }
                     }
                 }
             }
+
+            if (!subject) errors.push('Subject is empty');
+            if (password && password.length < 8) errors.push('Password must be at least 8 characters if provided');
+
+            parsedStudentRecords.push({
+                rowNum: i + 1,
+                name,
+                studentId,
+                year,
+                teacher: matchedTeacherName,
+                subject,
+                password,
+                isValid: errors.length === 0,
+                errors
+            });
         }
-
-        if (!subject) errors.push('Subject is empty');
-        if (password && password.length < 8) errors.push('Password must be at least 8 characters if provided');
-
-        parsedStudentRecords.push({
-            rowNum: i + 1,
-            name,
-            studentId,
-            year,
-            teacher: matchedTeacherName,
-            subject,
-            password,
-            isValid: errors.length === 0,
-            errors
-        });
     }
 
     renderStudentPreview();

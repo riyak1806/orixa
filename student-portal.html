@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="teacher.css">
     <link rel="stylesheet" href="teacher-dashboard.css">
+    <link rel="stylesheet" href="student-achievements.css">
     <style>
         /* Student customized overrides of dashboard layout */
         .stats-grid .stat-label {
@@ -593,6 +594,19 @@
                 </div>
             </section>
 
+            <!-- Badges & Trophies -->
+            <section aria-labelledby="achievements-heading">
+                <div class="panel-header" style="margin-bottom: 12px;">
+                    <div>
+                        <p class="panel-kicker">ACHIEVEMENTS</p>
+                        <h3 id="achievements-heading" style="font-size: 1.5rem;">Badges &amp; Trophies</h3>
+                    </div>
+                </div>
+                <div class="cartoon-panel ach-panel" id="achievements-panel">
+                    <p class="ach-panel-note">Loading your badges and trophies...</p>
+                </div>
+            </section>
+
             <!-- Quests Section -->
             <section aria-labelledby="quests-heading">
                 <div class="panel-header" style="margin-bottom: 12px;">
@@ -656,12 +670,10 @@
                     </div>
                 </div>
 
-                <div style="border-top: 2px dashed rgba(26,26,36,0.15); padding-top: 12px; margin-top: 4px;">
-                    <h4 id="student-achievements-title" style="margin: 0 0 8px 0; font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark);">Achievements</h4>
-                    <p id="student-achievements-summary" style="margin: 0 0 8px 0; font-family: var(--font-body); font-size: 0.85rem; color: #546e7a;" aria-live="polite"></p>
-                    <div id="student-achievements" role="list" aria-labelledby="student-achievements-title" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;">
-                        <p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: #546e7a;">Loading...</p>
-                    </div>
+                <div style="border-top: 2px dashed rgba(26,26,36,0.15); padding-top: 12px; margin-top: 4px; display: flex; flex-direction: column; gap: 8px;">
+                    <h4 style="margin: 0; font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark);">Badges &amp; Trophies</h4>
+                    <p id="student-achievements-summary" style="margin: 0; font-family: var(--font-body); font-size: 0.85rem; color: #546e7a;" aria-live="polite"></p>
+                    <button type="button" class="quiz-mgmt-action-btn quiz-btn-edit" data-open-achievements style="height: 42px;">VIEW BADGES &amp; TROPHIES</button>
                 </div>
 
                 <div style="border-top: 2px dashed rgba(26,26,36,0.15); padding-top: 12px; margin-top: 4px; display: flex; flex-direction: column; gap: 10px;">
@@ -713,6 +725,7 @@
     <script src="orixa-config.js"></script>
     <script src="orixa-auth.js"></script>
     <script src="student.js"></script>
+    <script src="student-achievements.js"></script>
     <script src="student-portal.js"></script>
 </body>
 

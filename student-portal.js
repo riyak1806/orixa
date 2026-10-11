@@ -623,7 +623,8 @@ async function completeAttemptInSupabase(attemptId) {
         p_attempt_id: attemptId
     });
     if (!error) {
-        loadStudentAchievements();
+        // the database checks which achievements this result unlocked, then the celebration plays
+        if (window.OrixaAchievements) window.OrixaAchievements.onQuizCompleted();
         return;
     }
 
@@ -889,6 +890,21 @@ let matchGameState = {
 
 let activeMatchDrag = null;
 
+// Fisher-Yates shuffle of answers[from, to). With two or more answers the result never keeps the
+// original order, so the answers never line up with the questions by accident.
+function shuffleMatchAnswers(answers, from, to) {
+    const original = answers.slice(from, to).map(a => a.id);
+    if (original.length < 2) return;
+    let again = true;
+    while (again) {
+        for (let i = to - 1; i > from; i--) {
+            const j = from + Math.floor(Math.random() * (i - from + 1));
+            [answers[i], answers[j]] = [answers[j], answers[i]];
+        }
+        again = answers.slice(from, to).every((a, k) => a.id === original[k]);
+    }
+}
+
 function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3, dbAttemptId = null, dbQuestions = null) {
     let pairs = [];
 
@@ -905,10 +921,7 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley', cha
 
     // Right answers shuffled (Fisher-Yates)
     const answers = pairs.map(p => ({ id: p.id, answer: p.answer }));
-    for (let i = answers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [answers[i], answers[j]] = [answers[j], answers[i]];
-    }
+    shuffleMatchAnswers(answers, 0, answers.length);
 
     const parsedChances = typeof chances === 'number' && chances > 0 ? chances : 3;
 
@@ -1280,7 +1293,26 @@ function attemptMatch(qId, aId) {
                 const errLine = document.getElementById(`err-line-${qId}-${aId}`);
                 if (errLine) errLine.remove();
 
+                // The database allows only a limited number of tries per prompt: once they are used up the
+                // prompt is locked as failed, otherwise the game could never finish.
+                if (stat && stat.totalAttempts >= matchGameState.configuredChances) {
+                    matchGameState.failedPairs.add(qId);
+                }
+
+                // reshuffle the answers still in play so a wrong guess cannot be repeated by position
+                const open = matchGameState.answers.filter(a => !matchGameState.failedPairs.has(a.id) && !Array.from(matchGameState.matches.values()).includes(a.id));
+                if (open.length > 1) {
+                    shuffleMatchAnswers(open, 0, open.length);
+                    let k = 0;
+                    matchGameState.answers = matchGameState.answers.map(a =>
+                        (!matchGameState.failedPairs.has(a.id) && !Array.from(matchGameState.matches.values()).includes(a.id)) ? open[k++] : a);
+                }
+
                 renderMatchGameBoard();
+
+                if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+                    setGameTimeout(renderMatchVictoryScreen, 600);
+                }
             }, 600);
         }
     };
@@ -2420,86 +2452,6 @@ async function loadStudentProfileAndStats(profile) {
     }
 }
 
-// Achievements are earned from the student's completed quizzes (no extra data is stored)
-const ACHIEVEMENT_ICONS = {
-    flag: 'M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z',
-    compass: 'M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z',
-    trophy: 'M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z',
-    target: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
-    star: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
-    bolt: 'M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z',
-    bulb: 'M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z'
-};
-
-// value(stats) is how far the student is, target is what earns the badge
-const ACHIEVEMENTS = [
-    { id: 'first-quiz', icon: 'flag', title: 'First Steps', description: 'Complete your first quiz', target: 1, value: s => s.quizzes },
-    { id: 'five-quizzes', icon: 'compass', title: 'Quiz Explorer', description: 'Complete 5 quizzes', target: 5, value: s => s.quizzes },
-    { id: 'ten-quizzes', icon: 'trophy', title: 'Quiz Champion', description: 'Complete 10 quizzes', target: 10, value: s => s.quizzes },
-    { id: 'perfect-score', icon: 'target', title: 'Perfect Score', description: 'Score 100% on a quiz', target: 100, value: s => s.bestAccuracy, unit: '%' },
-    { id: 'ten-stars', icon: 'star', title: 'Star Collector', description: 'Earn 10 stars', target: 10, value: s => s.stars },
-    { id: 'xp-500', icon: 'bolt', title: 'XP Hunter', description: 'Earn 500 XP', target: 500, value: s => s.xp, unit: ' XP' },
-    { id: 'sharp-mind', icon: 'bulb', title: 'Sharp Mind', description: 'Average 80% or more over at least 3 quizzes', target: 80, value: s => (s.quizzes >= 3 ? s.averageAccuracy : 0), unit: '%' }
-];
-
-function computeAchievementStats(attempts) {
-    const quizzes = attempts.length;
-    const sum = key => attempts.reduce((total, a) => total + (Number(a[key]) || 0), 0);
-    return {
-        quizzes,
-        xp: sum('final_earned_xp'),
-        stars: sum('final_stars'),
-        bestAccuracy: attempts.reduce((best, a) => Math.max(best, Number(a.final_accuracy_pct) || 0), 0),
-        averageAccuracy: quizzes > 0 ? Math.round(sum('final_accuracy_pct') / quizzes) : 0
-    };
-}
-
-function renderAchievements(attempts) {
-    const grid = document.getElementById('student-achievements');
-    const summary = document.getElementById('student-achievements-summary');
-    if (!grid) return;
-
-    const stats = computeAchievementStats(attempts);
-    const earnedCount = ACHIEVEMENTS.filter(a => a.value(stats) >= a.target).length;
-    if (summary) summary.textContent = `${earnedCount} of ${ACHIEVEMENTS.length} earned`;
-
-    grid.innerHTML = ACHIEVEMENTS.map(a => {
-        const value = Math.min(a.value(stats), a.target);
-        const earned = a.value(stats) >= a.target;
-        const unit = a.unit || '';
-        return `
-            <div role="listitem" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 10px 8px; background: ${earned ? 'var(--color-cream)' : '#eceff1'}; border: var(--border-comic-thin); border-radius: 12px; ${earned ? '' : 'opacity: 0.8;'}">
-                <span style="width: 40px; height: 40px; border-radius: 50%; border: var(--border-comic-thin); display: inline-flex; align-items: center; justify-content: center; background: ${earned ? 'var(--color-green)' : '#cfd8dc'}; color: var(--border-dark);" aria-hidden="true">
-                    <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 22px; height: 22px;"><path d="${ACHIEVEMENT_ICONS[a.icon]}" fill="currentColor"/></svg>
-                </span>
-                <span style="font-family: var(--font-header); font-weight: 700; font-size: 0.9rem; color: var(--border-dark);">${escapeHTML(a.title)}</span>
-                <span style="font-family: var(--font-body); font-size: 0.78rem; color: #546e7a;">${escapeHTML(a.description)}</span>
-                <span style="font-family: var(--font-header); font-size: 0.78rem; font-weight: 700; color: ${earned ? 'var(--color-green-dark)' : '#546e7a'};">${earned ? 'Earned' : `${value}/${a.target}${unit}`}</span>
-            </div>`;
-    }).join('');
-}
-
-async function loadStudentAchievements() {
-    const grid = document.getElementById('student-achievements');
-    if (!grid || !window.OrixaAuth || !window.OrixaAuth.client) return;
-
-    const profile = await window.OrixaAuth.getCurrentProfile();
-    if (!profile) return;
-
-    const { data: attempts, error } = await window.OrixaAuth.client
-        .from('quiz_attempts')
-        .select('final_earned_xp, final_stars, final_accuracy_pct')
-        .eq('student_id', profile.id)
-        .eq('status', 'COMPLETED');
-
-    if (error) {
-        console.error('Error fetching achievements:', error);
-        grid.innerHTML = '<p style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; color: var(--color-red-dark);">Could not load your achievements.</p>';
-        return;
-    }
-    renderAchievements(attempts || []);
-}
-
 function renderQuizCards(quizzes) {
     const grid = document.querySelector('.student-quest-grid');
     if (!grid || !Array.isArray(quizzes)) return;
@@ -2691,7 +2643,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadStudentProfileAndStats(profile);
     }
     initStudentPasswordForm();
-    loadStudentAchievements();
+    if (window.OrixaAchievements) window.OrixaAchievements.init();
 
     await loadCompletedQuizzesFromSupabase();
     await fetchPublishedQuizzesFromSupabase();

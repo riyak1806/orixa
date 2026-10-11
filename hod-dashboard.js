@@ -75,17 +75,51 @@ function updateResultCount(kind, shown, total, noun) {
 const COLLAPSED_ROWS = 5;
 const hodListExpanded = { teacher: false, student: false };
 
+// The "Show all N" / "Show fewer" button under a list
+function updateFoldButton(kind, total, collapsible) {
+    const btn = document.getElementById(`${kind}-toggle-all`);
+    if (!btn) return;
+    btn.classList.toggle('hidden', !collapsible);
+    btn.setAttribute('aria-expanded', String(hodListExpanded[kind]));
+    const noun = kind === 'teacher' ? 'teachers' : 'students';
+    btn.querySelector('.hod-toggle-label').textContent =
+        hodListExpanded[kind] ? 'Show fewer' : `Show all ${total} ${noun}`;
+}
+
 function limitListRows(kind, rows, searching) {
     const collapsible = !searching && rows.length > COLLAPSED_ROWS;
-    const btn = document.getElementById(`${kind}-toggle-all`);
-    if (btn) {
-        btn.classList.toggle('hidden', !collapsible);
-        btn.setAttribute('aria-expanded', String(hodListExpanded[kind]));
-        const noun = kind === 'teacher' ? 'teachers' : 'students';
-        btn.querySelector('.hod-toggle-label').textContent =
-            hodListExpanded[kind] ? 'Show fewer' : `Show all ${rows.length} ${noun}`;
-    }
+    updateFoldButton(kind, rows.length, collapsible);
     return collapsible && !hodListExpanded[kind] ? rows.slice(0, COLLAPSED_ROWS) : rows;
+}
+
+// A student can hold many subject/teacher pairs, so a student row may be taller than all the teachers
+// put together. While folded, the Student list therefore shows as many students as it takes to be
+// about as tall as the Faculty list beside it: at least 1, never more than MAX_FOLDED_STUDENTS.
+const MAX_FOLDED_STUDENTS = 9;
+
+function fitStudentRowsBesideTeachers(studentBody) {
+    const rows = [...studentBody.querySelectorAll('tr')];
+    const teacherBody = document.getElementById('teacher-table-body');
+    const tops = [teacherBody, studentBody].map(b => b.closest('.dashboard-panel').getBoundingClientRect().top);
+    const sideBySide = Math.abs(tops[0] - tops[1]) < 4;
+
+    let keep;
+    if (!sideBySide) {
+        keep = Math.min(rows.length, COLLAPSED_ROWS);                 // stacked on a phone: like the teachers
+    } else {
+        const target = teacherBody.getBoundingClientRect().height;
+        let used = 0;
+        let best = 1;
+        let bestGap = Infinity;
+        rows.forEach((tr, i) => {
+            used += tr.getBoundingClientRect().height;
+            const gap = Math.abs(used - target);
+            if (gap < bestGap) { bestGap = gap; best = i + 1; }
+        });
+        keep = best;
+    }
+    rows.slice(keep).forEach(tr => tr.remove());
+    return keep;
 }
 
 function renderTeacherList() {
@@ -167,10 +201,13 @@ function renderStudentList() {
             studentAssignmentPairs(st).map(a => `${a.subject} ${a.teacher}`).join(' ')
         ].join(' '), query))
         .sort((a, b) => String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true, sensitivity: 'base' }));
-    const students = limitListRows('student', matching, query !== '');
-    updateResultCount('student', students.length, total, 'students');
+    const searching = query !== '';
+    const folded = !searching && !hodListExpanded.student;
+    const students = folded ? matching.slice(0, MAX_FOLDED_STUDENTS) : matching;
 
     if (students.length === 0) {
+        updateResultCount('student', 0, total, 'students');
+        updateFoldButton('student', 0, false);
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="hod-no-results">No students match "${escapeHtml(query)}".</td>
@@ -192,24 +229,37 @@ function renderStudentList() {
             <td class="hod-actions-col">${renderUserActionButtons('student', student.id, student.name)}</td>
         </tr>`;
     }).join('');
+
+    const shown = folded ? fitStudentRowsBesideTeachers(tableBody) : students.length;
+    updateResultCount('student', shown, total, 'students');
+    updateFoldButton('student', matching.length, !searching && (folded ? matching.length > shown : matching.length > 1));
 }
 
 function initHodSearch() {
+    // panels may stack or sit side by side after a resize, and web fonts change row heights once loaded
+    let resizeTimer = null;
+    const refit = () => { renderTeacherList(); renderStudentList(); };
+    window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(refit, 150); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
+
     [['teacher', renderTeacherList], ['student', renderStudentList]].forEach(([kind, render]) => {
         const input = document.getElementById(`${kind}-search`);
         const clear = document.getElementById(`${kind}-search-clear`);
         if (!input) return;
 
+        // the number of students that fit depends on how tall the teacher list is
+        const rerender = () => { render(); if (kind === 'teacher') renderStudentList(); };
+
         const apply = () => {
             hodListSearch[kind] = input.value;
             clear.classList.toggle('hidden', input.value === '');
-            render();
+            rerender();
         };
         const toggle = document.getElementById(`${kind}-toggle-all`);
         if (toggle) {
             toggle.addEventListener('click', () => {
                 hodListExpanded[kind] = !hodListExpanded[kind];
-                render();
+                rerender();
                 if (!hodListExpanded[kind]) toggle.scrollIntoView({ block: 'nearest' });
             });
         }

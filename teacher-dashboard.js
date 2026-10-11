@@ -891,6 +891,132 @@ function renderGameSelectionStep(dynamicPage) {
     }
 }
 
+/* ==========================================================================
+   QUESTION EXCEL UPLOAD (Create Quiz page)
+   ========================================================================== */
+
+const QUESTION_EXCEL_FORMATS = {
+    TILE_PUZZLE: {
+        columns: ['Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct Option (A, B, C or D)'],
+        note: 'The number of questions must be a square number: 4, 9, 16, 25 and so on, so the tiles form a full grid.',
+        sample: [
+            ['What is 2 + 2?', '3', '4', '5', '6', 'B'],
+            ['Capital of India?', 'Mumbai', 'Delhi', 'Chennai', 'Kolkata', 'B'],
+            ['Largest planet?', 'Earth', 'Mars', 'Jupiter', 'Venus', 'C'],
+            ['H2O is?', 'Water', 'Salt', 'Gold', 'Air', 'A']
+        ]
+    },
+    MATCH_FOLLOWING: {
+        columns: ['Column A', 'Column B (correct match)'],
+        note: 'Write each correct pair on its own row. The game shuffles the matches for the students.',
+        sample: [['Cat', 'Meow'], ['Dog', 'Bark'], ['Cow', 'Moo']]
+    },
+    FILL_BLANKS: {
+        columns: ['Sentence', 'Option A (correct answer)', 'Option B', 'Option C', 'Option D'],
+        note: 'Option A is the word that goes in the blank and must appear in the sentence. The game shuffles the options for the students.',
+        sample: [
+            ['The capital of India is Delhi', 'Delhi', 'Mumbai', 'Chennai', 'Kolkata'],
+            ['Water boils at 100 degrees Celsius', 'Celsius', 'Fahrenheit', 'Kelvin', 'Rankine']
+        ]
+    },
+    TRUE_FALSE: {
+        columns: ['Statement', 'Answer (T or F)'],
+        note: 'Write T for true or F for false.',
+        sample: [['The sun rises in the east', 'T'], ['A triangle has four sides', 'F']]
+    }
+};
+
+function downloadQuestionTemplate(gameType) {
+    const format = QUESTION_EXCEL_FORMATS[gameType];
+    if (!format || typeof XLSX === 'undefined') {
+        alert('The Excel library could not be loaded. Please refresh the page and try again.');
+        return;
+    }
+    const ws = XLSX.utils.aoa_to_sheet([format.columns, ...format.sample]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Questions');
+    XLSX.writeFile(wb, `Orixa_${gameType.toLowerCase()}_questions_template.xlsx`);
+}
+
+// Turns the rows of a sheet into questions for the quiz builder: { questions, errors: [{ row, message }] }
+function parseQuestionRows(gameType, rawRows) {
+    const cell = (row, i) => String(row[i] === undefined || row[i] === null ? '' : row[i]).trim();
+    const questions = [];
+    const errors = [];
+    let headerSkipped = false;
+
+    const newId = i => `${Date.now()}-${i}-${Math.floor(Math.random() * 100000)}`;
+    const letterIndex = (value, options) => {
+        const t = value.trim().toUpperCase();
+        const letter = t.match(/^(?:OPTION\s*)?([A-D])$/);
+        if (letter) return 'ABCD'.indexOf(letter[1]);
+        if (/^[1-4]$/.test(t)) return parseInt(t, 10) - 1;
+        return options.findIndex(o => o.toLowerCase() === value.trim().toLowerCase());
+    };
+
+    rawRows.forEach((row, index) => {
+        if (!Array.isArray(row) || row.every(c => String(c === undefined || c === null ? '' : c).trim() === '')) return;
+        const rowNumber = index + 1;
+
+        if (!headerSkipped) {
+            headerSkipped = true;
+            // a heading row has the column names, e.g. "Question" + "Option A"; a real question that merely
+            // starts with a similar word is not mistaken for one
+            const format = QUESTION_EXCEL_FORMATS[gameType];
+            const first = format.columns[0].toLowerCase();
+            const secondWord = format.columns[1].toLowerCase().split(/\s+/)[0];
+            if (cell(row, 0).toLowerCase() === first || cell(row, 1).toLowerCase().startsWith(secondWord)) return;
+        }
+
+        const fail = message => errors.push({ row: rowNumber, message });
+
+        if (gameType === 'TILE_PUZZLE') {
+            const text = cell(row, 0);
+            const options = [1, 2, 3, 4].map(i => cell(row, i));
+            if (!text) return fail('The question is empty.');
+            const missing = options.findIndex(o => !o);
+            if (missing >= 0) return fail(`Option ${'ABCD'[missing]} is empty. All four options are needed.`);
+            const correct = letterIndex(cell(row, 5), options);
+            if (correct < 0) return fail('The correct option must be A, B, C or D.');
+            questions.push({ id: newId(index), text, type: 'Multiple Choice', options, correctAnswer: correct, marks: 5 });
+        } else if (gameType === 'MATCH_FOLLOWING') {
+            const a = cell(row, 0);
+            const b = cell(row, 1);
+            if (!a || !b) return fail('Both Column A and Column B are needed for a pair.');
+            questions.push({ id: newId(index), text: a, answer: b, marks: 1 });
+        } else if (gameType === 'FILL_BLANKS') {
+            let sentence = cell(row, 0);
+            const word = cell(row, 1);
+            const distractors = [2, 3, 4].map(i => cell(row, i));
+            if (!sentence) return fail('The sentence is empty.');
+            if (!word) return fail('Option A (the word to fill in) is empty.');
+            if (!distractors[0]) return fail('Option B is empty. At least one wrong option is needed.');
+
+            // the word must be in the sentence (or the blank can be written as ____)
+            let at = sentence.toLowerCase().indexOf(word.toLowerCase());
+            if (at < 0) {
+                const marker = sentence.match(/_{2,}/);
+                if (!marker) return fail(`The word "${word}" is not in the sentence.`);
+                sentence = sentence.replace(marker[0], word);
+                at = sentence.toLowerCase().indexOf(word.toLowerCase());
+            }
+            const blank = sentence.substr(at, word.length);
+            questions.push({
+                id: newId(index), statement: sentence, text: sentence, blankAnswer: blank,
+                options: [word, ...distractors], correctAnswer: 0, marks: 5
+            });
+        } else if (gameType === 'TRUE_FALSE') {
+            const statement = cell(row, 0);
+            const answer = cell(row, 1).toUpperCase();
+            if (!statement) return fail('The statement is empty.');
+            if (answer !== 'T' && answer !== 'F' && answer !== 'TRUE' && answer !== 'FALSE') return fail('The answer must be T or F.');
+            questions.push({ id: newId(index), statement, text: statement, correctAnswer: answer.startsWith('T') ? 'TRUE' : 'FALSE', marks: 5 });
+        }
+    });
+
+    return { questions, errors };
+}
+
 function getTilePuzzleGridInfo(questionCount) {
     if (questionCount <= 0) {
         return {
@@ -1068,6 +1194,10 @@ function renderGameBuilderStep(dynamicPage) {
 
                         <button type="button" class="cartoon-action-btn primary-yellow-btn" id="create-quiz-add-question-btn" style="padding: 10px 20px; font-size: 1rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
                             <span data-icon="plus"></span> ${createQuizState.gameType === 'MATCH_FOLLOWING' ? 'Add Matching Pair' : createQuizState.gameType === 'FILL_BLANKS' ? 'Add Blank Statement' : createQuizState.gameType === 'TRUE_FALSE' ? 'Add Statement' : 'Add Question'}
+                        </button>
+                        <button type="button" class="cartoon-action-btn" id="create-quiz-upload-questions-btn" aria-haspopup="dialog" style="padding: 10px 20px; font-size: 1rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--color-blue);">
+                            <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;" aria-hidden="true"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
+                            Upload Questions from Excel
                         </button>
                     </div>
                 </div>
@@ -1525,6 +1655,109 @@ function renderGameBuilderStep(dynamicPage) {
     if (backBtn) {
         backBtn.addEventListener('click', () => {
             navigateToView('quiz-management');
+        });
+    }
+
+    // ----- Upload questions from an Excel sheet -----
+    const uploadQuestionsBtn = document.getElementById('create-quiz-upload-questions-btn');
+    if (uploadQuestionsBtn) {
+        uploadQuestionsBtn.addEventListener('click', () => {
+            syncQuestionsState();
+            const gameType = createQuizState.gameType;
+            const format = QUESTION_EXCEL_FORMATS[gameType];
+            if (!format) return;
+
+            const isBlank = q => !(q.text || '').trim() && !(q.statement || '').trim() && !(q.answer || '').trim()
+                && !(q.options || []).some(o => (o || '').trim());
+            const existing = createQuizState.questions.filter(q => !isBlank(q));
+
+            openOrixaModal(`
+                <div class="orixa-modal-card" role="dialog" aria-modal="true" aria-labelledby="qx-title" style="max-width: 640px; max-height: 90vh; overflow-y: auto;">
+                    <header class="orixa-modal-header">
+                        <h3 class="orixa-modal-title" id="qx-title">Upload Questions from Excel</h3>
+                        <button type="button" class="sidebar-toggle-btn" onclick="closeOrixaModal()" aria-label="Close modal">
+                            <span data-icon="x"></span>
+                        </button>
+                    </header>
+                    <div class="orixa-modal-body" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
+                        <div style="background: var(--color-cream); border: var(--border-comic-thin); border-radius: 16px; padding: 14px; box-shadow: var(--shadow-chunky-pressed);">
+                            <p style="font-family: var(--font-header); font-size: 0.95rem; font-weight: 700; color: var(--border-dark); margin: 0 0 6px 0;">Excel column order:</p>
+                            <p style="font-family: var(--font-header); font-size: 0.9rem; color: var(--color-purple); font-weight: 700; margin: 0 0 6px 0;">${format.columns.map(escapeHTML).join(' &rarr; ')}</p>
+                            <p style="font-family: var(--font-body); font-size: 0.88rem; color: #546e7a; font-weight: 600; margin: 0 0 10px 0;">${escapeHTML(format.note)} The first row may be a heading row.</p>
+                            <button type="button" class="cartoon-action-btn primary-yellow-btn" id="qx-template-btn" style="padding: 8px 16px; font-size: 0.85rem;">Download Template</button>
+                        </div>
+                        <div class="form-field">
+                            <label class="field-label" for="qx-file">CHOOSE YOUR EXCEL FILE (.xlsx, .xls or .csv)</label>
+                            <div class="input-shell"><input type="file" id="qx-file" class="cartoon-input" accept=".xlsx,.xls,.csv" style="padding-top: 10px;"></div>
+                        </div>
+                        <div id="qx-results" role="status" aria-live="polite"></div>
+                    </div>
+                    <footer class="orixa-modal-footer" id="qx-actions" style="flex-wrap: wrap;">
+                        <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">Cancel</button>
+                    </footer>
+                </div>
+            `);
+
+            document.getElementById('qx-template-btn').addEventListener('click', () => downloadQuestionTemplate(gameType));
+
+            const importQuestions = (questions, replace) => {
+                const kept = replace ? [] : existing;
+                createQuizState.questions = kept.concat(questions);
+                closeOrixaModal();
+                renderQuestionsList();
+            };
+
+            document.getElementById('qx-file').addEventListener('change', event => {
+                const file = event.target.files && event.target.files[0];
+                const results = document.getElementById('qx-results');
+                const actions = document.getElementById('qx-actions');
+                if (!file) return;
+                if (typeof XLSX === 'undefined') { results.textContent = 'The Excel library could not be loaded. Please refresh the page.'; return; }
+
+                const reader = new FileReader();
+                reader.onload = e => {
+                    let parsed;
+                    try {
+                        const wb = XLSX.read(e.target.result, { type: 'array' });
+                        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                        parsed = parseQuestionRows(gameType, rows);
+                    } catch (err) {
+                        console.error('Could not read the question sheet:', err);
+                        results.innerHTML = '<p style="color: var(--color-red-dark); font-weight: 700;">This file could not be read. Please use an .xlsx, .xls or .csv file.</p>';
+                        return;
+                    }
+
+                    const { questions, errors } = parsed;
+                    const tile = gameType === 'TILE_PUZZLE';
+                    const canReplace = questions.length > 0 && (!tile || getTilePuzzleGridInfo(questions.length).isValid);
+                    const canAdd = questions.length > 0 && existing.length > 0 && (!tile || getTilePuzzleGridInfo(existing.length + questions.length).isValid);
+
+                    let tileMessage = '';
+                    if (tile && questions.length > 0 && !canReplace) {
+                        const info = getTilePuzzleGridInfo(questions.length);
+                        tileMessage = `<p style="color: var(--color-red-dark); font-weight: 700; margin: 6px 0;">Tile Puzzle needs a square number of questions (4, 9, 16, 25...). This file has ${questions.length} valid question${questions.length === 1 ? '' : 's'}: add ${info.neededQuestions} more, or remove ${questions.length - Math.pow(Math.floor(Math.sqrt(questions.length)), 2)}.</p>`;
+                    }
+
+                    results.innerHTML = `
+                        <p style="font-family: var(--font-header); font-weight: 700; color: var(--border-dark); margin: 0 0 6px 0;">
+                            ${questions.length} valid &middot; <span style="color: ${errors.length ? 'var(--color-red-dark)' : 'inherit'};">${errors.length} need attention</span>
+                        </p>
+                        ${tileMessage}
+                        ${errors.length ? `<ul style="margin: 0; padding-left: 18px; max-height: 160px; overflow-y: auto; font-family: var(--font-body); font-size: 0.88rem; color: var(--color-red-dark);">${errors.slice(0, 50).map(er => `<li>Row ${er.row}: ${escapeHTML(er.message)}</li>`).join('')}${errors.length > 50 ? `<li>&hellip; and ${errors.length - 50} more</li>` : ''}</ul>` : ''}
+                        ${errors.length && questions.length ? '<p style="font-family: var(--font-body); font-size: 0.85rem; color: #546e7a; margin: 6px 0 0 0;">Rows with a problem are skipped; the valid rows are imported.</p>' : ''}
+                    `;
+
+                    actions.innerHTML = `
+                        <button type="button" class="cartoon-action-btn" onclick="closeOrixaModal()" style="padding: 10px 20px; font-size: 0.95rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);">Cancel</button>
+                        ${existing.length ? `<button type="button" class="cartoon-action-btn" id="qx-add" ${canAdd ? '' : 'disabled'} style="padding: 10px 20px; font-size: 0.95rem;" title="${canAdd ? '' : 'The total must be a square number'}">Add to my ${existing.length} question${existing.length === 1 ? '' : 's'}</button>` : ''}
+                        <button type="button" class="cartoon-action-btn primary-yellow-btn" id="qx-replace" ${canReplace ? '' : 'disabled'} style="padding: 10px 24px; font-size: 0.95rem;">${existing.length ? 'Replace my questions' : `Import ${questions.length} question${questions.length === 1 ? '' : 's'}`}</button>
+                    `;
+                    const addBtn = document.getElementById('qx-add');
+                    if (addBtn) addBtn.addEventListener('click', () => importQuestions(questions, false));
+                    document.getElementById('qx-replace').addEventListener('click', () => importQuestions(questions, true));
+                };
+                reader.readAsArrayBuffer(file);
+            });
         });
     }
 

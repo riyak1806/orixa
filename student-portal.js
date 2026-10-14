@@ -987,14 +987,15 @@ function shuffleMatchAnswers(answers, from, to) {
     }
 }
 
-function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3, dbAttemptId = null, dbQuestions = null) {
+function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3, dbAttemptId = null, dbQuestions = null, progress = []) {
     let pairs = [];
 
     if (dbQuestions && dbQuestions.length > 0) {
         pairs = dbQuestions.map((q, idx) => ({
             id: q.dbQuestionId || `m${idx + 1}`,
             text: q.text,
-            answer: q.answer
+            answer: q.answer,
+            maxChances: q.maxChances
         }));
     }
 
@@ -1034,6 +1035,21 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley', cha
         dbQuestions: dbQuestions
     };
 
+    // pairs already solved (or out of tries) in an earlier session of this attempt
+    (progress || []).forEach(row => {
+        const stat = pairStats.find(p => p.id === row.question_id);
+        const pair = pairs.find(p => p.id === row.question_id);
+        if (!stat || !pair) return;
+        stat.mistakes = row.mistakes_count || 0;
+        stat.totalAttempts = row.chances_used || 0;
+        if (row.is_solved) {
+            stat.isSolved = true;
+            matchGameState.matches.set(pair.id, pair.id);
+        } else if (pair.maxChances && (row.chances_used || 0) >= pair.maxChances) {
+            matchGameState.failedPairs.add(pair.id);
+        }
+    });
+
     const modal = document.getElementById('quest-modal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -1062,6 +1078,9 @@ function renderMatchEntrance() {
             <p class="tile-entrance-desc">
                 Connect each question or prompt on the left with its correct answer on the right to complete all <strong>${matchGameState.pairs.length} pairs</strong>!
             </p>
+            ${matchGameState.matches.size + matchGameState.failedPairs.size > 0
+                ? `<p class="tile-entrance-desc" style="font-weight: 700;">Welcome back: ${matchGameState.matches.size} of ${matchGameState.pairs.length} pairs are already done. Carry on where you left off.</p>`
+                : ''}
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem;">
                 <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M8 5v14l11-7z" fill="currentColor"/></svg> START GAME
             </button>
@@ -1071,6 +1090,10 @@ function renderMatchEntrance() {
 
 function startMatchGame() {
     sfx('gameStart');
+    if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+        renderMatchVictoryScreen();   // everything was already settled in an earlier session
+        return;
+    }
     renderMatchGameBoard();
 }
 
@@ -1082,6 +1105,10 @@ function renderMatchGameBoard() {
     const totalPairs = matchGameState.pairs.length;
     const pct = Math.round((matchedCount / totalPairs) * 100);
     const currentXP = getCurrentQuizXP(matchGameState.pairStats, matchGameState.questName);
+
+    // A long board scrolls: redrawing it must not throw the student back to the top
+    const previousBoard = document.getElementById('match-game-container');
+    const previousScroll = previousBoard ? previousBoard.scrollTop : 0;
 
     // The slide-in plays once. Redrawing after every pair would make the board blink out each time and
     // would measure the connection lines while the cards are still moving.
@@ -1117,7 +1144,8 @@ function renderMatchGameBoard() {
                         const isFailed = matchGameState.failedPairs.has(q.id);
                         const isSelected = matchGameState.selectedQuestionId === q.id;
                         return `
-                            <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
+                            <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-failed' : ''} ${isSelected ? 'is-selected' : ''}"
+                                 ${isFailed ? 'title="No tries left for this one"' : ''}
                                  data-q-id="${q.id}"
                                  id="q-card-${q.id}">
                                 <span class="match-card-text">${escapeHTML(q.text)}</span>
@@ -1134,7 +1162,8 @@ function renderMatchGameBoard() {
                         const isFailed = matchGameState.failedPairs.has(a.id);
                         const isSelected = matchGameState.selectedAnswerId === a.id;
                         return `
-                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
+                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-failed' : ''} ${isSelected ? 'is-selected' : ''}"
+                                 ${isFailed ? 'title="No tries left for this one"' : ''}
                                  data-a-id="${a.id}"
                                  id="a-card-${a.id}">
                                 <span class="match-card-dot" id="a-dot-${a.id}"></span>
@@ -1150,6 +1179,9 @@ function renderMatchGameBoard() {
             </p>
         </div>
     `;
+
+    const board = document.getElementById('match-game-container');
+    if (board && previousScroll) board.scrollTop = previousScroll;
 
     setupMatchInteractions();
     updateMatchConnectionLines();
@@ -1403,7 +1435,9 @@ function attemptMatch(qId, aId) {
 
                 // The database allows only a limited number of tries per prompt: once they are used up the
                 // prompt is locked as failed, otherwise the game could never finish.
-                if (stat && stat.totalAttempts >= matchGameState.configuredChances) {
+                const pairInfo = matchGameState.pairs.find(p => p.id === qId);
+                const triesAllowed = (pairInfo && pairInfo.maxChances) || matchGameState.configuredChances;
+                if (stat && stat.totalAttempts >= triesAllowed) {
                     matchGameState.failedPairs.add(qId);
                 }
 
@@ -1518,6 +1552,9 @@ function updateMatchConnectionLines() {
     const container = document.getElementById('match-game-container');
     const svg = document.getElementById('match-svg-overlay');
     if (!container || !svg) return;
+
+    // The board scrolls when it is taller than the window: the line layer has to be as tall as the board
+    svg.style.height = `${container.scrollHeight}px`;
 
     // Clear existing permanent lines
     svg.querySelectorAll('.match-permanent-line').forEach(el => el.remove());
@@ -2762,13 +2799,24 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
                     const c = choices.find(ch => ch.id === p.id) || choices[idx] || {};
                     mappedPairs.push({
                         dbQuestionId: q.id,
+                        maxChances: q.max_chances,
                         payloadId: p.id,
                         text: p.prompt || q.question_text || `Prompt ${mappedPairs.length + 1}`,
                         answer: c.choice || `Choice ${mappedPairs.length + 1}`
                     });
                 });
             });
-            openMatchGame(quiz.title, subjectName, teacherName, quiz.default_max_chances || 3, attemptId, mappedPairs);
+            // An unfinished attempt is resumed by the database: pairs solved earlier must stay solved on the board
+            let progress = [];
+            try {
+                const res = await client.from('question_attempts')
+                    .select('question_id, is_solved, mistakes_count, chances_used')
+                    .eq('attempt_id', attemptId);
+                if (res && !res.error && Array.isArray(res.data)) progress = res.data;
+            } catch (e) {
+                console.warn('Could not load earlier progress for this attempt:', e);
+            }
+            openMatchGame(quiz.title, subjectName, teacherName, quiz.default_max_chances || 3, attemptId, mappedPairs, progress);
         } else if (quiz.game_type === 'FILL_BLANKS') {
             const mappedQ = questions.map(q => {
                 const payload = q.game_payload || {};

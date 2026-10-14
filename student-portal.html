@@ -139,6 +139,13 @@
             animation: tile-modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
+        /* A long game (many pairs, long texts) scrolls inside the window; the title bar stays in place */
+        .tile-game-window > *:not(.tile-game-header) {
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
         @keyframes tile-modal-pop {
             0% { transform: scale(0.88) translateY(20px); opacity: 0; }
             100% { transform: scale(1) translateY(0); opacity: 1; }

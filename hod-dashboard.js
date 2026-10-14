@@ -1222,6 +1222,8 @@ function initHodProfile() {
     if (!drawer || !openBtn || !form || !toggleBtn) return;
 
     let collegeName = null;
+    if (window.OrixaAudio) window.OrixaAudio.mountSettings(document.getElementById('hod-audio-mount'));
+
     const fillProfile = async () => {
         const profile = await window.OrixaAuth.getCurrentProfile();
         if (!profile) return;
@@ -1356,9 +1358,11 @@ function confirmHodLogout(event) {
     });
 
     document.getElementById('logout-confirm-btn').addEventListener('click', async () => {
+        const logoutSound = new Promise(done => (window.OrixaAudio ? window.OrixaAudio.playThen('logout', done, 450) : done()));
         if (window.OrixaAuth) {
             await window.OrixaAuth.signOut();
         }
+        await logoutSound;
         window.location.replace('hod-login.html');
     });
 }

@@ -4184,6 +4184,12 @@ function renderSettingsPage() {
                             </select>
                         </div>
                     </div>
+
+                    <!-- Sound Card (applies immediately, saved on this device) -->
+                    <div class="cartoon-panel settings-card">
+                        <h3 class="settings-card-header">Sound</h3>
+                        <div id="settings-audio-mount"></div>
+                    </div>
                 </div>
 
                 <!-- Right column: NOTIFICATIONS, QUIZ PREFERENCES, SECURITY -->
@@ -4435,6 +4441,8 @@ function setupSettingsListeners() {
 
         return false;
     };
+
+    if (window.OrixaAudio) window.OrixaAudio.mountSettings(document.getElementById('settings-audio-mount'));
 
     // Attach general input listeners to trigger the unsaved indicator
     const inputIds = [
@@ -4937,9 +4945,11 @@ function confirmTeacherLogout(event) {
     const confirmBtn = document.getElementById('confirm-teacher-logout-btn');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async () => {
+            const logoutSound = new Promise(done => (window.OrixaAudio ? window.OrixaAudio.playThen('logout', done, 450) : done()));
             if (window.OrixaAuth) {
                 await window.OrixaAuth.signOut();
             }
+            await logoutSound;
             window.location.replace('teacher-login.html');
         });
     }

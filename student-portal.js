@@ -10,6 +10,15 @@ let completedQuizzes = new Set();
 let activeQuizId = null;
 let activeGameTimeouts = [];
 
+// Sound is optional: a missing or blocked sound system must never affect a game
+function sfx(name, opts) {
+    try { if (window.OrixaAudio) window.OrixaAudio.play(name, opts); } catch (e) { /* ignore */ }
+}
+
+function sfxVictory(stars) {
+    try { if (window.OrixaAudio) window.OrixaAudio.playVictory(stars); } catch (e) { /* ignore */ }
+}
+
 function setGameTimeout(fn, delay) {
     const id = setTimeout(() => {
         activeGameTimeouts = activeGameTimeouts.filter(t => t !== id);
@@ -280,6 +289,7 @@ function renderGameEntrance() {
 }
 
 function startTileGame() {
+    sfx('gameStart');
     renderGameBoard();
 }
 
@@ -362,6 +372,7 @@ function renderGameBoard() {
 function handleTileClick(tileIndex) {
     if (currentGameState.solvedTiles.has(tileIndex) || currentGameState.processedTiles.has(tileIndex)) return;
 
+    sfx('tileFlip');
     currentGameState.selectedTileIndex = tileIndex;
     currentGameState.selectedOptionIndex = null;
 
@@ -439,6 +450,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
 
     const processOptionResult = (evaluatedIsCorrect) => {
         if (evaluatedIsCorrect) {
+            sfx('correct');
             if (optBtn) optBtn.classList.add('correct');
             currentGameState.solvedTiles.add(tileIndex);
             currentGameState.processedTiles.add(tileIndex);
@@ -460,6 +472,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             setGameTimeout(() => {
                 currentGameState.isProcessing = false;
                 closeQuestionModal();
+                sfx('tileReveal');
                 renderGameBoard();
 
                 if (currentGameState.processedTiles.size === currentGameState.questionCount) {
@@ -471,6 +484,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 stat.mistakes++;
                 stat.totalAttempts++;
             }
+            sfx('wrong');
             currentGameState.remainingChances -= 1;
             currentGameState.disabledOptions.add(optIndex);
 
@@ -556,6 +570,7 @@ function renderVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(currentGameState.questName);
     const results = calculateQuizResults(currentGameState.questionStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(currentGameState.dbAttemptId);
 
@@ -1055,6 +1070,7 @@ function renderMatchEntrance() {
 }
 
 function startMatchGame() {
+    sfx('gameStart');
     renderMatchGameBoard();
 }
 
@@ -1203,6 +1219,7 @@ function setupMatchInteractions() {
                 return;
             }
 
+            sfx('select');
             matchGameState.selectedQuestionId = qId;
             qCards.forEach(qc => {
                 if (!matchGameState.matches.has(qc.dataset.qId) && !matchGameState.failedPairs.has(qc.dataset.qId)) {
@@ -1220,6 +1237,7 @@ function setupMatchInteractions() {
 
             const dist = Math.hypot(e.clientX - activeMatchDrag.startX, e.clientY - activeMatchDrag.startY);
             if (dist > 6) {
+                if (!activeMatchDrag.isDrag) sfx('drag');
                 activeMatchDrag.isDrag = true;
             }
 
@@ -1280,6 +1298,7 @@ function setupMatchInteractions() {
                 const qId = matchGameState.selectedQuestionId;
                 attemptMatch(qId, aId);
             } else {
+                sfx('select');
                 matchGameState.selectedAnswerId = aId;
                 aCards.forEach(ac => {
                     if (!Array.from(matchGameState.matches.values()).includes(ac.dataset.aId) && !matchGameState.failedPairs.has(ac.dataset.aId)) {
@@ -1346,6 +1365,7 @@ function attemptMatch(qId, aId) {
                 stat.isSolved = true;
                 stat.totalAttempts++;
             }
+            sfx('match');
             matchGameState.matches.set(qId, aId);
             matchGameState.selectedQuestionId = null;
             matchGameState.selectedAnswerId = null;
@@ -1361,6 +1381,7 @@ function attemptMatch(qId, aId) {
                 stat.mistakes++;
                 stat.totalAttempts++;
             }
+            sfx('wrong');
             matchGameState.incorrectAttempts++;
             matchGameState.selectedQuestionId = null;
             matchGameState.selectedAnswerId = null;
@@ -1532,6 +1553,7 @@ function renderMatchVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(matchGameState.questName);
     const results = calculateQuizResults(matchGameState.pairStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(matchGameState.dbAttemptId);
 
@@ -1696,6 +1718,7 @@ function renderFillBlanksEntrance() {
 }
 
 function startFillBlanksGame() {
+    sfx('gameStart');
     renderFillBlanksGameBoard();
 }
 
@@ -1781,6 +1804,7 @@ function setupFitbInteractions() {
             const offsetX = e.clientX - rect.left;
             const offsetY = e.clientY - rect.top;
 
+            sfx('drag');
             // Keep original card in place so remaining options do NOT reflow or shift
             card.style.opacity = '0.35';
             if (target) target.classList.add('is-target-active');
@@ -1871,6 +1895,7 @@ function setupFitbInteractions() {
         card.addEventListener('click', () => {
             if (fillBlanksGameState.isProcessing) return;
             optionCards.forEach(c => c.classList.remove('is-selected'));
+            sfx('select');
             card.classList.add('is-selected');
             fillBlanksGameState.selectedOption = { text: optionText, card: card };
         });
@@ -1894,6 +1919,7 @@ function attemptFitbAnswer(optionText, card) {
     const target = document.getElementById('fitb-drop-target');
     if (!target) return;
 
+    sfx('drop');
     fillBlanksGameState.isProcessing = true;
     fillBlanksGameState.selectedOption = null;
 
@@ -1907,6 +1933,7 @@ function attemptFitbAnswer(optionText, card) {
             }
 
             // Correct feedback
+            sfx('correct');
             target.textContent = optionText;
             target.classList.remove('is-incorrect', 'is-target-active');
             target.classList.add('is-correct');
@@ -1923,6 +1950,7 @@ function attemptFitbAnswer(optionText, card) {
                 if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
                     renderFitbVictoryScreen();
                 } else {
+                    sfx('next');
                     renderFillBlanksGameBoard();
                 }
             }, 700);
@@ -1934,6 +1962,7 @@ function attemptFitbAnswer(optionText, card) {
             }
 
             // Incorrect feedback
+            sfx('wrong');
             fillBlanksGameState.incorrectAttempts++;
             fillBlanksGameState.remainingChances--;
 
@@ -1978,6 +2007,7 @@ function attemptFitbAnswer(optionText, card) {
                     if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
                         renderFitbVictoryScreen();
                     } else {
+                        sfx('next');
                         renderFillBlanksGameBoard();
                     }
                 }, 1200);
@@ -2013,6 +2043,7 @@ function renderFitbVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(fillBlanksGameState.questName);
     const results = calculateQuizResults(fillBlanksGameState.questionStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(fillBlanksGameState.dbAttemptId);
 
@@ -2160,6 +2191,7 @@ function renderTrueFalseEntrance() {
 }
 
 function startTrueFalseGame() {
+    sfx('gameStart');
     renderTrueFalseGameBoard();
 }
 
@@ -2228,6 +2260,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                 currentStat.isSolved = true;
                 currentStat.totalAttempts++;
             }
+            sfx('correct');
             trueFalseGameState.correctAnswersCount++;
 
             if (cardEl) cardEl.classList.add('is-correct');
@@ -2249,6 +2282,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                 if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
                     renderTrueFalseVictoryScreen();
                 } else {
+                    sfx('next');
                     renderTrueFalseGameBoard();
                 }
             }, 700);
@@ -2258,6 +2292,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                 currentStat.mistakes++;
                 currentStat.totalAttempts++;
             }
+            sfx('wrong');
             trueFalseGameState.incorrectAttemptsCount++;
             trueFalseGameState.remainingChances--;
 
@@ -2306,6 +2341,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                     if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
                         renderTrueFalseVictoryScreen();
                     } else {
+                        sfx('next');
                         renderTrueFalseGameBoard();
                     }
                 }, 1200);
@@ -2341,6 +2377,7 @@ function renderTrueFalseVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(trueFalseGameState.questName);
     const results = calculateQuizResults(trueFalseGameState.questionStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(trueFalseGameState.dbAttemptId);
 
@@ -2448,9 +2485,11 @@ function confirmStudentLogout(event) {
     const confirmBtn = document.getElementById('confirm-student-logout-btn');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async () => {
+            const logoutSound = new Promise(done => (window.OrixaAudio ? window.OrixaAudio.playThen('logout', done, 450) : done()));
             if (window.OrixaAuth) {
                 await window.OrixaAuth.signOut();
             }
+            await logoutSound;
             window.location.replace('student-login.html');
         });
     }
@@ -2768,6 +2807,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initStudentNickname(profile);
     }
     initStudentPasswordForm();
+    if (window.OrixaAudio) window.OrixaAudio.mountSettings(document.getElementById('student-audio-mount'));
     if (window.OrixaAchievements) window.OrixaAchievements.init();
 
     await loadCompletedQuizzesFromSupabase();

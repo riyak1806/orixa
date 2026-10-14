@@ -213,6 +213,7 @@ function initStudentLoginForm() {
 
             if (!result.success) {
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
                 return;
             }
@@ -221,17 +222,20 @@ function initStudentLoginForm() {
             if (profile.role !== 'STUDENT') {
                 await window.OrixaAuth.signOut();
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage('Unauthorized role for Student Login.', 'error');
                 return;
             }
 
+            if (window.OrixaAudio) window.OrixaAudio.play('loginSuccess');
             setFormMessage('Opening student portal...', 'success');
             window.setTimeout(() => {
                 window.location.href = 'student-portal.html';
-            }, 400);
+            }, 560);
         } catch (err) {
             console.error('Student login submission error:', err);
             setSubmitting(false);
+            if (window.OrixaAudio) window.OrixaAudio.play('error');
             setFormMessage('An unexpected authentication error occurred.', 'error');
         }
     });

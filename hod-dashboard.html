@@ -580,6 +580,11 @@
                         </div>
                     </div>
 
+                    <div style="border-top: 2px dashed rgba(26,26,36,0.15); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+                        <h4 style="margin: 0; font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark);">Sound</h4>
+                        <div id="hod-audio-mount"></div>
+                    </div>
+
                     <div style="border-top: 2px dashed rgba(26,26,36,0.15); padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
                         <button type="button" id="hod-password-toggle-btn" class="cartoon-action-btn primary-yellow-btn" aria-expanded="false" aria-controls="hod-password-form" style="padding: 10px 24px; font-size: 0.95rem;">CHANGE PASSWORD</button>
                     <form id="hod-password-form" class="teacher-form hidden" novalidate style="gap: var(--t-space-2);">
@@ -1190,6 +1195,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="orixa-config.js"></script>
+    <script src="orixa-audio.js"></script>
     <script src="orixa-auth.js"></script>
     <script src="teacher.js"></script>
     <script src="xlsx.full.min.js"></script>

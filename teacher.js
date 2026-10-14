@@ -256,6 +256,7 @@ function initTeacherLoginForm() {
 
             if (!result.success) {
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
                 return;
             }
@@ -264,17 +265,20 @@ function initTeacherLoginForm() {
             if (profile.role !== 'TEACHER') {
                 await window.OrixaAuth.signOut();
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage('Unauthorized role for Teacher Login. Please use your assigned portal.', 'error');
                 return;
             }
 
+            if (window.OrixaAudio) window.OrixaAudio.play('loginSuccess');
             setFormMessage('Opening teacher dashboard...', 'success');
             window.setTimeout(() => {
                 window.location.href = 'teacher-dashboard.html';
-            }, 400);
+            }, 560);
         } catch (err) {
             console.error('Teacher login submission error:', err);
             setSubmitting(false);
+            if (window.OrixaAudio) window.OrixaAudio.play('error');
             setFormMessage('An unexpected authentication error occurred.', 'error');
         }
     });
@@ -370,6 +374,7 @@ function initCollegeLoginForm() {
 
             if (!result.success) {
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
                 return;
             }
@@ -378,6 +383,7 @@ function initCollegeLoginForm() {
             if (profile.role !== 'COLLEGE_ADMIN') {
                 await window.OrixaAuth.signOut();
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage('Unauthorized role for College Admin Login.', 'error');
                 return;
             }
@@ -385,10 +391,11 @@ function initCollegeLoginForm() {
             setFormMessage('Redirecting to General College Dashboard...', 'success');
             window.setTimeout(() => {
                 window.location.href = 'college-dashboard.html';
-            }, 400);
+            }, 560);
         } catch (err) {
             console.error('College login submission error:', err);
             setSubmitting(false);
+            if (window.OrixaAudio) window.OrixaAudio.play('error');
             setFormMessage('An unexpected authentication error occurred.', 'error');
         }
     });
@@ -484,6 +491,7 @@ function initHodLoginForm() {
 
             if (!result.success) {
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage(result.error || 'Authentication failed. Please check your credentials.', 'error');
                 return;
             }
@@ -492,17 +500,20 @@ function initHodLoginForm() {
             if (profile.role !== 'HOD') {
                 await window.OrixaAuth.signOut();
                 setSubmitting(false);
+                if (window.OrixaAudio) window.OrixaAudio.play('loginFail');
                 setFormMessage('Unauthorized role for HOD Login.', 'error');
                 return;
             }
 
+            if (window.OrixaAudio) window.OrixaAudio.play('loginSuccess');
             setFormMessage('Opening HOD Dashboard...', 'success');
             window.setTimeout(() => {
                 window.location.href = 'hod-dashboard.html';
-            }, 400);
+            }, 560);
         } catch (err) {
             console.error('HOD login submission error:', err);
             setSubmitting(false);
+            if (window.OrixaAudio) window.OrixaAudio.play('error');
             setFormMessage('An unexpected authentication error occurred.', 'error');
         }
     });

@@ -532,6 +532,31 @@ body {
     box-sizing: border-box;
 }
 
+/* A long question or answer scrolls inside its card instead of stretching the board */
+.match-card-text {
+    flex: 1;
+    min-width: 0;
+    max-height: 5.2em;
+    line-height: 1.3;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    scrollbar-width: thin;
+    padding-right: 4px;
+    text-align: left;
+}
+
+.match-answer-card .match-card-text {
+    text-align: right;
+}
+
+.match-card-text:focus-visible {
+    outline: 3px solid var(--border-dark);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
 .match-card:hover:not(.is-matched) {
     transform: translateY(-2px);
     box-shadow: 0 6px 0 var(--border-dark);

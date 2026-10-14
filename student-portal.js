@@ -1089,6 +1089,8 @@ function renderMatchGameBoard() {
                 </div>
             </div>
 
+            <p id="match-error-banner" role="alert" style="margin: 0; font-family: var(--font-body); font-size: 0.9rem; font-weight: 700; color: var(--color-red-dark); text-align: center;" ${matchGameState.lastError ? '' : 'hidden'}>${escapeHTML(matchGameState.lastError || '')}</p>
+
             <svg class="match-svg-overlay" id="match-svg-overlay"></svg>
 
             <div class="match-columns-grid">
@@ -1102,7 +1104,7 @@ function renderMatchGameBoard() {
                             <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
                                  data-q-id="${q.id}"
                                  id="q-card-${q.id}">
-                                <span>${escapeHTML(q.text)}</span>
+                                <span class="match-card-text">${escapeHTML(q.text)}</span>
                                 <span class="match-card-dot" id="q-dot-${q.id}"></span>
                             </div>
                         `;
@@ -1120,7 +1122,7 @@ function renderMatchGameBoard() {
                                  data-a-id="${a.id}"
                                  id="a-card-${a.id}">
                                 <span class="match-card-dot" id="a-dot-${a.id}"></span>
-                                <span>${escapeHTML(a.answer)}</span>
+                                <span class="match-card-text">${escapeHTML(a.answer)}</span>
                             </div>
                         `;
                     }).join('')}
@@ -1135,6 +1137,13 @@ function renderMatchGameBoard() {
 
     setupMatchInteractions();
     updateMatchConnectionLines();
+
+    document.querySelectorAll('#match-game-container .match-card-text').forEach(el => {
+        if (el.scrollHeight > el.clientHeight + 1) {
+            el.tabIndex = 0;
+            el.setAttribute('aria-label', `${el.textContent.trim()} (scrollable)`);
+        }
+    });
 
     requestAnimationFrame(() => {
         updateMatchConnectionLines();
@@ -1176,6 +1185,7 @@ function setupMatchInteractions() {
 
         card.addEventListener('pointerdown', (e) => {
             if (matchGameState.busy) return;
+            if (e.target.classList && e.target.classList.contains('match-card-text') && e.offsetX >= e.target.clientWidth) return;   // on the text's scrollbar
             if (matchGameState.matches.has(qId) || matchGameState.failedPairs.has(qId)) return;
 
             const prevAnsId = matchGameState.selectedAnswerId;
@@ -1423,16 +1433,31 @@ function attemptMatch(qId, aId) {
                     return;
                 }
             }
-            const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
+            if (res && res.error) {
+                // the answer was never judged (not a wrong answer): show why and let the student try again
+                reportMatchError(`Your answer could not be checked: ${res.error.message}`);
+                return;
+            }
+            matchGameState.lastError = '';
+            const evalIsCorrect = !!(res && res.data && res.data.is_correct === true);
             processMatchResult(evalIsCorrect);
         }).catch(e => {
             console.warn('RPC match pair error:', e);
-            processMatchResult(false);
+            reportMatchError('Could not reach the server. Check your connection and try again.');
         });
         return;
     }
 
     processMatchResult(qId === aId);
+}
+
+// Shows why an answer could not be checked, frees the board and does not count a mistake
+function reportMatchError(message) {
+    matchGameState.lastError = message;
+    matchGameState.selectedQuestionId = null;
+    matchGameState.selectedAnswerId = null;
+    matchGameState.busy = false;
+    renderMatchGameBoard();
 }
 
 function drawErrorLine(qId, aId) {

@@ -610,6 +610,15 @@ body {
         gap: 30px;
     }
 
+    /* "Possible Answers" wraps on narrow screens: give both headings the same height so the cards line up */
+    .match-column-title {
+        min-height: 2.9em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
     .match-card {
         padding: 12px 14px;
         font-size: 0.92rem;

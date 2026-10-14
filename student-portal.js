@@ -1067,13 +1067,18 @@ function renderMatchGameBoard() {
     const pct = Math.round((matchedCount / totalPairs) * 100);
     const currentXP = getCurrentQuizXP(matchGameState.pairStats, matchGameState.questName);
 
+    // The slide-in plays once. Redrawing after every pair would make the board blink out each time and
+    // would measure the connection lines while the cards are still moving.
+    const slideIn = matchGameState.boardShown ? '' : ' orixa-game-slide-enter';
+    matchGameState.boardShown = true;
+
     windowEl.innerHTML = `
         <header class="tile-game-header">
             <h3 class="tile-game-title" id="tile-modal-title">${escapeHTML(matchGameState.questName)}</h3>
             <button type="button" class="tile-game-close-btn" onclick="closeQuestModal()" aria-label="Close quiz"><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 L19 17.59 13.41 12z" fill="currentColor"/></svg></button>
         </header>
 
-        <div class="match-game-container orixa-game-slide-enter" id="match-game-container">
+        <div class="match-game-container${slideIn}" id="match-game-container">
             <div class="orixa-progress-container">
                 <div class="orixa-progress-header">
                     <span><svg class="monotone-icon" viewBox="0 0 24 24" style="width: 16px; height: 16px; display: inline-block; vertical-align: -2px; margin-right: 4px;"><circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 6h6M9 18l6-12" stroke="currentColor" stroke-width="2"/></svg> PAIRS MATCHED: ${matchedCount} / ${totalPairs}</span>
@@ -1170,6 +1175,7 @@ function setupMatchInteractions() {
         const qId = card.dataset.qId;
 
         card.addEventListener('pointerdown', (e) => {
+            if (matchGameState.busy) return;
             if (matchGameState.matches.has(qId) || matchGameState.failedPairs.has(qId)) return;
 
             const prevAnsId = matchGameState.selectedAnswerId;
@@ -1257,6 +1263,7 @@ function setupMatchInteractions() {
         const aId = card.dataset.aId;
 
         card.addEventListener('click', () => {
+            if (matchGameState.busy) return;
             if (Array.from(matchGameState.matches.values()).includes(aId) || matchGameState.failedPairs.has(aId)) return;
 
             if (matchGameState.selectedQuestionId) {
@@ -1316,8 +1323,10 @@ function removeTempDragLine() {
 }
 
 function attemptMatch(qId, aId) {
+    if (matchGameState.busy) return;
     if (matchGameState.matches.has(qId) || matchGameState.failedPairs.has(qId)) return;
     if (Array.from(matchGameState.matches.values()).includes(aId) || matchGameState.failedPairs.has(aId)) return;
+    matchGameState.busy = true;   // released once this answer has been checked and the board redrawn
 
     const stat = matchGameState.pairStats ? matchGameState.pairStats.find(p => p.id === qId) : null;
 
@@ -1331,6 +1340,7 @@ function attemptMatch(qId, aId) {
             matchGameState.selectedQuestionId = null;
             matchGameState.selectedAnswerId = null;
 
+            matchGameState.busy = false;
             renderMatchGameBoard();
 
             if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
@@ -1375,6 +1385,7 @@ function attemptMatch(qId, aId) {
                         (!matchGameState.failedPairs.has(a.id) && !Array.from(matchGameState.matches.values()).includes(a.id)) ? open[k++] : a);
                 }
 
+                matchGameState.busy = false;
                 renderMatchGameBoard();
 
                 if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
@@ -1397,7 +1408,21 @@ function attemptMatch(qId, aId) {
             p_question_id: qId,
             p_answer_json: { pairs: pairsPayload }
         }).then(res => {
-            if (res && res.error) console.error('fn_submit_question_answer error:', res.error);
+            if (res && res.error) {
+                console.error('fn_submit_question_answer error:', res.error);
+                if (/maximum chances/i.test(res.error.message || '')) {
+                    // the database already used up every try for this prompt: lock it instead of looping
+                    matchGameState.failedPairs.add(qId);
+                    matchGameState.selectedQuestionId = null;
+                    matchGameState.selectedAnswerId = null;
+                    matchGameState.busy = false;
+                    renderMatchGameBoard();
+                    if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+                        setGameTimeout(renderMatchVictoryScreen, 600);
+                    }
+                    return;
+                }
+            }
             const evalIsCorrect = (res && res.data && typeof res.data.is_correct === 'boolean') ? res.data.is_correct : false;
             processMatchResult(evalIsCorrect);
         }).catch(e => {
@@ -1489,6 +1514,7 @@ function renderMatchVictoryScreen() {
 
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - matchGameState.startTime) / 1000));
     const totalPairs = matchGameState.pairs.length;
+    const matchedPairs = matchGameState.matches.size;   // pairs given up after running out of tries do not count
 
     windowEl.innerHTML = `
         <header class="tile-game-header" style="background: var(--color-green);">
@@ -1503,7 +1529,9 @@ function renderMatchVictoryScreen() {
                 ${results.stars === 3 ? 'AMAZING MATCHING!' : (results.stars >= 1 ? 'MATCHING COMPLETED!' : 'QUEST FINISHED')}
             </h2>
             <p style="font-family: var(--font-body); font-size: 1.05rem; color: #546e7a; margin: 0;">
-                You connected all ${totalPairs} pairs in <strong>"${escapeHTML(matchGameState.questName)}"</strong>!
+                ${matchedPairs === totalPairs
+                    ? `You connected all ${totalPairs} pairs in <strong>"${escapeHTML(matchGameState.questName)}"</strong>!`
+                    : `You connected ${matchedPairs} of ${totalPairs} pairs in <strong>"${escapeHTML(matchGameState.questName)}"</strong>.`}
             </p>
 
             <div class="orixa-victory-analytics-card">
@@ -1517,7 +1545,7 @@ function renderMatchVictoryScreen() {
                 </div>
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">PAIRS MATCHED</span>
-                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${totalPairs} / ${totalPairs}</div>
+                    <div class="orixa-stat-box-value" style="color: var(--border-dark);">${matchedPairs} / ${totalPairs}</div>
                 </div>
                 <div class="orixa-stat-box">
                     <span class="orixa-stat-box-label">TIME TAKEN</span>

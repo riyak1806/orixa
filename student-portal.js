@@ -10,6 +10,15 @@ let completedQuizzes = new Set();
 let activeQuizId = null;
 let activeGameTimeouts = [];
 
+// Sound is optional: a missing or blocked sound system must never affect a game
+function sfx(name, opts) {
+    try { if (window.OrixaAudio) window.OrixaAudio.play(name, opts); } catch (e) { /* ignore */ }
+}
+
+function sfxVictory(stars) {
+    try { if (window.OrixaAudio) window.OrixaAudio.playVictory(stars); } catch (e) { /* ignore */ }
+}
+
 function setGameTimeout(fn, delay) {
     const id = setTimeout(() => {
         activeGameTimeouts = activeGameTimeouts.filter(t => t !== id);
@@ -280,6 +289,7 @@ function renderGameEntrance() {
 }
 
 function startTileGame() {
+    sfx('gameStart');
     renderGameBoard();
 }
 
@@ -362,6 +372,7 @@ function renderGameBoard() {
 function handleTileClick(tileIndex) {
     if (currentGameState.solvedTiles.has(tileIndex) || currentGameState.processedTiles.has(tileIndex)) return;
 
+    sfx('tileFlip');
     currentGameState.selectedTileIndex = tileIndex;
     currentGameState.selectedOptionIndex = null;
 
@@ -439,6 +450,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
 
     const processOptionResult = (evaluatedIsCorrect) => {
         if (evaluatedIsCorrect) {
+            sfx('correct');
             if (optBtn) optBtn.classList.add('correct');
             currentGameState.solvedTiles.add(tileIndex);
             currentGameState.processedTiles.add(tileIndex);
@@ -460,6 +472,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
             setGameTimeout(() => {
                 currentGameState.isProcessing = false;
                 closeQuestionModal();
+                sfx('tileReveal');
                 renderGameBoard();
 
                 if (currentGameState.processedTiles.size === currentGameState.questionCount) {
@@ -471,6 +484,7 @@ function handleTileOptionSelect(tileIndex, optIndex) {
                 stat.mistakes++;
                 stat.totalAttempts++;
             }
+            sfx('wrong');
             currentGameState.remainingChances -= 1;
             currentGameState.disabledOptions.add(optIndex);
 
@@ -556,6 +570,7 @@ function renderVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(currentGameState.questName);
     const results = calculateQuizResults(currentGameState.questionStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(currentGameState.dbAttemptId);
 
@@ -972,14 +987,15 @@ function shuffleMatchAnswers(answers, from, to) {
     }
 }
 
-function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3, dbAttemptId = null, dbQuestions = null) {
+function openMatchGame(questName, category, teacherName = 'Professor Riley', chances = 3, dbAttemptId = null, dbQuestions = null, progress = []) {
     let pairs = [];
 
     if (dbQuestions && dbQuestions.length > 0) {
         pairs = dbQuestions.map((q, idx) => ({
             id: q.dbQuestionId || `m${idx + 1}`,
             text: q.text,
-            answer: q.answer
+            answer: q.answer,
+            maxChances: q.maxChances
         }));
     }
 
@@ -1019,6 +1035,21 @@ function openMatchGame(questName, category, teacherName = 'Professor Riley', cha
         dbQuestions: dbQuestions
     };
 
+    // pairs already solved (or out of tries) in an earlier session of this attempt
+    (progress || []).forEach(row => {
+        const stat = pairStats.find(p => p.id === row.question_id);
+        const pair = pairs.find(p => p.id === row.question_id);
+        if (!stat || !pair) return;
+        stat.mistakes = row.mistakes_count || 0;
+        stat.totalAttempts = row.chances_used || 0;
+        if (row.is_solved) {
+            stat.isSolved = true;
+            matchGameState.matches.set(pair.id, pair.id);
+        } else if (pair.maxChances && (row.chances_used || 0) >= pair.maxChances) {
+            matchGameState.failedPairs.add(pair.id);
+        }
+    });
+
     const modal = document.getElementById('quest-modal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -1047,6 +1078,9 @@ function renderMatchEntrance() {
             <p class="tile-entrance-desc">
                 Connect each question or prompt on the left with its correct answer on the right to complete all <strong>${matchGameState.pairs.length} pairs</strong>!
             </p>
+            ${matchGameState.matches.size + matchGameState.failedPairs.size > 0
+                ? `<p class="tile-entrance-desc" style="font-weight: 700;">Welcome back: ${matchGameState.matches.size} of ${matchGameState.pairs.length} pairs are already done. Carry on where you left off.</p>`
+                : ''}
             <button type="button" class="cartoon-action-btn primary-yellow-btn" onclick="startMatchGame()" style="padding: 14px 36px; font-size: 1.15rem;">
                 <svg class="monotone-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px; display: inline-block; vertical-align: -3px; margin-right: 6px;"><path d="M8 5v14l11-7z" fill="currentColor"/></svg> START GAME
             </button>
@@ -1055,6 +1089,11 @@ function renderMatchEntrance() {
 }
 
 function startMatchGame() {
+    sfx('gameStart');
+    if (matchGameState.matches.size + matchGameState.failedPairs.size === matchGameState.pairs.length) {
+        renderMatchVictoryScreen();   // everything was already settled in an earlier session
+        return;
+    }
     renderMatchGameBoard();
 }
 
@@ -1066,6 +1105,10 @@ function renderMatchGameBoard() {
     const totalPairs = matchGameState.pairs.length;
     const pct = Math.round((matchedCount / totalPairs) * 100);
     const currentXP = getCurrentQuizXP(matchGameState.pairStats, matchGameState.questName);
+
+    // A long board scrolls: redrawing it must not throw the student back to the top
+    const previousBoard = document.getElementById('match-game-container');
+    const previousScroll = previousBoard ? previousBoard.scrollTop : 0;
 
     // The slide-in plays once. Redrawing after every pair would make the board blink out each time and
     // would measure the connection lines while the cards are still moving.
@@ -1101,7 +1144,8 @@ function renderMatchGameBoard() {
                         const isFailed = matchGameState.failedPairs.has(q.id);
                         const isSelected = matchGameState.selectedQuestionId === q.id;
                         return `
-                            <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
+                            <div class="match-card match-question-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-failed' : ''} ${isSelected ? 'is-selected' : ''}"
+                                 ${isFailed ? 'title="No tries left for this one"' : ''}
                                  data-q-id="${q.id}"
                                  id="q-card-${q.id}">
                                 <span class="match-card-text">${escapeHTML(q.text)}</span>
@@ -1118,7 +1162,8 @@ function renderMatchGameBoard() {
                         const isFailed = matchGameState.failedPairs.has(a.id);
                         const isSelected = matchGameState.selectedAnswerId === a.id;
                         return `
-                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-matched' : ''} ${isSelected ? 'is-selected' : ''}"
+                            <div class="match-card match-answer-card ${isMatched ? 'is-matched' : ''} ${isFailed ? 'is-failed' : ''} ${isSelected ? 'is-selected' : ''}"
+                                 ${isFailed ? 'title="No tries left for this one"' : ''}
                                  data-a-id="${a.id}"
                                  id="a-card-${a.id}">
                                 <span class="match-card-dot" id="a-dot-${a.id}"></span>
@@ -1134,6 +1179,9 @@ function renderMatchGameBoard() {
             </p>
         </div>
     `;
+
+    const board = document.getElementById('match-game-container');
+    if (board && previousScroll) board.scrollTop = previousScroll;
 
     setupMatchInteractions();
     updateMatchConnectionLines();
@@ -1203,6 +1251,7 @@ function setupMatchInteractions() {
                 return;
             }
 
+            sfx('select');
             matchGameState.selectedQuestionId = qId;
             qCards.forEach(qc => {
                 if (!matchGameState.matches.has(qc.dataset.qId) && !matchGameState.failedPairs.has(qc.dataset.qId)) {
@@ -1220,6 +1269,7 @@ function setupMatchInteractions() {
 
             const dist = Math.hypot(e.clientX - activeMatchDrag.startX, e.clientY - activeMatchDrag.startY);
             if (dist > 6) {
+                if (!activeMatchDrag.isDrag) sfx('drag');
                 activeMatchDrag.isDrag = true;
             }
 
@@ -1280,6 +1330,7 @@ function setupMatchInteractions() {
                 const qId = matchGameState.selectedQuestionId;
                 attemptMatch(qId, aId);
             } else {
+                sfx('select');
                 matchGameState.selectedAnswerId = aId;
                 aCards.forEach(ac => {
                     if (!Array.from(matchGameState.matches.values()).includes(ac.dataset.aId) && !matchGameState.failedPairs.has(ac.dataset.aId)) {
@@ -1346,6 +1397,7 @@ function attemptMatch(qId, aId) {
                 stat.isSolved = true;
                 stat.totalAttempts++;
             }
+            sfx('match');
             matchGameState.matches.set(qId, aId);
             matchGameState.selectedQuestionId = null;
             matchGameState.selectedAnswerId = null;
@@ -1361,6 +1413,7 @@ function attemptMatch(qId, aId) {
                 stat.mistakes++;
                 stat.totalAttempts++;
             }
+            sfx('wrong');
             matchGameState.incorrectAttempts++;
             matchGameState.selectedQuestionId = null;
             matchGameState.selectedAnswerId = null;
@@ -1382,7 +1435,9 @@ function attemptMatch(qId, aId) {
 
                 // The database allows only a limited number of tries per prompt: once they are used up the
                 // prompt is locked as failed, otherwise the game could never finish.
-                if (stat && stat.totalAttempts >= matchGameState.configuredChances) {
+                const pairInfo = matchGameState.pairs.find(p => p.id === qId);
+                const triesAllowed = (pairInfo && pairInfo.maxChances) || matchGameState.configuredChances;
+                if (stat && stat.totalAttempts >= triesAllowed) {
                     matchGameState.failedPairs.add(qId);
                 }
 
@@ -1498,6 +1553,9 @@ function updateMatchConnectionLines() {
     const svg = document.getElementById('match-svg-overlay');
     if (!container || !svg) return;
 
+    // The board scrolls when it is taller than the window: the line layer has to be as tall as the board
+    svg.style.height = `${container.scrollHeight}px`;
+
     // Clear existing permanent lines
     svg.querySelectorAll('.match-permanent-line').forEach(el => el.remove());
 
@@ -1532,6 +1590,7 @@ function renderMatchVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(matchGameState.questName);
     const results = calculateQuizResults(matchGameState.pairStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(matchGameState.dbAttemptId);
 
@@ -1696,6 +1755,7 @@ function renderFillBlanksEntrance() {
 }
 
 function startFillBlanksGame() {
+    sfx('gameStart');
     renderFillBlanksGameBoard();
 }
 
@@ -1781,6 +1841,7 @@ function setupFitbInteractions() {
             const offsetX = e.clientX - rect.left;
             const offsetY = e.clientY - rect.top;
 
+            sfx('drag');
             // Keep original card in place so remaining options do NOT reflow or shift
             card.style.opacity = '0.35';
             if (target) target.classList.add('is-target-active');
@@ -1871,6 +1932,7 @@ function setupFitbInteractions() {
         card.addEventListener('click', () => {
             if (fillBlanksGameState.isProcessing) return;
             optionCards.forEach(c => c.classList.remove('is-selected'));
+            sfx('select');
             card.classList.add('is-selected');
             fillBlanksGameState.selectedOption = { text: optionText, card: card };
         });
@@ -1894,6 +1956,7 @@ function attemptFitbAnswer(optionText, card) {
     const target = document.getElementById('fitb-drop-target');
     if (!target) return;
 
+    sfx('drop');
     fillBlanksGameState.isProcessing = true;
     fillBlanksGameState.selectedOption = null;
 
@@ -1907,6 +1970,7 @@ function attemptFitbAnswer(optionText, card) {
             }
 
             // Correct feedback
+            sfx('correct');
             target.textContent = optionText;
             target.classList.remove('is-incorrect', 'is-target-active');
             target.classList.add('is-correct');
@@ -1923,6 +1987,7 @@ function attemptFitbAnswer(optionText, card) {
                 if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
                     renderFitbVictoryScreen();
                 } else {
+                    sfx('next');
                     renderFillBlanksGameBoard();
                 }
             }, 700);
@@ -1934,6 +1999,7 @@ function attemptFitbAnswer(optionText, card) {
             }
 
             // Incorrect feedback
+            sfx('wrong');
             fillBlanksGameState.incorrectAttempts++;
             fillBlanksGameState.remainingChances--;
 
@@ -1978,6 +2044,7 @@ function attemptFitbAnswer(optionText, card) {
                     if (fillBlanksGameState.currentIndex >= fillBlanksGameState.questions.length) {
                         renderFitbVictoryScreen();
                     } else {
+                        sfx('next');
                         renderFillBlanksGameBoard();
                     }
                 }, 1200);
@@ -2013,6 +2080,7 @@ function renderFitbVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(fillBlanksGameState.questName);
     const results = calculateQuizResults(fillBlanksGameState.questionStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(fillBlanksGameState.dbAttemptId);
 
@@ -2160,6 +2228,7 @@ function renderTrueFalseEntrance() {
 }
 
 function startTrueFalseGame() {
+    sfx('gameStart');
     renderTrueFalseGameBoard();
 }
 
@@ -2228,6 +2297,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                 currentStat.isSolved = true;
                 currentStat.totalAttempts++;
             }
+            sfx('correct');
             trueFalseGameState.correctAnswersCount++;
 
             if (cardEl) cardEl.classList.add('is-correct');
@@ -2249,6 +2319,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                 if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
                     renderTrueFalseVictoryScreen();
                 } else {
+                    sfx('next');
                     renderTrueFalseGameBoard();
                 }
             }, 700);
@@ -2258,6 +2329,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                 currentStat.mistakes++;
                 currentStat.totalAttempts++;
             }
+            sfx('wrong');
             trueFalseGameState.incorrectAttemptsCount++;
             trueFalseGameState.remainingChances--;
 
@@ -2306,6 +2378,7 @@ function evaluateTrueFalseChoice(selectedBool) {
                     if (trueFalseGameState.currentIndex >= trueFalseGameState.questions.length) {
                         renderTrueFalseVictoryScreen();
                     } else {
+                        sfx('next');
                         renderTrueFalseGameBoard();
                     }
                 }, 1200);
@@ -2341,6 +2414,7 @@ function renderTrueFalseVictoryScreen() {
 
     const totalMaxXP = getQuestMaxXP(trueFalseGameState.questName);
     const results = calculateQuizResults(trueFalseGameState.questionStats, totalMaxXP);
+    sfxVictory(results.stars);
 
     completeAttemptInSupabase(trueFalseGameState.dbAttemptId);
 
@@ -2448,9 +2522,11 @@ function confirmStudentLogout(event) {
     const confirmBtn = document.getElementById('confirm-student-logout-btn');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async () => {
+            const logoutSound = new Promise(done => (window.OrixaAudio ? window.OrixaAudio.playThen('logout', done, 450) : done()));
             if (window.OrixaAuth) {
                 await window.OrixaAuth.signOut();
             }
+            await logoutSound;
             window.location.replace('student-login.html');
         });
     }
@@ -2723,13 +2799,24 @@ async function launchSupabaseQuiz(quiz, subjectName, teacherName) {
                     const c = choices.find(ch => ch.id === p.id) || choices[idx] || {};
                     mappedPairs.push({
                         dbQuestionId: q.id,
+                        maxChances: q.max_chances,
                         payloadId: p.id,
                         text: p.prompt || q.question_text || `Prompt ${mappedPairs.length + 1}`,
                         answer: c.choice || `Choice ${mappedPairs.length + 1}`
                     });
                 });
             });
-            openMatchGame(quiz.title, subjectName, teacherName, quiz.default_max_chances || 3, attemptId, mappedPairs);
+            // An unfinished attempt is resumed by the database: pairs solved earlier must stay solved on the board
+            let progress = [];
+            try {
+                const res = await client.from('question_attempts')
+                    .select('question_id, is_solved, mistakes_count, chances_used')
+                    .eq('attempt_id', attemptId);
+                if (res && !res.error && Array.isArray(res.data)) progress = res.data;
+            } catch (e) {
+                console.warn('Could not load earlier progress for this attempt:', e);
+            }
+            openMatchGame(quiz.title, subjectName, teacherName, quiz.default_max_chances || 3, attemptId, mappedPairs, progress);
         } else if (quiz.game_type === 'FILL_BLANKS') {
             const mappedQ = questions.map(q => {
                 const payload = q.game_payload || {};
@@ -2768,6 +2855,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initStudentNickname(profile);
     }
     initStudentPasswordForm();
+    if (window.OrixaAudio) window.OrixaAudio.mountSettings(document.getElementById('student-audio-mount'));
     if (window.OrixaAchievements) window.OrixaAchievements.init();
 
     await loadCompletedQuizzesFromSupabase();

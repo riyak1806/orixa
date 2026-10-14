@@ -700,6 +700,8 @@ function initCollegeProfile() {
     const saveBtn = document.getElementById('college-pwd-save-btn');
     const passwordSafety = window.OrixaAuth.attachPasswordSafety(fields.next);
 
+    if (window.OrixaAudio) window.OrixaAudio.mountSettings(document.getElementById('college-audio-mount'));
+
     const fillProfile = async () => {
         const profile = await window.OrixaAuth.getCurrentProfile();
         if (!profile) return;
@@ -1019,7 +1021,9 @@ function confirmCollegeLogout(event) {
 
     document.getElementById('logout-cancel-btn').addEventListener('click', () => modal.remove());
     document.getElementById('logout-confirm-btn').addEventListener('click', async () => {
+        const logoutSound = new Promise(done => (window.OrixaAudio ? window.OrixaAudio.playThen('logout', done, 450) : done()));
         if (window.OrixaAuth) await window.OrixaAuth.signOut();
+        await logoutSound;
         window.location.replace('college-login.html');
     });
 }

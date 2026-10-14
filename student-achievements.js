@@ -427,6 +427,7 @@
         el.classList.remove('is-playing');
         void el.offsetWidth;            // restart the CSS animations for this achievement
         el.classList.add('is-playing');
+        if (window.OrixaAudio) window.OrixaAudio.play(def.category === 'TROPHY' ? 'trophy' : 'achievement');
         el.querySelector('.ach-cel-continue').focus();
     }
 

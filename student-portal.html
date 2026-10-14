@@ -139,6 +139,13 @@
             animation: tile-modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
+        /* A long game (many pairs, long texts) scrolls inside the window; the title bar stays in place */
+        .tile-game-window > *:not(.tile-game-header) {
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
         @keyframes tile-modal-pop {
             0% { transform: scale(0.88) translateY(20px); opacity: 0; }
             100% { transform: scale(1) translateY(0); opacity: 1; }
@@ -689,6 +696,11 @@
                 </div>
 
 
+                <div style="border-top: 2px dashed rgba(26,26,36,0.15); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <h4 style="margin: 0; font-family: var(--font-header); font-size: 1.05rem; color: var(--border-dark);">Sound</h4>
+                    <div id="student-audio-mount"></div>
+                </div>
+
                 <div style="border-top: 2px dashed rgba(26,26,36,0.15); padding-top: 12px; margin-top: 4px; display: flex; flex-direction: column; gap: 10px;">
                     <button type="button" id="student-password-toggle-btn" class="quiz-mgmt-action-btn quiz-btn-edit" aria-expanded="false" aria-controls="student-password-form" style="height: 54px; min-height: 54px; flex-shrink: 0; font-size: 1.05rem;">
                         CHANGE PASSWORD
@@ -736,6 +748,7 @@
     <!-- Particle script loading -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="orixa-config.js"></script>
+    <script src="orixa-audio.js"></script>
     <script src="orixa-auth.js"></script>
     <script src="student.js"></script>
     <script src="student-achievements.js"></script>

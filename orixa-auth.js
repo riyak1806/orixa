@@ -350,7 +350,7 @@
             avatarEl.parentNode.insertBefore(wrap, avatarEl);
             wrap.appendChild(avatarEl);
 
-            const btnStyle = 'padding: 4px 10px; font-size: 0.72rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);';
+            const btnStyle = 'padding: 8px 12px; min-height: 40px; font-size: 0.75rem; border-color: var(--border-dark); background: #cfd8dc; box-shadow: var(--shadow-chunky-pressed);';
             const controls = document.createElement('div');
             controls.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 4px;';
             controls.innerHTML =

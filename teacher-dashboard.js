@@ -1009,7 +1009,7 @@ function renderGameBuilderStep(dynamicPage) {
                 </div>
             </div>
 
-            <div class="create-quiz-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--t-space-2);">
+            <div class="create-quiz-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--t-space-2);">
                 <!-- Left column for Quiz Basic Info & Settings -->
                 <div class="create-quiz-col-left" style="display: flex; flex-direction: column; gap: var(--t-space-2);">
                     <div class="cartoon-panel create-quiz-card" id="quiz-info-card" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">
@@ -1193,7 +1193,7 @@ function renderGameBuilderStep(dynamicPage) {
                             </button>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--t-space-2);">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: var(--t-space-2);">
                             <div class="form-field">
                                 <label class="field-label">QUESTION / PROMPT *</label>
                                 <div class="input-shell">
@@ -3528,7 +3528,7 @@ function renderResultsPage() {
                         <h3 style="font-family: var(--font-header); font-size: 1.25rem; margin: 0; color: var(--border-dark);">Class Performance Distribution</h3>
                         <span class="quiz-status-pill" style="font-size: 0.78rem; padding: 3px 10px; background: var(--color-cream);">${totalAttempts} Total attempts in view</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 4px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 14px; margin-top: 4px;">
                         <div>
                             <div style="display: flex; justify-content: space-between; font-family: var(--font-header); font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; color: var(--border-dark);">
                                 <span style="color: var(--color-green-dark);">Excellent (90-100%)</span>
@@ -4858,7 +4858,7 @@ function renderHelpPage() {
             </div>
 
             <!-- Two Main Sections Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--t-space-2);">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--t-space-2);">
 
                 <!-- AREA 1: COMMON PROBLEMS -->
                 <div class="cartoon-panel" style="padding: var(--t-space-3); background: var(--surface-white); display: flex; flex-direction: column; gap: var(--t-space-2);">

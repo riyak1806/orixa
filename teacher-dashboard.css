@@ -12,7 +12,7 @@
 .dashboard-body {
     align-items: stretch;
     justify-content: flex-start;
-    min-height: 100vh;
+    min-height: 100vh; min-height: 100dvh;
     padding: var(--t-space-2) var(--t-space-3);
 }
 
@@ -176,7 +176,7 @@
     min-height: 72px;
     padding: var(--t-space-1) var(--t-space-2);
     display: grid;
-    grid-template-columns: auto minmax(240px, 1fr) auto;
+    grid-template-columns: auto minmax(min(240px, 100%), 1fr) auto;
     align-items: center;
     gap: var(--t-space-2);
     background: var(--surface-white);
@@ -477,6 +477,7 @@
 
 .panel-header {
     display: flex;
+    flex-wrap: wrap;   /* a header with several buttons wraps instead of overflowing on phones */
     align-items: center;
     justify-content: space-between;
     gap: var(--t-space-2);
@@ -595,7 +596,7 @@
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     background: rgba(26, 26, 36, 0.4);
     z-index: 99;
     display: none;
@@ -639,8 +640,8 @@
         margin-top: 0;
         left: -300px;
         width: 280px !important;
-        height: 100vh;
-        min-height: 100vh;
+        height: 100vh; height: 100dvh;
+        min-height: 100vh; min-height: 100dvh;
         z-index: 100;
         border-radius: 0 20px 20px 0;
         box-shadow: 6px 0 0 var(--border-dark);
@@ -916,7 +917,7 @@
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1052,7 +1053,7 @@
     align-items: center;
     gap: var(--t-space-1);
     flex: 1;
-    min-width: 280px;
+    min-width: min(280px, 100%);
 }
 
 .quiz-mgmt-search-container {
@@ -1060,7 +1061,7 @@
     display: flex;
     align-items: center;
     flex: 1;
-    min-width: 200px;
+    min-width: min(200px, 100%);
 }
 
 .quiz-mgmt-search-container input {
@@ -1125,7 +1126,7 @@
 
 .quiz-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
     gap: var(--t-space-2);
     margin-bottom: var(--t-space-3);
 }
@@ -1276,7 +1277,7 @@
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     background: rgba(26, 26, 36, 0.45);
     backdrop-filter: blur(2px);
     z-index: 1000;
@@ -1373,7 +1374,7 @@
 
 .game-selection-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
     gap: var(--t-space-2);
     margin-top: var(--t-space-1);
     margin-bottom: var(--t-space-1);
@@ -1637,5 +1638,95 @@
 @media (max-width: 900px) {
     .create-quiz-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Touch screens and phones: comfortable tap targets for the compact action buttons */
+@media (pointer: coarse), (max-width: 640px) {
+    .quiz-mgmt-action-btn {
+        min-height: 40px;
+    }
+}
+
+/* ==========================================================================
+   HOD / COLLEGE TABLES ON PHONES: every row becomes a small card (labels come from stack-tables.js)
+   ========================================================================== */
+@media (max-width: 640px) {
+    .hod-data-table,
+    .college-data-table {
+        display: block;
+        width: 100%;
+    }
+
+    .hod-data-table thead,
+    .college-data-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .hod-data-table tbody,
+    .college-data-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--t-space-1);
+    }
+
+    .hod-data-table tr,
+    .college-data-table tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 12px;
+        padding: 12px;
+        background: var(--surface-white);
+        border: var(--border-comic-thin);
+        border-radius: 14px;
+        box-shadow: var(--shadow-chunky-pressed);
+    }
+
+    .hod-data-table td,
+    .college-data-table td {
+        display: block;
+        min-width: 0;
+        width: auto !important;
+        padding: 0 !important;
+        border: 0 !important;
+        text-align: left !important;
+        overflow-wrap: anywhere;
+    }
+
+    .hod-data-table td::before,
+    .college-data-table td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 2px;
+        font-family: var(--font-header);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #78909c;
+    }
+
+    .hod-data-table td[data-label=""]::before,
+    .hod-data-table td[colspan]::before,
+    .college-data-table td[data-label=""]::before,
+    .college-data-table td[colspan]::before {
+        display: none;
+    }
+
+    /* the first cell (the name) and the action buttons use the full card width */
+    .hod-data-table td:first-child,
+    .college-data-table td:first-child,
+    .hod-data-table td[data-label="Actions"],
+    .college-data-table td[data-label="Actions"],
+    .hod-data-table td[data-label="Subjects & Teachers"],
+    .hod-data-table td[colspan],
+    .college-data-table td[colspan] {
+        grid-column: 1 / -1;
     }
 }

@@ -50,7 +50,7 @@ body {
     color: var(--border-dark);
     font-family: var(--font-body);
     font-weight: 600;
-    min-height: 100vh;
+    min-height: 100vh; min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -69,7 +69,7 @@ body {
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100vh; height: 100dvh;
     z-index: 1;
     pointer-events: none;
 }
@@ -660,6 +660,13 @@ body {
 }
 
 /* Fill in the Blanks Student Game Styles */
+/* Inside a scrolling game window the boxes keep their natural height; the window scrolls instead of squeezing them */
+.fitb-game-container > *,
+.tf-game-container > *,
+.match-game-container > * {
+    flex-shrink: 0;
+}
+
 .fitb-game-container {
     display: flex;
     flex-direction: column;

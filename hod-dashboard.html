@@ -332,6 +332,10 @@
             align-items: stretch;
         }
 
+        .hod-bottom-grid > * {
+            min-width: 0;
+        }
+
         .hod-table-wrapper {
             width: 100%;
             overflow-x: auto;
@@ -491,18 +495,26 @@
 
         .hod-modal-card {
             width: min(100%, 540px);
-            max-height: 90vh;
+            max-height: 90vh; max-height: 90dvh;
             overflow-y: auto;
         }
 
         @media (max-width: 960px) {
             .hod-bottom-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
 
             .hod-topbar {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+        }
+
+        /* Touch screens and phones: comfortable tap targets for the compact buttons */
+        @media (pointer: coarse), (max-width: 640px) {
+            .hod-icon-btn {
+                width: 40px;
+                height: 40px;
             }
         }
     </style>
@@ -743,7 +755,7 @@
                         <p class="panel-kicker">Faculty Administration</p>
                         <h3 id="teacher-management-heading">Faculty List</h3>
                     </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                         <button type="button" id="toggle-add-teacher-btn" class="cartoon-action-btn primary-yellow-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                             <span>+ ADD</span>
                         </button>
@@ -961,7 +973,7 @@
                         <p class="panel-kicker">Student Roster</p>
                         <h3 id="student-management-heading">Student List</h3>
                     </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                         <button type="button" id="toggle-add-student-btn" class="cartoon-action-btn" style="height: 36px; padding: 0 14px; font-family: var(--font-header); font-size: 0.85rem; background: var(--color-green); border: var(--border-comic-thin); border-radius: 10px; box-shadow: var(--shadow-chunky-pressed); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                             <span>+ ADD</span>
                         </button>
@@ -1195,6 +1207,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="orixa-config.js"></script>
+    <script src="stack-tables.js"></script>
     <script src="orixa-audio.js"></script>
     <script src="orixa-auth.js"></script>
     <script src="teacher.js"></script>

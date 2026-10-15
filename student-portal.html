@@ -37,7 +37,7 @@
 
         .student-quest-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
             gap: var(--t-space-2);
             margin-bottom: var(--t-space-3);
         }
@@ -61,6 +61,8 @@
         }
 
         .quest-reward-badge {
+            white-space: nowrap;
+            flex-shrink: 0;
             background: var(--color-purple);
             color: var(--border-dark);
             font-family: var(--font-header);
@@ -115,7 +117,7 @@
             top: 0;
             left: 0;
             width: 100vw;
-            height: 100vh;
+            height: 100vh; height: 100dvh;
             background: rgba(15, 15, 25, 0.75);
             backdrop-filter: blur(4px);
             z-index: 1000;
@@ -128,7 +130,7 @@
         .tile-game-window {
             position: relative;
             width: min(100%, 640px);
-            max-height: 92vh;
+            max-height: 92vh; max-height: 92dvh;
             background: var(--surface-white);
             border: var(--border-comic);
             border-radius: 24px;
@@ -142,6 +144,7 @@
         /* A long game (many pairs, long texts) scrolls inside the window; the title bar stays in place */
         .tile-game-window > *:not(.tile-game-header) {
             min-height: 0;
+            overflow-x: hidden;
             overflow-y: auto;
             overscroll-behavior: contain;
         }
@@ -323,7 +326,8 @@
 
         /* REQUIREMENT 3: TRUE MODAL OVERLAY IN FRONT OF TILE GRID */
         .tile-question-dim-overlay {
-            position: absolute;
+            /* covers the whole game window, whatever the board's scroll position, so a tall question card stays inside it */
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -349,7 +353,7 @@
             position: relative;
             z-index: 101;
             width: min(100%, 460px);
-            max-height: 85vh;
+            max-height: calc(100% - 8px);
             background: var(--surface-white);
             border: var(--border-comic);
             border-radius: 20px;
@@ -636,7 +640,7 @@
 
     <!-- Student Profile Information Modal Overlay -->
     <div id="student-profile-modal" class="orixa-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
-        <div class="orixa-modal-card" style="max-height: 90vh; overflow-y: auto;">
+        <div class="orixa-modal-card" style="max-height: 90vh; max-height: 90dvh; overflow-y: auto;">
             <header class="orixa-modal-header">
                 <h3 class="orixa-modal-title" id="modal-profile-title">Student Profile</h3>
                 <button type="button" class="sidebar-toggle-btn" onclick="closeStudentProfileModal()" aria-label="Close modal">
